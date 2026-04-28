@@ -30,6 +30,11 @@ export type EventInput = {
   workOrderNumber: string | null;
 };
 
+export type EventPatch = Partial<EventInput> & {
+  // Only editable on the import-sourced event itself; null clears it.
+  importedWarning?: string | null;
+};
+
 function statusFromWo(wo: string | null | undefined): EventStatus {
   return wo && wo.trim() ? "planned" : "unplanned";
 }
@@ -42,6 +47,7 @@ function docToEvent(
     id,
     tailNumber: data.tailNumber as string,
     warning: data.warning as string,
+    importedWarning: (data.importedWarning as string | undefined) ?? null,
     expiryDate: (data.expiryDate as Timestamp | null) ?? null,
     timerExpiryTimeMinutes:
       (data.timerExpiryTimeMinutes as number | null) ?? null,
@@ -91,6 +97,7 @@ export async function createEvent(
   const ref = await addDoc(eventsCol(), {
     tailNumber: tail,
     warning,
+    importedWarning: null,
     expiryDate: input.expiryDate
       ? Timestamp.fromDate(input.expiryDate)
       : null,
@@ -119,7 +126,7 @@ export async function createEvent(
 
 export async function updateEvent(
   id: string,
-  patch: Partial<EventInput>,
+  patch: EventPatch,
 ): Promise<void> {
   const existingSnap = await getDoc(eventDoc(id));
   const prev = existingSnap.exists()
@@ -128,6 +135,11 @@ export async function updateEvent(
 
   const update: Record<string, unknown> = { updatedAt: serverTimestamp() };
   if (patch.warning !== undefined) update.warning = patch.warning.trim();
+  if (patch.importedWarning !== undefined) {
+    update.importedWarning = patch.importedWarning
+      ? patch.importedWarning.trim()
+      : null;
+  }
   if (patch.expiryDate !== undefined) {
     update.expiryDate = patch.expiryDate
       ? Timestamp.fromDate(patch.expiryDate)
@@ -155,6 +167,16 @@ export async function updateEvent(
     }
     if (patch.warning !== undefined && patch.warning.trim() !== prev.warning) {
       changes.push(`title "${prev.warning}" → "${patch.warning.trim()}"`);
+    }
+    if (patch.importedWarning !== undefined) {
+      const nextImported = patch.importedWarning
+        ? patch.importedWarning.trim()
+        : null;
+      if ((prev.importedWarning ?? null) !== nextImported) {
+        changes.push(
+          `imported title "${prev.importedWarning ?? "—"}" → "${nextImported ?? "—"}"`,
+        );
+      }
     }
     if (patch.expiryDate !== undefined) {
       const nextDate = patch.expiryDate

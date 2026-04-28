@@ -53,10 +53,53 @@ async function fetchAllEventKeys(): Promise<Set<string>> {
   const snap = await getDocs(collection(db, "events"));
   const set = new Set<string>();
   snap.forEach((d) => {
-    const data = d.data() as { tailNumber: string; warning: string };
-    set.add(eventKey(data.tailNumber, data.warning));
+    const data = d.data() as {
+      tailNumber: string;
+      warning: string;
+      importedWarning?: string | null;
+    };
+    // Prefer the locked Flightlogger title; fall back to the editable warning
+    // for legacy docs predating importedWarning.
+    const identity = data.importedWarning ?? data.warning;
+    set.add(eventKey(data.tailNumber, identity));
   });
   return set;
+}
+
+async function backfillImportedWarning(): Promise<number> {
+  // One-shot, idempotent: for every event missing importedWarning, copy
+  // its current (possibly user-edited) warning into importedWarning. After
+  // this runs once, dedup uses the locked field for all events.
+  //
+  // Includes events with source `"import"` and events with no `source` set
+  // at all (legacy docs predating source-tracking — likely also from
+  // imports). Manual events with `source: "manual"` are skipped; their
+  // importedWarning stays null unless the user fills it in.
+  //
+  // For events the user has already renamed, the user must manually correct
+  // importedWarning later (via the event edit dialog) to the original
+  // Flightlogger title — otherwise the next import will create a duplicate.
+  const snap = await getDocs(collection(db, "events"));
+  const batch = writeBatch(db);
+  let count = 0;
+  snap.forEach((d) => {
+    const data = d.data() as {
+      warning: string;
+      importedWarning?: string | null;
+      source?: string;
+    };
+    if (data.importedWarning != null) return;
+    if (data.source === "manual") return;
+    batch.update(d.ref, {
+      importedWarning: data.warning,
+      updatedAt: serverTimestamp(),
+    });
+    count++;
+  });
+  if (count > 0) {
+    await batch.commit();
+  }
+  return count;
 }
 
 export async function buildImportPlan(rows: CsvRow[]): Promise<ImportPlan> {
@@ -66,6 +109,10 @@ export async function buildImportPlan(rows: CsvRow[]): Promise<ImportPlan> {
     arr.push(row);
     rowsByTail.set(row.callSign, arr);
   }
+
+  // Run before fetching keys so the dedup set reflects the post-backfill
+  // state. After the first run this is a no-op.
+  await backfillImportedWarning();
 
   const [existingAircraft, existingEventKeys] = await Promise.all([
     fetchAllAircraft(),
@@ -227,6 +274,7 @@ export async function executeImport(
       batch.set(eventRef, {
         tailNumber: tail,
         warning: row.warning,
+        importedWarning: row.warning,
         expiryDate: row.expiryDate ? Timestamp.fromDate(row.expiryDate) : null,
         timerExpiryTimeMinutes: row.timerExpiryTimeMinutes,
         workOrderNumber: null,

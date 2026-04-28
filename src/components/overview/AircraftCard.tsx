@@ -62,6 +62,7 @@ type Props = {
   onAddDefect: () => void;
   onEditDefect: (defect: Defect) => void;
   onDeleteDefect: (defect: Defect) => void;
+  onResolveDefect: (defect: Defect) => void;
 };
 
 export default function AircraftCard({
@@ -79,6 +80,7 @@ export default function AircraftCard({
   onAddDefect,
   onEditDefect,
   onDeleteDefect,
+  onResolveDefect,
 }: Props) {
   const [togglingAirworthy, setTogglingAirworthy] = useState(false);
   const inHangar = isInHangar(aircraft.nextBookedMaintenance, new Date());
@@ -97,6 +99,13 @@ export default function AircraftCard({
     : "border-l-4 border-l-destructive bg-muted";
   const headerClass = airworthy ? headerBg[worstSeverity] : "bg-muted/80";
 
+  const bookingText = aircraft.nextBookedMaintenance
+    ? formatBookingRange(
+        aircraft.nextBookedMaintenance.from,
+        aircraft.nextBookedMaintenance.to,
+      )
+    : null;
+
   return (
     <section
       className={cn(
@@ -104,140 +113,149 @@ export default function AircraftCard({
         containerClass,
       )}
     >
-      <header
-        className={cn(
-          "flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2 border-b",
-          headerClass,
-        )}
-      >
-        <span className="inline-flex items-center rounded-md bg-foreground text-background px-2.5 py-1 font-mono text-base font-bold tracking-wide shadow-sm">
-          {aircraft.tailNumber}
-        </span>
-        <span className="text-xs text-muted-foreground -ml-1">
-          {aircraft.model}
-        </span>
+      <header className={cn("border-b", headerClass)}>
+        {/* Row 1: identity, status, actions */}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 px-3 py-1.5">
+          <span className="inline-flex items-center rounded-md bg-foreground text-background px-2.5 py-1 font-mono text-base font-bold tracking-wide shadow-sm">
+            {aircraft.tailNumber}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            {aircraft.model}
+          </span>
 
-        <span className="inline-flex items-center gap-1.5 rounded-md border bg-background px-2 py-1 shadow-sm">
-          <Gauge className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            TTAF
-          </span>
-          <span className="font-mono font-semibold tabular-nums text-sm">
-            {formatMinutesAsDuration(aircraft.totalTimeMinutes)}
-          </span>
           <button
             type="button"
-            onClick={onUpdateTtaf}
-            title="Update TTAF manually"
-            className="rounded p-0.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
+            onClick={onToggleAirworthy}
+            disabled={togglingAirworthy}
+            title={
+              airworthy
+                ? "Click to mark as grounded"
+                : "Click to mark as airworthy"
+            }
+            className={cn(
+              "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-semibold uppercase tracking-wider shadow-sm transition-colors disabled:opacity-50",
+              airworthy
+                ? "border-emerald-300 bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
+                : "border-rose-300 bg-rose-100 text-rose-800 hover:bg-rose-200",
+            )}
           >
-            <Pencil className="h-3 w-3" />
+            {airworthy ? (
+              <ShieldCheck className="h-3.5 w-3.5" />
+            ) : (
+              <ShieldOff className="h-3.5 w-3.5" />
+            )}
+            {airworthy ? "Airworthy" : "Grounded"}
           </button>
-          {aircraft.totalTimeUpdatedAt && (
-            <span className="text-[10px] text-muted-foreground">
-              {formatDate(aircraft.totalTimeUpdatedAt)}
-              {aircraft.totalTimeSource && ` · ${aircraft.totalTimeSource}`}
+
+          {inHangar && (
+            <span
+              className="inline-flex items-center gap-1 rounded-md bg-blue-600 text-white px-2 py-1 text-[11px] font-bold uppercase tracking-wider shadow-sm"
+              title="Aircraft is currently in the maintenance hangar"
+            >
+              <Wrench className="h-3.5 w-3.5" />
+              In maintenance
             </span>
           )}
-        </span>
 
-        <span className="inline-flex items-center gap-1.5 rounded-md border bg-background px-2 py-1 shadow-sm">
-          <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            Booked
-          </span>
-          <span className="font-mono tabular-nums text-xs">
-            {aircraft.nextBookedMaintenance ? (
-              formatBookingRange(
-                aircraft.nextBookedMaintenance.from,
-                aircraft.nextBookedMaintenance.to,
-              )
-            ) : (
-              <span className="italic text-muted-foreground">not set</span>
+          {defects.length > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-200/70 text-amber-900 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider">
+              <ShieldAlert className="h-3 w-3" />
+              {defects.length} defect{defects.length === 1 ? "" : "s"}
+            </span>
+          )}
+
+          <div className="ml-auto flex items-center gap-2">
+            {aircraft.updatedAt && (
+              <span
+                className="text-[10px] text-muted-foreground whitespace-nowrap"
+                title="Last update to any data on this aircraft"
+              >
+                Updated {formatDate(aircraft.updatedAt)}
+              </span>
             )}
-          </span>
-          <button
-            type="button"
-            onClick={onEditBooked}
-            title="Edit booked maintenance"
-            className="rounded p-0.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
-          >
-            <Pencil className="h-3 w-3" />
-          </button>
-        </span>
+            <div className="flex items-center gap-0.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={onAddEvent}
+                title="Add event"
+              >
+                <Plus className="h-3 w-3" />
+                Event
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={onAddDefect}
+                title="Report defect"
+              >
+                <Plus className="h-3 w-3" />
+                Defect
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={onOpenEditLog}
+                title="Show transaction log"
+              >
+                <History className="h-3 w-3" />
+                Log
+              </Button>
+            </div>
+          </div>
+        </div>
 
-        {inHangar && (
-          <span
-            className="inline-flex items-center gap-1 rounded-md bg-blue-600 text-white px-2 py-1 text-[11px] font-bold uppercase tracking-wider shadow-sm"
-            title="Aircraft is currently in the maintenance hangar"
-          >
-            <Wrench className="h-3.5 w-3.5" />
-            In maintenance
-          </span>
-        )}
+        {/* Row 2: TTAF + Booked, two equal cells with stable column placement */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 px-3 pb-1.5">
+          <div className="grid grid-cols-[14px_3rem_minmax(0,1fr)_auto_22px] items-center gap-x-2 rounded-md border bg-background px-2 py-1 shadow-sm">
+            <Gauge className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              TTAF
+            </span>
+            <span className="font-mono font-semibold tabular-nums text-sm">
+              {formatMinutesAsDuration(aircraft.totalTimeMinutes)}
+            </span>
+            <span className="text-[10px] text-muted-foreground whitespace-nowrap justify-self-end">
+              {aircraft.totalTimeUpdatedAt
+                ? `${formatDate(aircraft.totalTimeUpdatedAt)}${
+                    aircraft.totalTimeSource
+                      ? ` · ${aircraft.totalTimeSource}`
+                      : ""
+                  }`
+                : ""}
+            </span>
+            <button
+              type="button"
+              onClick={onUpdateTtaf}
+              title="Update TTAF manually"
+              className="rounded p-0.5 text-muted-foreground hover:bg-secondary hover:text-foreground justify-self-end"
+            >
+              <Pencil className="h-3 w-3" />
+            </button>
+          </div>
 
-        <button
-          type="button"
-          onClick={onToggleAirworthy}
-          disabled={togglingAirworthy}
-          title={
-            airworthy
-              ? "Click to mark as grounded"
-              : "Click to mark as airworthy"
-          }
-          className={cn(
-            "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-semibold uppercase tracking-wider shadow-sm transition-colors disabled:opacity-50",
-            airworthy
-              ? "border-emerald-300 bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
-              : "border-rose-300 bg-rose-100 text-rose-800 hover:bg-rose-200",
-          )}
-        >
-          {airworthy ? (
-            <ShieldCheck className="h-3.5 w-3.5" />
-          ) : (
-            <ShieldOff className="h-3.5 w-3.5" />
-          )}
-          {airworthy ? "Airworthy" : "Grounded"}
-        </button>
-
-        {defects.length > 0 && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-amber-200/70 text-amber-900 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider">
-            <ShieldAlert className="h-3 w-3" />
-            {defects.length} defect{defects.length === 1 ? "" : "s"}
-          </span>
-        )}
-
-        <div className="ml-auto flex items-center gap-0.5">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 px-2 text-xs"
-            onClick={onAddEvent}
-            title="Add event"
-          >
-            <Plus className="h-3 w-3" />
-            Event
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 px-2 text-xs"
-            onClick={onAddDefect}
-            title="Report defect"
-          >
-            <Plus className="h-3 w-3" />
-            Defect
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 px-2 text-xs"
-            onClick={onOpenEditLog}
-            title="Show transaction log"
-          >
-            <History className="h-3 w-3" />
-            Log
-          </Button>
+          <div className="grid grid-cols-[14px_3rem_minmax(0,1fr)_22px] items-center gap-x-2 rounded-md border bg-background px-2 py-1 shadow-sm">
+            <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              Booked
+            </span>
+            <span className="font-mono tabular-nums text-xs truncate">
+              {bookingText ?? (
+                <span className="italic text-muted-foreground">not set</span>
+              )}
+            </span>
+            <button
+              type="button"
+              onClick={onEditBooked}
+              title="Edit booked maintenance"
+              className="rounded p-0.5 text-muted-foreground hover:bg-secondary hover:text-foreground justify-self-end"
+            >
+              <Pencil className="h-3 w-3" />
+            </button>
+          </div>
         </div>
       </header>
 
@@ -279,6 +297,7 @@ export default function AircraftCard({
         defects={defects}
         onEdit={onEditDefect}
         onDelete={onDeleteDefect}
+        onResolve={onResolveDefect}
       />
     </section>
   );

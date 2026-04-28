@@ -35,6 +35,11 @@ export type MaintenanceEvent = {
   id: string;
   tailNumber: string;
   warning: string;
+  // Frozen on first import: the original Flightlogger warning text. Used as
+  // the dedup key on subsequent imports so that user-edits to `warning` don't
+  // cause duplicate events to be created. Null for manually-created events
+  // and for legacy import-sourced events that pre-date the field.
+  importedWarning: string | null;
   expiryDate: Timestamp | null;
   timerExpiryTimeMinutes: number | null;
   workOrderNumber: string | null;
@@ -50,6 +55,12 @@ export type Defect = {
   title: string;
   reportedDate: Timestamp;
   reportedTtafMinutes: number;
+  // Resolution metadata. Resolved defects stay in Firestore as legacy; the
+  // overview filters them out. All four resolution fields are set together.
+  resolvedDate: Timestamp | null;
+  resolutionWorkOrder: string | null;
+  resolvedAt: Timestamp | null;
+  resolvedBy: string | null;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 };

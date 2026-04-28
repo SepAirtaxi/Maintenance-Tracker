@@ -1,4 +1,4 @@
-import { Pencil, Trash2 } from "lucide-react";
+import { Check, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
@@ -6,15 +6,21 @@ import { formatMinutesAsDuration } from "@/lib/time";
 import type { Defect } from "@/types";
 
 const DEFECTS_GRID_COLS =
-  "grid-cols-[minmax(0,1fr)_92px_92px_56px]";
+  "grid-cols-[minmax(0,1fr)_92px_92px_84px]";
 
 type Props = {
   defects: Defect[];
   onEdit: (defect: Defect) => void;
   onDelete: (defect: Defect) => void;
+  onResolve: (defect: Defect) => void;
 };
 
-export default function DefectsList({ defects, onEdit, onDelete }: Props) {
+export default function DefectsList({
+  defects,
+  onEdit,
+  onDelete,
+  onResolve,
+}: Props) {
   if (defects.length === 0) return null;
 
   return (
@@ -48,6 +54,15 @@ export default function DefectsList({ defects, onEdit, onDelete }: Props) {
             {formatMinutesAsDuration(d.reportedTtafMinutes)}
           </div>
           <div className="flex items-center justify-end gap-0.5">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800"
+              onClick={() => onResolve(d)}
+              title="Resolve defect"
+            >
+              <Check className="h-3.5 w-3.5" />
+            </Button>
             <Button
               variant="ghost"
               size="icon"

@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, ShieldOff, Upload } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  CalendarClock,
+  ShieldOff,
+  Upload,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import AircraftCard from "@/components/overview/AircraftCard";
@@ -10,6 +16,8 @@ import TtafDialog from "@/components/overview/TtafDialog";
 import BookedMaintenanceDialog from "@/components/overview/BookedMaintenanceDialog";
 import DefectFormDialog from "@/components/overview/DefectFormDialog";
 import DeleteDefectDialog from "@/components/overview/DeleteDefectDialog";
+import ResolveDefectDialog from "@/components/overview/ResolveDefectDialog";
+import UpcomingEventsDialog from "@/components/overview/UpcomingEventsDialog";
 import AuditLogDialog from "@/components/overview/AuditLogDialog";
 import { subscribeAircraft } from "@/services/aircraft";
 import { subscribeEvents } from "@/services/events";
@@ -106,7 +114,11 @@ export default function OverviewPage() {
   const [defectDeleteTarget, setDefectDeleteTarget] = useState<Defect | null>(
     null,
   );
+  const [defectResolveTarget, setDefectResolveTarget] = useState<Defect | null>(
+    null,
+  );
   const [auditLogTail, setAuditLogTail] = useState<string | null>(null);
+  const [upcomingOpen, setUpcomingOpen] = useState(false);
 
   useEffect(() => subscribeAircraft(setAircraft), []);
   useEffect(() => subscribeEvents(setAllEvents), []);
@@ -122,6 +134,7 @@ export default function OverviewPage() {
     }
     const defectsByTail = new Map<string, Defect[]>();
     for (const d of allDefects) {
+      if (d.resolvedAt) continue; // resolved defects stay as legacy in Firestore
       const arr = defectsByTail.get(d.tailNumber) ?? [];
       arr.push(d);
       defectsByTail.set(d.tailNumber, arr);
@@ -248,6 +261,7 @@ export default function OverviewPage() {
       onAddDefect={() => openAddDefect(s.aircraft.tailNumber)}
       onEditDefect={openEditDefect}
       onDeleteDefect={setDefectDeleteTarget}
+      onResolveDefect={setDefectResolveTarget}
     />
   );
 
@@ -262,10 +276,20 @@ export default function OverviewPage() {
             Fleet status, grouped by tail number.
           </p>
         </div>
-        <Button onClick={() => setImportOpen(true)} size="sm">
-          <Upload className="h-4 w-4" />
-          Import flight data
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={() => setUpcomingOpen(true)}
+            size="sm"
+            variant="outline"
+          >
+            <CalendarClock className="h-4 w-4" />
+            Upcoming events
+          </Button>
+          <Button onClick={() => setImportOpen(true)} size="sm">
+            <Upload className="h-4 w-4" />
+            Import flight data
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5 rounded-md border bg-card shadow-sm px-2 py-1.5">
@@ -359,9 +383,19 @@ export default function OverviewPage() {
         defect={defectDeleteTarget}
         onClose={() => setDefectDeleteTarget(null)}
       />
+      <ResolveDefectDialog
+        defect={defectResolveTarget}
+        onClose={() => setDefectResolveTarget(null)}
+      />
       <AuditLogDialog
         tailNumber={auditLogTail}
         onClose={() => setAuditLogTail(null)}
+      />
+      <UpcomingEventsDialog
+        open={upcomingOpen}
+        onOpenChange={setUpcomingOpen}
+        aircraft={aircraft ?? []}
+        events={allEvents}
       />
     </div>
   );

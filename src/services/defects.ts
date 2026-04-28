@@ -49,6 +49,11 @@ function docToDefect(id: string, data: Record<string, unknown>): Defect {
     title: data.title as string,
     reportedDate: data.reportedDate as Timestamp,
     reportedTtafMinutes: data.reportedTtafMinutes as number,
+    resolvedDate: (data.resolvedDate as Timestamp | undefined) ?? null,
+    resolutionWorkOrder:
+      (data.resolutionWorkOrder as string | undefined) ?? null,
+    resolvedAt: (data.resolvedAt as Timestamp | undefined) ?? null,
+    resolvedBy: (data.resolvedBy as string | undefined) ?? null,
     createdAt: data.createdAt as Timestamp,
     updatedAt: data.updatedAt as Timestamp,
   };
@@ -71,6 +76,10 @@ export async function createDefect(input: DefectInput): Promise<string> {
     title: input.title.trim(),
     reportedDate: Timestamp.fromDate(input.reportedDate),
     reportedTtafMinutes: input.reportedTtafMinutes,
+    resolvedDate: null,
+    resolutionWorkOrder: null,
+    resolvedAt: null,
+    resolvedBy: null,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -128,6 +137,48 @@ export async function updateDefect(
       });
     }
   }
+}
+
+export type ResolveDefectInput = {
+  resolvedDate: Date;
+  resolutionWorkOrder: string;
+};
+
+export async function resolveDefect(
+  id: string,
+  input: ResolveDefectInput,
+  byUid: string,
+): Promise<void> {
+  if (
+    !(input.resolvedDate instanceof Date) ||
+    isNaN(input.resolvedDate.valueOf())
+  ) {
+    throw new Error("Resolution date is required.");
+  }
+  const wo = input.resolutionWorkOrder.trim();
+  if (!wo) throw new Error("Work order number is required.");
+
+  const snap = await getDoc(defectDoc(id));
+  if (!snap.exists()) throw new Error("Defect not found.");
+  const prev = docToDefect(id, snap.data());
+  if (prev.resolvedAt) throw new Error("Defect is already resolved.");
+
+  await updateDoc(defectDoc(id), {
+    resolvedDate: Timestamp.fromDate(input.resolvedDate),
+    resolutionWorkOrder: wo,
+    resolvedAt: serverTimestamp(),
+    resolvedBy: byUid,
+    updatedAt: serverTimestamp(),
+  });
+
+  logAudit(prev.tailNumber, {
+    action: "update",
+    entity: "defect",
+    entityId: id,
+    summary: `Defect resolved: "${prev.title}" (WO ${wo}, on ${formatDate(
+      Timestamp.fromDate(input.resolvedDate),
+    )})`,
+  });
 }
 
 export async function deleteDefect(id: string): Promise<void> {

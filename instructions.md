@@ -65,3 +65,29 @@ const firebaseConfig = {
   appId: "1:1035097408497:web:61c5b44abf114284e0fa50",
   measurementId: "G-18FH15FJ9B"
 };
+
+
+---
+
+## Implementation notes (additions beyond the original spec)
+
+### Defects — resolution flow
+- Defects can be **resolved**, in addition to edited/deleted. Resolving prompts for a work-order number and resolution date, then marks the defect as legacy.
+- Resolved defects are kept in Firestore (`resolvedDate`, `resolutionWorkOrder`, `resolvedAt`, `resolvedBy` fields) but filtered out of the active overview.
+- The audit log captures the resolution with WO number and date.
+
+### Aircraft header — two-row layout
+- **Row 1:** tail number, model, airworthy/grounded toggle, in-maintenance badge, defect badge, "Updated <date>" (latest aircraft-doc `updatedAt`), and Event/Defect/Log action buttons.
+- **Row 2:** TTAF and Booked maintenance as two equal-width cells with fixed-column grid layouts so values, meta date/source, and the edit pencil sit at predictable positions regardless of content width.
+- "Updated <date>" reflects any change to the aircraft document — TTAF, booking, model change, airworthiness toggle.
+
+### Upcoming events dialog
+- Top-level **Upcoming events** button on the overview, next to **Import flight data**.
+- Opens a popup with the 25 nearest events by date and 25 nearest by hours, fleet-wide. Severity-tinted (red/yellow/green) using the same thresholds as the per-aircraft rows.
+
+### Event identity (import dedup)
+- Each event stores its original Flightlogger `warning` text in a frozen `importedWarning` field. The visible `warning` is user-editable; the import dedup key is `(tailNumber, importedWarning)`.
+- This means renaming an event title (e.g. *"Next inspection (Date/flighthours/Landings)"* → *"100 Hour Inspection"*) does not break dedup or cause duplicates on re-import.
+- The `importedWarning` field is hidden from the UI — it's set automatically on import and used internally.
+- Manual events have `importedWarning: null` (they have no Flightlogger identity); the dedup falls back to the visible `warning` for those, but only as a safety net since manual events are not expected to collide with Flightlogger rows.
+- A one-time backfill runs at the start of the first import after this feature shipped, populating `importedWarning` from `warning` for legacy events. Idempotent — silent no-op on subsequent runs.

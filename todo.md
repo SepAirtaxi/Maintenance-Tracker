@@ -1,0 +1,2 @@
+1: The columns in the event table needs a revision, as the formatting/grouping isn't very intuitive. Can you please have a look at how columns are grouped and set it up in a way that's more easily deciphered by humans? Maybe something like grouping Due Hours/Days as well as grouping Hours/Days Left (maybe use other more fitting titles or terms). 
+2: Please change the sorting on the Maintenance Overview so the default view is sorted by tail number.
