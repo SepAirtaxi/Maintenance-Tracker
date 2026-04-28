@@ -81,7 +81,7 @@ export default function AircraftPage() {
         </div>
       )}
 
-      <div className="border rounded-md overflow-hidden">
+      <div className="border rounded-md overflow-hidden bg-card shadow-sm">
         <table className="w-full text-sm">
           <thead className="bg-muted/50 text-muted-foreground">
             <tr>

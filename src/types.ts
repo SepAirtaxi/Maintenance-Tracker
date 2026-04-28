@@ -21,7 +21,8 @@ export type Aircraft = {
   totalTimeSource: "import" | "manual" | null;
   nextBookedMaintenance: {
     from: Timestamp;
-    to: Timestamp;
+    // `to: null` = open-ended booking (release date unknown).
+    to: Timestamp | null;
   } | null;
   createdAt: Timestamp;
   updatedAt: Timestamp;

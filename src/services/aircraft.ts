@@ -14,7 +14,7 @@ import {
 import { db } from "@/lib/firebase";
 import { logAudit } from "@/services/audit";
 import { formatMinutesAsDuration } from "@/lib/time";
-import { formatDateRange } from "@/lib/format";
+import { formatBookingRange } from "@/lib/format";
 import { normaliseTailNumber } from "@/lib/tails";
 import type { Aircraft } from "@/types";
 
@@ -136,10 +136,10 @@ export async function deleteAircraft(tailNumber: string): Promise<void> {
 
 export async function updateBookedMaintenance(
   tailNumber: string,
-  range: { from: Date; to: Date } | null,
+  range: { from: Date; to: Date | null } | null,
 ): Promise<void> {
   const tail = normaliseTailNumber(tailNumber);
-  if (range && range.to < range.from) {
+  if (range && range.to && range.to < range.from) {
     throw new Error("'To' date must be on or after 'From' date.");
   }
   const existing = await getDoc(aircraftDoc(tail));
@@ -149,7 +149,7 @@ export async function updateBookedMaintenance(
   const value = range
     ? {
         from: Timestamp.fromDate(range.from),
-        to: Timestamp.fromDate(range.to),
+        to: range.to ? Timestamp.fromDate(range.to) : null,
       }
     : null;
 
@@ -158,11 +158,11 @@ export async function updateBookedMaintenance(
     updatedAt: serverTimestamp(),
   });
 
-  const before = formatDateRange(prevRange?.from, prevRange?.to);
+  const before = formatBookingRange(prevRange?.from, prevRange?.to);
   const after = range
-    ? formatDateRange(
+    ? formatBookingRange(
         Timestamp.fromDate(range.from),
-        Timestamp.fromDate(range.to),
+        range.to ? Timestamp.fromDate(range.to) : null,
       )
     : "—";
   logAudit(tail, {

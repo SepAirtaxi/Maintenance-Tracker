@@ -38,13 +38,16 @@ function inputDateToDate(value: string): Date | null {
 export default function BookedMaintenanceDialog({ aircraft, onClose }: Props) {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [openEnded, setOpenEnded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (aircraft) {
-      setFrom(tsToInputDate(aircraft.nextBookedMaintenance?.from));
-      setTo(tsToInputDate(aircraft.nextBookedMaintenance?.to));
+      const booking = aircraft.nextBookedMaintenance;
+      setFrom(tsToInputDate(booking?.from));
+      setTo(tsToInputDate(booking?.to));
+      setOpenEnded(!!booking && booking.to == null);
       setError(null);
       setSaving(false);
     }
@@ -56,17 +59,24 @@ export default function BookedMaintenanceDialog({ aircraft, onClose }: Props) {
     e.preventDefault();
     setError(null);
     const fromDate = inputDateToDate(from);
-    const toDate = inputDateToDate(to);
-    if ((fromDate && !toDate) || (!fromDate && toDate)) {
-      setError("Provide both dates or neither.");
+    if (!fromDate) {
+      setError("From date is required.");
       return;
+    }
+    let toDate: Date | null = null;
+    if (!openEnded) {
+      toDate = inputDateToDate(to);
+      if (!toDate) {
+        setError("To date is required (or check 'Unknown release date').");
+        return;
+      }
     }
     setSaving(true);
     try {
-      await updateBookedMaintenance(
-        aircraft.tailNumber,
-        fromDate && toDate ? { from: fromDate, to: toDate } : null,
-      );
+      await updateBookedMaintenance(aircraft.tailNumber, {
+        from: fromDate,
+        to: toDate,
+      });
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save.");
@@ -100,26 +110,50 @@ export default function BookedMaintenanceDialog({ aircraft, onClose }: Props) {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="py-4 grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="bookedFrom">From</Label>
-              <Input
-                id="bookedFrom"
-                type="date"
-                value={from}
-                onChange={(e) => setFrom(e.target.value)}
-              />
+          <div className="py-4 space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="bookedFrom">From</Label>
+                <Input
+                  id="bookedFrom"
+                  type="date"
+                  value={from}
+                  onChange={(e) => setFrom(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label
+                  htmlFor="bookedTo"
+                  className={openEnded ? "text-muted-foreground" : undefined}
+                >
+                  To
+                </Label>
+                <Input
+                  id="bookedTo"
+                  type="date"
+                  value={openEnded ? "" : to}
+                  min={from || undefined}
+                  onChange={(e) => setTo(e.target.value)}
+                  disabled={openEnded}
+                  placeholder={openEnded ? "open-ended" : undefined}
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="bookedTo">To</Label>
-              <Input
-                id="bookedTo"
-                type="date"
-                value={to}
-                min={from || undefined}
-                onChange={(e) => setTo(e.target.value)}
+
+            <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={openEnded}
+                onChange={(e) => setOpenEnded(e.target.checked)}
+                className="h-4 w-4 rounded border-input"
               />
-            </div>
+              <span>
+                Unknown release date{" "}
+                <span className="text-muted-foreground">
+                  (e.g. waiting on parts)
+                </span>
+              </span>
+            </label>
           </div>
 
           {error && (

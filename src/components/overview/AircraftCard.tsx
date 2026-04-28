@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { differenceInCalendarDays } from "date-fns";
 import {
   CalendarDays,
   Gauge,
@@ -8,10 +9,11 @@ import {
   ShieldAlert,
   ShieldCheck,
   ShieldOff,
+  Wrench,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { formatDate, formatDateRange } from "@/lib/format";
+import { formatBookingRange, formatDate } from "@/lib/format";
 import { formatMinutesAsDuration } from "@/lib/time";
 import { type Severity } from "@/lib/eventStatus";
 import { setAircraftAirworthy } from "@/services/aircraft";
@@ -20,18 +22,30 @@ import DefectsList from "@/components/overview/DefectsList";
 import type { Aircraft, Defect, MaintenanceEvent } from "@/types";
 
 const stripe: Record<Severity, string> = {
-  red: "border-l-status-red bg-rose-50/50",
-  yellow: "border-l-status-yellow bg-amber-50/40",
-  green: "border-l-status-green bg-emerald-50/30",
+  red: "border-l-status-red bg-rose-50",
+  yellow: "border-l-status-yellow bg-amber-50",
+  green: "border-l-status-green bg-emerald-50/70",
   unknown: "border-l-muted-foreground/30 bg-card",
 };
 
 const headerBg: Record<Severity, string> = {
-  red: "bg-rose-100/60",
-  yellow: "bg-amber-100/50",
-  green: "bg-emerald-100/40",
-  unknown: "bg-secondary/60",
+  red: "bg-rose-100",
+  yellow: "bg-amber-100",
+  green: "bg-emerald-100/70",
+  unknown: "bg-secondary",
 };
+
+function isInHangar(
+  booking: Aircraft["nextBookedMaintenance"],
+  now: Date,
+): boolean {
+  if (!booking) return false;
+  const fromDelta = differenceInCalendarDays(now, booking.from.toDate());
+  if (fromDelta < 0) return false; // booking hasn't started yet
+  if (!booking.to) return true; // open-ended, in hangar
+  const toDelta = differenceInCalendarDays(now, booking.to.toDate());
+  return toDelta <= 0; // today is on/before the to date (inclusive)
+}
 
 type Props = {
   aircraft: Aircraft;
@@ -67,6 +81,7 @@ export default function AircraftCard({
   onDeleteDefect,
 }: Props) {
   const [togglingAirworthy, setTogglingAirworthy] = useState(false);
+  const inHangar = isInHangar(aircraft.nextBookedMaintenance, new Date());
 
   const onToggleAirworthy = async () => {
     setTogglingAirworthy(true);
@@ -77,18 +92,15 @@ export default function AircraftCard({
     }
   };
 
-  // Grounded aircraft override the severity-tint with a muted/destructive look.
   const containerClass = airworthy
     ? cn("border-l-4", stripe[worstSeverity])
-    : "border-l-4 border-l-destructive bg-muted/40";
-  const headerClass = airworthy
-    ? headerBg[worstSeverity]
-    : "bg-muted/60";
+    : "border-l-4 border-l-destructive bg-muted";
+  const headerClass = airworthy ? headerBg[worstSeverity] : "bg-muted/80";
 
   return (
     <section
       className={cn(
-        "rounded-md border shadow-sm overflow-hidden",
+        "rounded-md border shadow-md overflow-hidden",
         containerClass,
       )}
     >
@@ -98,7 +110,6 @@ export default function AircraftCard({
           headerClass,
         )}
       >
-        {/* Tail number — prominent ticket-style pill */}
         <span className="inline-flex items-center rounded-md bg-foreground text-background px-2.5 py-1 font-mono text-base font-bold tracking-wide shadow-sm">
           {aircraft.tailNumber}
         </span>
@@ -106,7 +117,6 @@ export default function AircraftCard({
           {aircraft.model}
         </span>
 
-        {/* TTAF pill */}
         <span className="inline-flex items-center gap-1.5 rounded-md border bg-background px-2 py-1 shadow-sm">
           <Gauge className="h-3.5 w-3.5 text-muted-foreground" />
           <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
@@ -131,19 +141,20 @@ export default function AircraftCard({
           )}
         </span>
 
-        {/* Booked maintenance pill */}
         <span className="inline-flex items-center gap-1.5 rounded-md border bg-background px-2 py-1 shadow-sm">
           <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
           <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
             Booked
           </span>
           <span className="font-mono tabular-nums text-xs">
-            {aircraft.nextBookedMaintenance
-              ? formatDateRange(
-                  aircraft.nextBookedMaintenance.from,
-                  aircraft.nextBookedMaintenance.to,
-                )
-              : <span className="italic text-muted-foreground">not set</span>}
+            {aircraft.nextBookedMaintenance ? (
+              formatBookingRange(
+                aircraft.nextBookedMaintenance.from,
+                aircraft.nextBookedMaintenance.to,
+              )
+            ) : (
+              <span className="italic text-muted-foreground">not set</span>
+            )}
           </span>
           <button
             type="button"
@@ -155,7 +166,16 @@ export default function AircraftCard({
           </button>
         </span>
 
-        {/* Airworthiness toggle */}
+        {inHangar && (
+          <span
+            className="inline-flex items-center gap-1 rounded-md bg-blue-600 text-white px-2 py-1 text-[11px] font-bold uppercase tracking-wider shadow-sm"
+            title="Aircraft is currently in the maintenance hangar"
+          >
+            <Wrench className="h-3.5 w-3.5" />
+            In maintenance
+          </span>
+        )}
+
         <button
           type="button"
           onClick={onToggleAirworthy}

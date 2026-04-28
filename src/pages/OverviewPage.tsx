@@ -268,7 +268,7 @@ export default function OverviewPage() {
         </Button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-1.5 rounded-md border bg-muted/30 px-2 py-1.5">
+      <div className="flex flex-wrap items-center gap-1.5 rounded-md border bg-card shadow-sm px-2 py-1.5">
         <span className="text-xs text-muted-foreground mr-1">Sort:</span>
         {SORT_OPTIONS.map((opt) => {
           const active = opt.key === sortKey;
@@ -281,7 +281,7 @@ export default function OverviewPage() {
                 "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs transition-colors",
                 active
                   ? "border-primary bg-primary/5 text-foreground"
-                  : "border-border bg-background text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
+                  : "border-border bg-card text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
               )}
             >
               {opt.label}
