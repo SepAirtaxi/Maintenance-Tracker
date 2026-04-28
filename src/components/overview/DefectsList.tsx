@@ -1,80 +1,74 @@
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
 import { formatMinutesAsDuration } from "@/lib/time";
 import type { Defect } from "@/types";
 
+const DEFECTS_GRID_COLS =
+  "grid-cols-[minmax(0,1fr)_92px_92px_56px]";
+
 type Props = {
   defects: Defect[];
-  onAdd: () => void;
   onEdit: (defect: Defect) => void;
   onDelete: (defect: Defect) => void;
 };
 
-export default function DefectsList({
-  defects,
-  onAdd,
-  onEdit,
-  onDelete,
-}: Props) {
+export default function DefectsList({ defects, onEdit, onDelete }: Props) {
+  if (defects.length === 0) return null;
+
   return (
-    <div>
-      <div className="flex items-center justify-between">
-        <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          Defects{defects.length > 0 && ` (${defects.length})`}
-        </h3>
-        <Button variant="ghost" size="sm" onClick={onAdd}>
-          <Plus className="h-3.5 w-3.5" />
-          Report defect
-        </Button>
-      </div>
-      <div className="mt-2 rounded-md border">
-        {defects.length === 0 && (
-          <p className="p-4 text-sm text-muted-foreground">
-            No defects reported.
-          </p>
+    <div className="border-t bg-amber-50/40">
+      <div
+        className={cn(
+          "grid items-center gap-2 px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-amber-800/80",
+          DEFECTS_GRID_COLS,
         )}
-        {defects.map((d) => (
-          <div
-            key={d.id}
-            className="grid grid-cols-12 items-center gap-3 px-3 py-2 border-t first:border-t-0 text-sm"
-          >
-            <div className="col-span-6 min-w-0">
-              <div className="truncate" title={d.title}>
-                {d.title}
-              </div>
-            </div>
-            <div className="col-span-3 flex flex-col">
-              <span className="text-xs text-muted-foreground">Reported</span>
-              <span className="font-mono">{formatDate(d.reportedDate)}</span>
-            </div>
-            <div className="col-span-2 flex flex-col">
-              <span className="text-xs text-muted-foreground">TTAF</span>
-              <span className="font-mono">
-                {formatMinutesAsDuration(d.reportedTtafMinutes)}
-              </span>
-            </div>
-            <div className="col-span-1 flex items-center justify-end gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => onEdit(d)}
-                title="Edit defect"
-              >
-                <Pencil className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => onDelete(d)}
-                title="Delete defect"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          </div>
-        ))}
+      >
+        <span>Defect ({defects.length})</span>
+        <span>Reported</span>
+        <span>TTAF</span>
+        <span className="text-right">Actions</span>
       </div>
+      {defects.map((d) => (
+        <div
+          key={d.id}
+          className={cn(
+            "grid items-center gap-2 px-3 py-1 border-t border-amber-200/60 text-xs hover:bg-amber-100/40",
+            DEFECTS_GRID_COLS,
+          )}
+        >
+          <div className="truncate" title={d.title}>
+            {d.title}
+          </div>
+          <div className="font-mono tabular-nums">
+            {formatDate(d.reportedDate)}
+          </div>
+          <div className="font-mono tabular-nums">
+            {formatMinutesAsDuration(d.reportedTtafMinutes)}
+          </div>
+          <div className="flex items-center justify-end gap-0.5">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => onEdit(d)}
+              title="Edit defect"
+            >
+              <Pencil className="h-3 w-3" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => onDelete(d)}
+              title="Delete defect"
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

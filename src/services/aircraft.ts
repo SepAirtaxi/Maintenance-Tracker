@@ -58,6 +58,7 @@ export async function createAircraft(input: {
   await setDoc(ref, {
     tailNumber: tail,
     model,
+    airworthy: true,
     totalTimeMinutes: null,
     totalTimeUpdatedAt: null,
     totalTimeUpdatedBy: null,
@@ -71,6 +72,30 @@ export async function createAircraft(input: {
     action: "create",
     entity: "aircraft",
     summary: `Aircraft ${tail} created (model: ${model})`,
+  });
+}
+
+export async function setAircraftAirworthy(
+  tailNumber: string,
+  airworthy: boolean,
+): Promise<void> {
+  const tail = normaliseTailNumber(tailNumber);
+  const existing = await getDoc(aircraftDoc(tail));
+  const prev = existing.data() as Aircraft | undefined;
+  const before = prev?.airworthy !== false;
+  if (before === airworthy) return;
+
+  await updateDoc(aircraftDoc(tail), {
+    airworthy,
+    updatedAt: serverTimestamp(),
+  });
+
+  logAudit(tail, {
+    action: "update",
+    entity: "aircraft",
+    summary: `Airworthiness: ${before ? "Airworthy" : "Grounded"} → ${
+      airworthy ? "Airworthy" : "Grounded"
+    }`,
   });
 }
 
@@ -190,6 +215,7 @@ export async function upsertAircraftIfMissing(input: {
   await setDoc(ref, {
     tailNumber: tail,
     model: input.model.trim(),
+    airworthy: true,
     totalTimeMinutes: null,
     totalTimeUpdatedAt: null,
     totalTimeUpdatedBy: null,

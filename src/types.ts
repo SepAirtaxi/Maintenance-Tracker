@@ -12,6 +12,9 @@ export type UserProfile = {
 export type Aircraft = {
   tailNumber: string;
   model: string;
+  // Defaults to true. Existing docs predating the field are treated as
+  // airworthy at read-time via `airworthy !== false`.
+  airworthy?: boolean;
   totalTimeMinutes: number | null;
   totalTimeUpdatedAt: Timestamp | null;
   totalTimeUpdatedBy: string | null;

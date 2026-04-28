@@ -1,9 +1,16 @@
 import { differenceInCalendarDays } from "date-fns";
 import type { MaintenanceEvent } from "@/types";
 
-// Severity thresholds. Worst-of wins when both dimensions are present.
-export const DAYS_YELLOW_THRESHOLD = 30;
-export const HOURS_YELLOW_THRESHOLD_MINUTES = 25 * 60;
+// Severity thresholds. "Green until <X" semantics:
+//   days >= 7  → green
+//   0 <= days < 7 → yellow
+//   days < 0   → red
+//   minutes >= 600 → green
+//   0 <= minutes < 600 → yellow
+//   minutes < 0 → red
+// Worst-of wins when both dimensions are present.
+export const DAYS_YELLOW_THRESHOLD = 7;
+export const HOURS_YELLOW_THRESHOLD_MINUTES = 10 * 60;
 
 export type Severity = "green" | "yellow" | "red" | "unknown";
 
@@ -22,17 +29,17 @@ export function computeMinutesLeft(
   return event.timerExpiryTimeMinutes - currentTtafMinutes;
 }
 
-function severityFromDays(daysLeft: number | null): Severity {
+export function severityFromDays(daysLeft: number | null): Severity {
   if (daysLeft == null) return "unknown";
   if (daysLeft < 0) return "red";
-  if (daysLeft <= DAYS_YELLOW_THRESHOLD) return "yellow";
+  if (daysLeft < DAYS_YELLOW_THRESHOLD) return "yellow";
   return "green";
 }
 
-function severityFromMinutes(minutesLeft: number | null): Severity {
+export function severityFromMinutes(minutesLeft: number | null): Severity {
   if (minutesLeft == null) return "unknown";
   if (minutesLeft < 0) return "red";
-  if (minutesLeft <= HOURS_YELLOW_THRESHOLD_MINUTES) return "yellow";
+  if (minutesLeft < HOURS_YELLOW_THRESHOLD_MINUTES) return "yellow";
   return "green";
 }
 

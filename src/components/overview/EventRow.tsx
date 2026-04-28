@@ -7,10 +7,16 @@ import {
   computeDaysLeft,
   computeMinutesLeft,
   getEventSeverity,
+  severityFromDays,
+  severityFromMinutes,
   type Severity,
 } from "@/lib/eventStatus";
 import WorkOrderCell from "@/components/overview/WorkOrderCell";
 import type { MaintenanceEvent } from "@/types";
+
+// Shared grid template — header row in AircraftCard must use the same one.
+export const EVENTS_GRID_COLS =
+  "grid-cols-[14px_minmax(0,1fr)_72px_104px_56px_104px_76px_140px_56px]";
 
 const dotClass: Record<Severity, string> = {
   green: "bg-status-green",
@@ -19,26 +25,17 @@ const dotClass: Record<Severity, string> = {
   unknown: "bg-muted-foreground/40",
 };
 
-const valueClass: Record<Severity, string> = {
-  green: "text-status-green",
-  yellow: "text-status-yellow",
-  red: "text-status-red",
-  unknown: "text-muted-foreground",
+// Severity-tinted "data pill" used for Days / Hrs left.
+const severityPill: Record<Severity, string> = {
+  green: "bg-emerald-100 text-emerald-800 border-emerald-200",
+  yellow: "bg-amber-100 text-amber-900 border-amber-300",
+  red: "bg-rose-200 text-rose-900 border-rose-300 font-semibold",
+  unknown: "bg-muted/60 text-muted-foreground border-border",
 };
 
-function daysLeftSeverity(days: number | null): Severity {
-  if (days == null) return "unknown";
-  if (days < 0) return "red";
-  if (days <= 30) return "yellow";
-  return "green";
-}
-
-function hoursLeftSeverity(minutes: number | null): Severity {
-  if (minutes == null) return "unknown";
-  if (minutes < 0) return "red";
-  if (minutes <= 25 * 60) return "yellow";
-  return "green";
-}
+// Neutral data pill for Due date and TTAF expiry.
+const neutralPill =
+  "inline-flex items-center justify-center rounded border border-border bg-background px-1.5 py-0.5 font-mono text-xs tabular-nums shadow-sm";
 
 type Props = {
   event: MaintenanceEvent;
@@ -56,75 +53,74 @@ export default function EventRow({
   const severity = getEventSeverity(event, currentTtafMinutes);
   const daysLeft = computeDaysLeft(event);
   const minutesLeft = computeMinutesLeft(event, currentTtafMinutes);
-  const daysSev = daysLeftSeverity(daysLeft);
-  const hoursSev = hoursLeftSeverity(minutesLeft);
+  const daysSev = severityFromDays(daysLeft);
+  const hoursSev = severityFromMinutes(minutesLeft);
 
   return (
-    <div className="grid grid-cols-12 items-center gap-3 px-3 py-2 border-t first:border-t-0 text-sm">
-      <div className="col-span-4 flex items-center gap-2 min-w-0">
-        <span
-          className={cn("h-2.5 w-2.5 rounded-full shrink-0", dotClass[severity])}
-          title={severity}
-        />
-        <span className="truncate" title={event.warning}>
-          {event.warning}
-        </span>
-        <span
-          className={cn(
-            "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider",
-            event.status === "planned"
-              ? "bg-emerald-100 text-emerald-700"
-              : "bg-muted text-muted-foreground",
-          )}
+    <div
+      className={cn(
+        "grid items-center gap-2 px-3 py-1 border-t text-xs hover:bg-muted/30",
+        EVENTS_GRID_COLS,
+      )}
+    >
+      <span
+        className={cn("h-2.5 w-2.5 rounded-full", dotClass[severity])}
+        title={severity}
+      />
+      <span className="truncate" title={event.warning}>
+        {event.warning}
+      </span>
+      <span
+        className={cn(
+          "justify-self-start rounded-full px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider",
+          event.status === "planned"
+            ? "bg-emerald-100 text-emerald-700"
+            : "bg-amber-100/70 text-amber-800",
+        )}
+      >
+        {event.status}
+      </span>
+      <span className={cn(neutralPill, "justify-self-start")}>
+        {formatDate(event.expiryDate)}
+      </span>
+      <span
+        className={cn(
+          "justify-self-end inline-flex items-center justify-center rounded border px-1.5 py-0.5 font-mono text-xs tabular-nums shadow-sm min-w-[2.25rem]",
+          severityPill[daysSev],
+        )}
+      >
+        {daysLeft == null ? "—" : daysLeft}
+      </span>
+      <span className={cn(neutralPill, "justify-self-start")}>
+        {formatMinutesAsDuration(event.timerExpiryTimeMinutes)}
+      </span>
+      <span
+        className={cn(
+          "justify-self-end inline-flex items-center justify-center rounded border px-1.5 py-0.5 font-mono text-xs tabular-nums shadow-sm min-w-[3rem]",
+          severityPill[hoursSev],
+        )}
+      >
+        {formatHoursLeft(minutesLeft)}
+      </span>
+      <WorkOrderCell eventId={event.id} value={event.workOrderNumber} />
+      <div className="flex items-center justify-end gap-0.5">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6"
+          onClick={onEdit}
+          title="Edit event"
         >
-          {event.status}
-        </span>
-      </div>
-
-      <div className="col-span-2 flex flex-col">
-        <span className="text-xs text-muted-foreground">Due date</span>
-        <span className="font-mono">{formatDate(event.expiryDate)}</span>
-      </div>
-
-      <div className="col-span-1 flex flex-col">
-        <span className="text-xs text-muted-foreground">Days</span>
-        <span className={cn("font-mono", valueClass[daysSev])}>
-          {daysLeft == null ? "—" : daysLeft}
-        </span>
-      </div>
-
-      <div className="col-span-2 flex flex-col">
-        <span className="text-xs text-muted-foreground">TTAF expiry</span>
-        <span className="font-mono">
-          {formatMinutesAsDuration(event.timerExpiryTimeMinutes)}
-        </span>
-      </div>
-
-      <div className="col-span-1 flex flex-col">
-        <span className="text-xs text-muted-foreground">Hours left</span>
-        <span className={cn("font-mono", valueClass[hoursSev])}>
-          {formatHoursLeft(minutesLeft)}
-        </span>
-      </div>
-
-      <div className="col-span-1 min-w-0">
-        <WorkOrderCell
-          eventId={event.id}
-          value={event.workOrderNumber}
-        />
-      </div>
-
-      <div className="col-span-1 flex items-center justify-end gap-1">
-        <Button variant="ghost" size="icon" onClick={onEdit} title="Edit event">
-          <Pencil className="h-3.5 w-3.5" />
+          <Pencil className="h-3 w-3" />
         </Button>
         <Button
           variant="ghost"
           size="icon"
+          className="h-6 w-6"
           onClick={onDelete}
           title="Delete event"
         >
-          <Trash2 className="h-3.5 w-3.5" />
+          <Trash2 className="h-3 w-3" />
         </Button>
       </div>
     </div>

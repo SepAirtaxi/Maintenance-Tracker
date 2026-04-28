@@ -129,6 +129,7 @@ export async function executeImport(
       batch.set(ref, {
         tailNumber: tail,
         model,
+        airworthy: true,
         totalTimeMinutes: null,
         totalTimeUpdatedAt: null,
         totalTimeUpdatedBy: null,

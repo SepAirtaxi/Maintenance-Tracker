@@ -51,8 +51,7 @@ export default function WorkOrderCell({ eventId, value }: Props) {
 
   if (editing) {
     return (
-      <div className="flex flex-col">
-        <span className="text-xs text-muted-foreground">WO</span>
+      <div className="flex flex-col min-w-0">
         <div className="flex items-center gap-1">
           <Input
             ref={inputRef}
@@ -67,7 +66,6 @@ export default function WorkOrderCell({ eventId, value }: Props) {
               }
             }}
             onBlur={() => {
-              // Defer so a click on the ✓ button isn't swallowed.
               setTimeout(() => {
                 if (document.activeElement?.tagName !== "BUTTON") {
                   void commit();
@@ -108,15 +106,12 @@ export default function WorkOrderCell({ eventId, value }: Props) {
     <button
       type="button"
       onClick={() => setEditing(true)}
-      className="flex flex-col text-left group"
-      title="Click to edit"
+      className="text-left min-w-0 group rounded px-1 py-0.5 hover:bg-secondary"
+      title="Click to edit work order number"
     >
-      <span className="text-xs text-muted-foreground group-hover:text-foreground">
-        WO
-      </span>
       <span
         className={cn(
-          "font-mono truncate group-hover:underline",
+          "block font-mono text-xs truncate group-hover:underline",
           !value && "text-muted-foreground italic",
         )}
       >
