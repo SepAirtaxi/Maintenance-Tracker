@@ -19,6 +19,7 @@ import DeleteDefectDialog from "@/components/overview/DeleteDefectDialog";
 import ResolveDefectDialog from "@/components/overview/ResolveDefectDialog";
 import UpcomingEventsDialog from "@/components/overview/UpcomingEventsDialog";
 import AuditLogDialog from "@/components/overview/AuditLogDialog";
+import { useAuth } from "@/context/AuthContext";
 import { subscribeAircraft } from "@/services/aircraft";
 import { subscribeEvents } from "@/services/events";
 import { subscribeDefects } from "@/services/defects";
@@ -90,12 +91,13 @@ function compareNullable(
 }
 
 export default function OverviewPage() {
+  const { isViewer } = useAuth();
   const [aircraft, setAircraft] = useState<Aircraft[] | null>(null);
   const [allEvents, setAllEvents] = useState<MaintenanceEvent[]>([]);
   const [allDefects, setAllDefects] = useState<Defect[]>([]);
 
-  const [sortKey, setSortKey] = useState<SortKey>("severity");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [sortKey, setSortKey] = useState<SortKey>("tail");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
 
   const [eventFormOpen, setEventFormOpen] = useState(false);
   const [eventFormTail, setEventFormTail] = useState<string>("");
@@ -252,6 +254,7 @@ export default function OverviewPage() {
       defects={s.defects}
       worstSeverity={s.worst}
       airworthy={s.airworthy}
+      readOnly={isViewer}
       onOpenEditLog={() => setAuditLogTail(s.aircraft.tailNumber)}
       onUpdateTtaf={() => setTtafTarget(s.aircraft)}
       onEditBooked={() => setBookedTarget(s.aircraft)}
@@ -285,10 +288,12 @@ export default function OverviewPage() {
             <CalendarClock className="h-4 w-4" />
             Upcoming events
           </Button>
-          <Button onClick={() => setImportOpen(true)} size="sm">
-            <Upload className="h-4 w-4" />
-            Import flight data
-          </Button>
+          {!isViewer && (
+            <Button onClick={() => setImportOpen(true)} size="sm">
+              <Upload className="h-4 w-4" />
+              Import flight data
+            </Button>
+          )}
         </div>
       </div>
 

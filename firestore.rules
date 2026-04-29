@@ -6,28 +6,39 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Any authenticated user may read/write all collections.
-    // The transaction log (not role gates) provides accountability.
+    // Anonymous (viewer) accounts may read but never write.
+    function isMember() {
+      return signedIn()
+        && request.auth.token.firebase.sign_in_provider != 'anonymous';
+    }
+
+    // Any authenticated user (including viewers) may read.
+    // Only members may write. The transaction log (not role gates) provides
+    // accountability for member writes.
     match /users/{uid} {
       allow read: if signedIn();
-      allow write: if signedIn() && request.auth.uid == uid;
+      allow write: if isMember() && request.auth.uid == uid;
     }
 
     match /aircraft/{tailNumber} {
-      allow read, write: if signedIn();
+      allow read: if signedIn();
+      allow write: if isMember();
 
       match /auditLog/{entryId} {
-        allow read, create: if signedIn();
+        allow read: if signedIn();
+        allow create: if isMember();
         allow update, delete: if false;
       }
     }
 
     match /events/{eventId} {
-      allow read, write: if signedIn();
+      allow read: if signedIn();
+      allow write: if isMember();
     }
 
     match /defects/{defectId} {
-      allow read, write: if signedIn();
+      allow read: if signedIn();
+      allow write: if isMember();
     }
   }
 }

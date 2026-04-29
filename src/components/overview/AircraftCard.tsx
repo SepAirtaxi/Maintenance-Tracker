@@ -53,6 +53,7 @@ type Props = {
   defects: Defect[];
   worstSeverity: Severity;
   airworthy: boolean;
+  readOnly?: boolean;
   onOpenEditLog: () => void;
   onUpdateTtaf: () => void;
   onEditBooked: () => void;
@@ -71,6 +72,7 @@ export default function AircraftCard({
   defects,
   worstSeverity,
   airworthy,
+  readOnly = false,
   onOpenEditLog,
   onUpdateTtaf,
   onEditBooked,
@@ -123,29 +125,48 @@ export default function AircraftCard({
             {aircraft.model}
           </span>
 
-          <button
-            type="button"
-            onClick={onToggleAirworthy}
-            disabled={togglingAirworthy}
-            title={
-              airworthy
-                ? "Click to mark as grounded"
-                : "Click to mark as airworthy"
-            }
-            className={cn(
-              "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-semibold uppercase tracking-wider shadow-sm transition-colors disabled:opacity-50",
-              airworthy
-                ? "border-emerald-300 bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
-                : "border-rose-300 bg-rose-100 text-rose-800 hover:bg-rose-200",
-            )}
-          >
-            {airworthy ? (
-              <ShieldCheck className="h-3.5 w-3.5" />
-            ) : (
-              <ShieldOff className="h-3.5 w-3.5" />
-            )}
-            {airworthy ? "Airworthy" : "Grounded"}
-          </button>
+          {readOnly ? (
+            <span
+              title={airworthy ? "Aircraft is airworthy" : "Aircraft is grounded"}
+              className={cn(
+                "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-semibold uppercase tracking-wider shadow-sm",
+                airworthy
+                  ? "border-emerald-300 bg-emerald-100 text-emerald-800"
+                  : "border-rose-300 bg-rose-100 text-rose-800",
+              )}
+            >
+              {airworthy ? (
+                <ShieldCheck className="h-3.5 w-3.5" />
+              ) : (
+                <ShieldOff className="h-3.5 w-3.5" />
+              )}
+              {airworthy ? "Airworthy" : "Grounded"}
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={onToggleAirworthy}
+              disabled={togglingAirworthy}
+              title={
+                airworthy
+                  ? "Click to mark as grounded"
+                  : "Click to mark as airworthy"
+              }
+              className={cn(
+                "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-semibold uppercase tracking-wider shadow-sm transition-colors disabled:opacity-50",
+                airworthy
+                  ? "border-emerald-300 bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
+                  : "border-rose-300 bg-rose-100 text-rose-800 hover:bg-rose-200",
+              )}
+            >
+              {airworthy ? (
+                <ShieldCheck className="h-3.5 w-3.5" />
+              ) : (
+                <ShieldOff className="h-3.5 w-3.5" />
+              )}
+              {airworthy ? "Airworthy" : "Grounded"}
+            </button>
+          )}
 
           {inHangar && (
             <span
@@ -174,26 +195,30 @@ export default function AircraftCard({
               </span>
             )}
             <div className="flex items-center gap-0.5">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 px-2 text-xs"
-                onClick={onAddEvent}
-                title="Add event"
-              >
-                <Plus className="h-3 w-3" />
-                Event
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 px-2 text-xs"
-                onClick={onAddDefect}
-                title="Report defect"
-              >
-                <Plus className="h-3 w-3" />
-                Defect
-              </Button>
+              {!readOnly && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={onAddEvent}
+                    title="Add event"
+                  >
+                    <Plus className="h-3 w-3" />
+                    Event
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={onAddDefect}
+                    title="Report defect"
+                  >
+                    <Plus className="h-3 w-3" />
+                    Defect
+                  </Button>
+                </>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
@@ -227,14 +252,18 @@ export default function AircraftCard({
                   }`
                 : ""}
             </span>
-            <button
-              type="button"
-              onClick={onUpdateTtaf}
-              title="Update TTAF manually"
-              className="rounded p-0.5 text-muted-foreground hover:bg-secondary hover:text-foreground justify-self-end"
-            >
-              <Pencil className="h-3 w-3" />
-            </button>
+            {readOnly ? (
+              <span className="justify-self-end" />
+            ) : (
+              <button
+                type="button"
+                onClick={onUpdateTtaf}
+                title="Update TTAF manually"
+                className="rounded p-0.5 text-muted-foreground hover:bg-secondary hover:text-foreground justify-self-end"
+              >
+                <Pencil className="h-3 w-3" />
+              </button>
+            )}
           </div>
 
           <div className="grid grid-cols-[14px_3rem_minmax(0,1fr)_22px] items-center gap-x-2 rounded-md border bg-background px-2 py-1 shadow-sm">
@@ -247,14 +276,18 @@ export default function AircraftCard({
                 <span className="italic text-muted-foreground">not set</span>
               )}
             </span>
-            <button
-              type="button"
-              onClick={onEditBooked}
-              title="Edit booked maintenance"
-              className="rounded p-0.5 text-muted-foreground hover:bg-secondary hover:text-foreground justify-self-end"
-            >
-              <Pencil className="h-3 w-3" />
-            </button>
+            {readOnly ? (
+              <span className="justify-self-end" />
+            ) : (
+              <button
+                type="button"
+                onClick={onEditBooked}
+                title="Edit booked maintenance"
+                className="rounded p-0.5 text-muted-foreground hover:bg-secondary hover:text-foreground justify-self-end"
+              >
+                <Pencil className="h-3 w-3" />
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -265,6 +298,25 @@ export default function AircraftCard({
         </p>
       ) : (
         <div className="bg-card">
+          {/* Supergroup header: Due at (date+TTAF) and Time left (days+hours) */}
+          <div
+            className={cn(
+              "grid items-end gap-2 px-3 pt-1 text-[9px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/80 bg-muted/40",
+              EVENTS_GRID_COLS,
+            )}
+          >
+            <span />
+            <span />
+            <span />
+            <span className="col-span-2 border-b border-border/60 pb-0.5">
+              Due at
+            </span>
+            <span className="col-span-2 border-b border-border/60 pb-0.5 text-right">
+              Time left
+            </span>
+            <span />
+            <span />
+          </div>
           <div
             className={cn(
               "grid items-center gap-2 px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground bg-muted/40",
@@ -274,18 +326,19 @@ export default function AircraftCard({
             <span></span>
             <span>Event</span>
             <span>Status</span>
-            <span>Due</span>
+            <span>Date</span>
+            <span>TTAF</span>
             <span className="text-right">Days</span>
-            <span>TTAF exp.</span>
-            <span className="text-right">Hrs left</span>
+            <span className="text-right">Hours</span>
             <span>WO</span>
-            <span className="text-right">Actions</span>
+            <span className="text-right">{readOnly ? "" : "Actions"}</span>
           </div>
           {events.map((event) => (
             <EventRow
               key={event.id}
               event={event}
               currentTtafMinutes={aircraft.totalTimeMinutes}
+              readOnly={readOnly}
               onEdit={() => onEditEvent(event)}
               onDelete={() => onDeleteEvent(event)}
             />
@@ -295,6 +348,7 @@ export default function AircraftCard({
 
       <DefectsList
         defects={defects}
+        readOnly={readOnly}
         onEdit={onEditDefect}
         onDelete={onDeleteDefect}
         onResolve={onResolveDefect}

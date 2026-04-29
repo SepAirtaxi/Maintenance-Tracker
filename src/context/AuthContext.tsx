@@ -9,6 +9,7 @@ import {
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  signInAnonymously,
   signInWithEmailAndPassword,
   signOut,
   type User,
@@ -23,8 +24,10 @@ type AuthContextValue = {
   user: User | null;
   profile: UserProfile | null;
   loading: boolean;
+  isViewer: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
+  signInAsViewer: () => Promise<void>;
   signOutUser: () => Promise<void>;
 };
 
@@ -38,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u);
-      if (u) {
+      if (u && !u.isAnonymous) {
         await ensureUserProfile(u);
       } else {
         setProfile(null);
@@ -49,7 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!user) {
+    if (!user || user.isAnonymous) {
       setCurrentUserCtx(null);
       return;
     }
@@ -66,22 +69,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [user]);
 
+  const isViewer = !!user?.isAnonymous;
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
       profile,
       loading,
+      isViewer,
       signIn: async (email, password) => {
         await signInWithEmailAndPassword(auth, email, password);
       },
       signUp: async (email, password) => {
         await createUserWithEmailAndPassword(auth, email, password);
       },
+      signInAsViewer: async () => {
+        await signInAnonymously(auth);
+      },
       signOutUser: async () => {
         await signOut(auth);
       },
     }),
-    [user, profile, loading],
+    [user, profile, loading, isViewer],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

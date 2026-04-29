@@ -15,8 +15,9 @@ import WorkOrderCell from "@/components/overview/WorkOrderCell";
 import type { MaintenanceEvent } from "@/types";
 
 // Shared grid template — header row in AircraftCard must use the same one.
+// Columns: dot | Event | Status | Due-date | Due-TTAF | Days-left | Hours-left | WO | Actions
 export const EVENTS_GRID_COLS =
-  "grid-cols-[14px_minmax(0,1fr)_72px_104px_56px_104px_76px_140px_56px]";
+  "grid-cols-[14px_minmax(0,1fr)_72px_96px_96px_56px_72px_140px_56px]";
 
 const dotClass: Record<Severity, string> = {
   green: "bg-status-green",
@@ -40,6 +41,7 @@ const neutralPill =
 type Props = {
   event: MaintenanceEvent;
   currentTtafMinutes: number | null;
+  readOnly?: boolean;
   onEdit: () => void;
   onDelete: () => void;
 };
@@ -47,6 +49,7 @@ type Props = {
 export default function EventRow({
   event,
   currentTtafMinutes,
+  readOnly = false,
   onEdit,
   onDelete,
 }: Props) {
@@ -80,9 +83,19 @@ export default function EventRow({
       >
         {event.status}
       </span>
+      {/* Due at — date | TTAF */}
       <span className={cn(neutralPill, "justify-self-start")}>
         {formatDate(event.expiryDate)}
       </span>
+      <span
+        className={cn(
+          neutralPill,
+          "justify-self-start border-r border-r-border/0",
+        )}
+      >
+        {formatMinutesAsDuration(event.timerExpiryTimeMinutes)}
+      </span>
+      {/* Time left — days | hours */}
       <span
         className={cn(
           "justify-self-end inline-flex items-center justify-center rounded border px-1.5 py-0.5 font-mono text-xs tabular-nums shadow-sm min-w-[2.25rem]",
@@ -90,9 +103,6 @@ export default function EventRow({
         )}
       >
         {daysLeft == null ? "—" : daysLeft}
-      </span>
-      <span className={cn(neutralPill, "justify-self-start")}>
-        {formatMinutesAsDuration(event.timerExpiryTimeMinutes)}
       </span>
       <span
         className={cn(
@@ -102,26 +112,34 @@ export default function EventRow({
       >
         {formatHoursLeft(minutesLeft)}
       </span>
-      <WorkOrderCell eventId={event.id} value={event.workOrderNumber} />
+      <WorkOrderCell
+        eventId={event.id}
+        value={event.workOrderNumber}
+        readOnly={readOnly}
+      />
       <div className="flex items-center justify-end gap-0.5">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6"
-          onClick={onEdit}
-          title="Edit event"
-        >
-          <Pencil className="h-3 w-3" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6"
-          onClick={onDelete}
-          title="Delete event"
-        >
-          <Trash2 className="h-3 w-3" />
-        </Button>
+        {!readOnly && (
+          <>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={onEdit}
+              title="Edit event"
+            >
+              <Pencil className="h-3 w-3" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={onDelete}
+              title="Delete event"
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          </>
+        )}
       </div>
     </div>
   );

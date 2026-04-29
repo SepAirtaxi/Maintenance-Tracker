@@ -10,6 +10,7 @@ const DEFECTS_GRID_COLS =
 
 type Props = {
   defects: Defect[];
+  readOnly?: boolean;
   onEdit: (defect: Defect) => void;
   onDelete: (defect: Defect) => void;
   onResolve: (defect: Defect) => void;
@@ -17,6 +18,7 @@ type Props = {
 
 export default function DefectsList({
   defects,
+  readOnly = false,
   onEdit,
   onDelete,
   onResolve,
@@ -34,7 +36,7 @@ export default function DefectsList({
         <span>Defect ({defects.length})</span>
         <span>Reported</span>
         <span>TTAF</span>
-        <span className="text-right">Actions</span>
+        <span className="text-right">{readOnly ? "" : "Actions"}</span>
       </div>
       {defects.map((d) => (
         <div
@@ -54,33 +56,37 @@ export default function DefectsList({
             {formatMinutesAsDuration(d.reportedTtafMinutes)}
           </div>
           <div className="flex items-center justify-end gap-0.5">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800"
-              onClick={() => onResolve(d)}
-              title="Resolve defect"
-            >
-              <Check className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              onClick={() => onEdit(d)}
-              title="Edit defect"
-            >
-              <Pencil className="h-3 w-3" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              onClick={() => onDelete(d)}
-              title="Delete defect"
-            >
-              <Trash2 className="h-3 w-3" />
-            </Button>
+            {!readOnly && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800"
+                  onClick={() => onResolve(d)}
+                  title="Resolve defect"
+                >
+                  <Check className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => onEdit(d)}
+                  title="Edit defect"
+                >
+                  <Pencil className="h-3 w-3" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => onDelete(d)}
+                  title="Delete defect"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </>
+            )}
           </div>
         </div>
       ))}

@@ -7,9 +7,27 @@ import { updateEvent } from "@/services/events";
 type Props = {
   eventId: string;
   value: string | null;
+  readOnly?: boolean;
 };
 
-export default function WorkOrderCell({ eventId, value }: Props) {
+export default function WorkOrderCell(props: Props) {
+  if (props.readOnly) {
+    return (
+      <span
+        className={cn(
+          "block font-mono text-xs truncate px-1 py-0.5",
+          !props.value && "text-muted-foreground italic",
+        )}
+        title={props.value ?? undefined}
+      >
+        {props.value ?? "—"}
+      </span>
+    );
+  }
+  return <EditableWorkOrderCell {...props} />;
+}
+
+function EditableWorkOrderCell({ eventId, value }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value ?? "");
   const [saving, setSaving] = useState(false);

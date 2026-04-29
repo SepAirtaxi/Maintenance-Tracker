@@ -20,8 +20,22 @@ export default function App() {
           }
         >
           <Route path="/" element={<OverviewPage />} />
-          <Route path="/aircraft" element={<AircraftPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
+          <Route
+            path="/aircraft"
+            element={
+              <ProtectedRoute membersOnly>
+                <AircraftPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute membersOnly>
+                <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

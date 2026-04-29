@@ -34,13 +34,25 @@ function friendlyAuthError(err: unknown): string {
 }
 
 export default function LoginPage() {
-  const { user, loading, signIn, signUp } = useAuth();
+  const { user, loading, signIn, signUp, signInAsViewer } = useAuth();
   const location = useLocation();
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [viewerLoading, setViewerLoading] = useState(false);
+
+  const onContinueAsViewer = async () => {
+    setError(null);
+    setViewerLoading(true);
+    try {
+      await signInAsViewer();
+    } catch (err) {
+      setError(friendlyAuthError(err));
+      setViewerLoading(false);
+    }
+  };
 
   if (!loading && user) {
     const to = (location.state as { from?: Location })?.from?.pathname ?? "/";
@@ -127,6 +139,31 @@ export default function LoginPage() {
                 : "Create account"}
           </Button>
         </form>
+
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t" />
+          </div>
+          <div className="relative flex justify-center">
+            <span className="bg-background px-2 text-xs uppercase tracking-wider text-muted-foreground">
+              or
+            </span>
+          </div>
+        </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          onClick={onContinueAsViewer}
+          disabled={viewerLoading || submitting}
+        >
+          {viewerLoading ? "Opening…" : "Continue as viewer"}
+        </Button>
+        <p className="text-xs text-muted-foreground text-center -mt-2">
+          Read-only access to the fleet overview. No edits, no sign-up
+          required.
+        </p>
 
         <p className="text-sm text-muted-foreground text-center">
           {mode === "signin" ? (
