@@ -96,9 +96,17 @@ const firebaseConfig = {
 - Actions column holds three icon buttons in this order: **Close** (green check), **Edit**, **Delete**.
 
 ### Aircraft header — two-row layout
-- **Row 1:** tail number, model, airworthy/grounded toggle, in-maintenance badge, defect badge, "Updated <date>" (latest aircraft-doc `updatedAt`), and Event/Defect/Log action buttons.
+- **Row 1:** tail number, model, airworthy/grounded toggle, in-maintenance badge, defect badge, "Updated <date>" (latest aircraft-doc `updatedAt`), and Event/Defect/Note/Log action buttons.
 - **Row 2:** TTAF and Booked maintenance as two equal-width cells with fixed-column grid layouts so values, meta date/source, and the edit pencil sit at predictable positions regardless of content width.
-- "Updated <date>" reflects any change to the aircraft document — TTAF, booking, model change, airworthiness toggle.
+- **Note banner (conditional):** when the aircraft has a free-text note set, an amber sticky-note banner appears below row 2 with the note text and an edit pencil (members only).
+- "Updated <date>" reflects any change to the aircraft document — TTAF, booking, model change, airworthiness toggle, note.
+
+### Aircraft notes
+- Free-text remark field on the aircraft document (`note: string | null`). Up to 500 characters.
+- Intended for context that doesn't belong on a specific event/defect — e.g. *"Grounded — waiting on spare part (ETA 2 weeks)"*.
+- Members add a note via the **+ Note** button in the header action group (visible only when no note is set). Once set, the button hides and the note renders as an amber banner with an edit pencil; the dialog supports edit and clear.
+- Viewers see the banner read-only.
+- Audit log entity is `note` with create/update/delete actions; summaries include before/after text. The audit log dialog includes `Note` in the entity filter chips.
 
 ### Upcoming events dialog
 - Top-level **Upcoming events** button on the overview, next to **Import flight data**.
