@@ -34,6 +34,7 @@ const ENTITY_OPTIONS: { value: AuditEntity; label: string }[] = [
   { value: "aircraft", label: "Aircraft" },
   { value: "ttaf", label: "TTAF" },
   { value: "booking", label: "Booking" },
+  { value: "note", label: "Note" },
   { value: "event", label: "Event" },
   { value: "defect", label: "Defect" },
 ];
@@ -48,6 +49,7 @@ const entityLabel: Record<string, string> = {
   aircraft: "Aircraft",
   ttaf: "TTAF",
   booking: "Booking",
+  note: "Note",
   event: "Event",
   defect: "Defect",
 };

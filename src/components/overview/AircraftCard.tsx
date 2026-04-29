@@ -9,6 +9,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   ShieldOff,
+  StickyNote,
   Wrench,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -65,6 +66,7 @@ type Props = {
   onEditDefect: (defect: Defect) => void;
   onDeleteDefect: (defect: Defect) => void;
   onResolveDefect: (defect: Defect) => void;
+  onEditNote: () => void;
 };
 
 export default function AircraftCard({
@@ -85,6 +87,7 @@ export default function AircraftCard({
   onEditDefect,
   onDeleteDefect,
   onResolveDefect,
+  onEditNote,
 }: Props) {
   const [togglingAirworthy, setTogglingAirworthy] = useState(false);
   const inHangar = isInHangar(aircraft.nextBookedMaintenance, new Date());
@@ -219,6 +222,18 @@ export default function AircraftCard({
                     <Plus className="h-3 w-3" />
                     Defect
                   </Button>
+                  {!aircraft.note && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={onEditNote}
+                      title="Add note"
+                    >
+                      <StickyNote className="h-3 w-3" />
+                      Note
+                    </Button>
+                  )}
                 </>
               )}
               <Button
@@ -292,6 +307,27 @@ export default function AircraftCard({
             )}
           </div>
         </div>
+
+        {aircraft.note && (
+          <div className="px-3 pb-2">
+            <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1.5 shadow-sm">
+              <StickyNote className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-700" />
+              <span className="flex-1 whitespace-pre-wrap break-words text-xs text-amber-900">
+                {aircraft.note}
+              </span>
+              {!readOnly && (
+                <button
+                  type="button"
+                  onClick={onEditNote}
+                  title="Edit note"
+                  className="rounded p-0.5 text-amber-800/70 hover:bg-amber-100 hover:text-amber-900"
+                >
+                  <Pencil className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </header>
 
       {events.length === 0 ? (

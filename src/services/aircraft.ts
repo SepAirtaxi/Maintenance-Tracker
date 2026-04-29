@@ -65,6 +65,7 @@ export async function createAircraft(input: {
     totalTimeUpdatedBy: null,
     totalTimeSource: null,
     nextBookedMaintenance: null,
+    note: null,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -123,6 +124,38 @@ export async function updateAircraftModel(
       summary: `Model changed: ${prev.model} → ${trimmed}`,
     });
   }
+}
+
+export async function updateAircraftNote(
+  tailNumber: string,
+  note: string | null,
+): Promise<void> {
+  const tail = normaliseTailNumber(tailNumber);
+  const trimmed = note?.trim() ?? "";
+  const next = trimmed === "" ? null : trimmed;
+
+  const existing = await getDoc(aircraftDoc(tail));
+  const prev = existing.data() as Aircraft | undefined;
+  const before = prev?.note ?? null;
+  if (before === next) return;
+
+  await updateDoc(aircraftDoc(tail), {
+    note: next,
+    updatedAt: serverTimestamp(),
+  });
+
+  const action = next === null ? "delete" : before === null ? "create" : "update";
+  const summary =
+    next === null
+      ? "Note cleared"
+      : before === null
+        ? `Note added: "${next}"`
+        : `Note updated: "${before}" → "${next}"`;
+  logAudit(tail, {
+    action,
+    entity: "note",
+    summary,
+  });
 }
 
 export async function deleteAircraft(tailNumber: string): Promise<void> {
@@ -279,6 +312,7 @@ export async function upsertAircraftIfMissing(input: {
     totalTimeUpdatedBy: null,
     totalTimeSource: null,
     nextBookedMaintenance: null,
+    note: null,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });

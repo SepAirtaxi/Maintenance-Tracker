@@ -24,6 +24,10 @@ export type Aircraft = {
     // `to: null` = open-ended booking (release date unknown).
     to: Timestamp | null;
   } | null;
+  // Free-text remark shown in the aircraft header. Used for context that
+  // doesn't belong on a specific event/defect (e.g. "grounded — waiting on
+  // spare part"). Null/absent when no note is set.
+  note?: string | null;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 };

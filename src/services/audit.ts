@@ -19,6 +19,7 @@ export type AuditEntity =
   | "aircraft"
   | "ttaf"
   | "booking"
+  | "note"
   | "event"
   | "defect";
 

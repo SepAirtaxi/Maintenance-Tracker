@@ -14,6 +14,7 @@ import DeleteEventDialog from "@/components/overview/DeleteEventDialog";
 import ImportDialog from "@/components/overview/ImportDialog";
 import TtafDialog from "@/components/overview/TtafDialog";
 import BookedMaintenanceDialog from "@/components/overview/BookedMaintenanceDialog";
+import NoteDialog from "@/components/overview/NoteDialog";
 import DefectFormDialog from "@/components/overview/DefectFormDialog";
 import DeleteDefectDialog from "@/components/overview/DeleteDefectDialog";
 import ResolveDefectDialog from "@/components/overview/ResolveDefectDialog";
@@ -112,6 +113,7 @@ export default function OverviewPage() {
   const [importOpen, setImportOpen] = useState(false);
   const [ttafTarget, setTtafTarget] = useState<Aircraft | null>(null);
   const [bookedTarget, setBookedTarget] = useState<Aircraft | null>(null);
+  const [noteTarget, setNoteTarget] = useState<Aircraft | null>(null);
 
   const [defectFormOpen, setDefectFormOpen] = useState(false);
   const [defectFormTail, setDefectFormTail] = useState("");
@@ -279,6 +281,7 @@ export default function OverviewPage() {
       onEditDefect={openEditDefect}
       onDeleteDefect={setDefectDeleteTarget}
       onResolveDefect={setDefectResolveTarget}
+      onEditNote={() => setNoteTarget(s.aircraft)}
     />
   );
 
@@ -395,6 +398,10 @@ export default function OverviewPage() {
       <BookedMaintenanceDialog
         aircraft={bookedTarget}
         onClose={() => setBookedTarget(null)}
+      />
+      <NoteDialog
+        aircraft={noteTarget}
+        onClose={() => setNoteTarget(null)}
       />
       <DefectFormDialog
         open={defectFormOpen}
