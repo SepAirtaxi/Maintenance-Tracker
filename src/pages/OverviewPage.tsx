@@ -17,6 +17,7 @@ import BookedMaintenanceDialog from "@/components/overview/BookedMaintenanceDial
 import DefectFormDialog from "@/components/overview/DefectFormDialog";
 import DeleteDefectDialog from "@/components/overview/DeleteDefectDialog";
 import ResolveDefectDialog from "@/components/overview/ResolveDefectDialog";
+import ResolveEventDialog from "@/components/overview/ResolveEventDialog";
 import UpcomingEventsDialog from "@/components/overview/UpcomingEventsDialog";
 import AuditLogDialog from "@/components/overview/AuditLogDialog";
 import { useAuth } from "@/context/AuthContext";
@@ -106,6 +107,8 @@ export default function OverviewPage() {
   const [deleteTarget, setDeleteTarget] = useState<MaintenanceEvent | null>(
     null,
   );
+  const [resolveEventTarget, setResolveEventTarget] =
+    useState<MaintenanceEvent | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [ttafTarget, setTtafTarget] = useState<Aircraft | null>(null);
   const [bookedTarget, setBookedTarget] = useState<Aircraft | null>(null);
@@ -130,6 +133,7 @@ export default function OverviewPage() {
     if (!aircraft) return [];
     const eventsByTail = new Map<string, MaintenanceEvent[]>();
     for (const e of allEvents) {
+      if (e.resolvedAt) continue; // closed events stay as legacy in Firestore
       const arr = eventsByTail.get(e.tailNumber) ?? [];
       arr.push(e);
       eventsByTail.set(e.tailNumber, arr);
@@ -261,6 +265,7 @@ export default function OverviewPage() {
       onAddEvent={() => openAddEvent(s.aircraft.tailNumber)}
       onEditEvent={openEditEvent}
       onDeleteEvent={setDeleteTarget}
+      onResolveEvent={setResolveEventTarget}
       onAddDefect={() => openAddDefect(s.aircraft.tailNumber)}
       onEditDefect={openEditDefect}
       onDeleteDefect={setDefectDeleteTarget}
@@ -369,6 +374,10 @@ export default function OverviewPage() {
         event={deleteTarget}
         onClose={() => setDeleteTarget(null)}
       />
+      <ResolveEventDialog
+        event={resolveEventTarget}
+        onClose={() => setResolveEventTarget(null)}
+      />
       <ImportDialog open={importOpen} onOpenChange={setImportOpen} />
       <TtafDialog
         aircraft={ttafTarget}
@@ -400,7 +409,7 @@ export default function OverviewPage() {
         open={upcomingOpen}
         onOpenChange={setUpcomingOpen}
         aircraft={aircraft ?? []}
-        events={allEvents}
+        events={allEvents.filter((e) => !e.resolvedAt)}
       />
     </div>
   );

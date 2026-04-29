@@ -60,6 +60,7 @@ type Props = {
   onAddEvent: () => void;
   onEditEvent: (event: MaintenanceEvent) => void;
   onDeleteEvent: (event: MaintenanceEvent) => void;
+  onResolveEvent: (event: MaintenanceEvent) => void;
   onAddDefect: () => void;
   onEditDefect: (defect: Defect) => void;
   onDeleteDefect: (defect: Defect) => void;
@@ -79,6 +80,7 @@ export default function AircraftCard({
   onAddEvent,
   onEditEvent,
   onDeleteEvent,
+  onResolveEvent,
   onAddDefect,
   onEditDefect,
   onDeleteDefect,
@@ -298,40 +300,37 @@ export default function AircraftCard({
         </p>
       ) : (
         <div className="bg-card">
-          {/* Supergroup header: Due at (date+TTAF) and Time left (days+hours) */}
+          {/* Header row — supergroup labels live inside the compartments */}
           <div
             className={cn(
-              "grid items-end gap-2 px-3 pt-1 text-[9px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/80 bg-muted/40",
+              "grid items-end gap-2 px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground bg-muted/40",
               EVENTS_GRID_COLS,
             )}
           >
-            <span />
-            <span />
-            <span />
-            <span className="col-span-2 border-b border-border/60 pb-0.5">
-              Due at
+            <span className="self-end pb-0.5">WO</span>
+            <span className="self-end pb-0.5">Event</span>
+            <span className="self-end pb-0.5">Status</span>
+            <div className="rounded-md border border-border overflow-hidden">
+              <div className="bg-muted/70 text-center text-[9px] font-bold tracking-wider py-0 border-b border-border text-foreground/80">
+                Due at
+              </div>
+              <div className="grid grid-cols-2 divide-x divide-border text-[9px] text-center">
+                <span className="py-0.5">Date</span>
+                <span className="py-0.5">TTAF</span>
+              </div>
+            </div>
+            <div className="rounded-md border border-border overflow-hidden">
+              <div className="bg-muted/70 text-center text-[9px] font-bold tracking-wider py-0 border-b border-border text-foreground/80">
+                Time left
+              </div>
+              <div className="grid grid-cols-2 divide-x divide-border text-[9px] text-center">
+                <span className="py-0.5">Days</span>
+                <span className="py-0.5">Hours</span>
+              </div>
+            </div>
+            <span className="self-end pb-0.5 text-right">
+              {readOnly ? "" : "Actions"}
             </span>
-            <span className="col-span-2 border-b border-border/60 pb-0.5 text-right">
-              Time left
-            </span>
-            <span />
-            <span />
-          </div>
-          <div
-            className={cn(
-              "grid items-center gap-2 px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground bg-muted/40",
-              EVENTS_GRID_COLS,
-            )}
-          >
-            <span></span>
-            <span>Event</span>
-            <span>Status</span>
-            <span>Date</span>
-            <span>TTAF</span>
-            <span className="text-right">Days</span>
-            <span className="text-right">Hours</span>
-            <span>WO</span>
-            <span className="text-right">{readOnly ? "" : "Actions"}</span>
           </div>
           {events.map((event) => (
             <EventRow
@@ -341,6 +340,7 @@ export default function AircraftCard({
               readOnly={readOnly}
               onEdit={() => onEditEvent(event)}
               onDelete={() => onDeleteEvent(event)}
+              onResolve={() => onResolveEvent(event)}
             />
           ))}
         </div>

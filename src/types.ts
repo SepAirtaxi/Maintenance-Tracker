@@ -45,6 +45,12 @@ export type MaintenanceEvent = {
   workOrderNumber: string | null;
   status: EventStatus;
   source: EventSource;
+  // Resolution metadata. Resolved events stay in Firestore as legacy; the
+  // overview filters them out. All four resolution fields are set together.
+  resolvedDate: Timestamp | null;
+  resolutionWorkOrder: string | null;
+  resolvedAt: Timestamp | null;
+  resolvedBy: string | null;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 };

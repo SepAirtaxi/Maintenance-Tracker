@@ -17,6 +17,7 @@ import { db } from "@/lib/firebase";
 import { normaliseTailNumber } from "@/lib/tails";
 import { logAudit } from "@/services/audit";
 import { formatDate } from "@/lib/format";
+import { formatMinutesAsDuration } from "@/lib/time";
 import type { EventStatus, MaintenanceEvent } from "@/types";
 
 const eventsCol = () => collection(db, "events");
@@ -54,6 +55,11 @@ function docToEvent(
     workOrderNumber: (data.workOrderNumber as string | null) ?? null,
     status: data.status as EventStatus,
     source: (data.source as "import" | "manual") ?? "manual",
+    resolvedDate: (data.resolvedDate as Timestamp | undefined) ?? null,
+    resolutionWorkOrder:
+      (data.resolutionWorkOrder as string | undefined) ?? null,
+    resolvedAt: (data.resolvedAt as Timestamp | undefined) ?? null,
+    resolvedBy: (data.resolvedBy as string | undefined) ?? null,
     createdAt: data.createdAt as Timestamp,
     updatedAt: data.updatedAt as Timestamp,
   };
@@ -105,6 +111,10 @@ export async function createEvent(
     workOrderNumber: wo,
     status: statusFromWo(wo),
     source: opts.source,
+    resolvedDate: null,
+    resolutionWorkOrder: null,
+    resolvedAt: null,
+    resolvedBy: null,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -205,6 +215,54 @@ export async function updateEvent(
       });
     }
   }
+}
+
+export type ResolveEventInput = {
+  resolvedDate: Date;
+  resolutionWorkOrder: string;
+};
+
+export async function resolveEvent(
+  id: string,
+  input: ResolveEventInput,
+  byUid: string,
+): Promise<void> {
+  if (
+    !(input.resolvedDate instanceof Date) ||
+    isNaN(input.resolvedDate.valueOf())
+  ) {
+    throw new Error("Resolution date is required.");
+  }
+  const wo = input.resolutionWorkOrder.trim();
+  if (!wo) throw new Error("Work order number is required.");
+
+  const snap = await getDoc(eventDoc(id));
+  if (!snap.exists()) throw new Error("Event not found.");
+  const prev = docToEvent(id, snap.data());
+  if (prev.resolvedAt) throw new Error("Event is already closed.");
+
+  await updateDoc(eventDoc(id), {
+    workOrderNumber: wo,
+    status: statusFromWo(wo),
+    resolvedDate: Timestamp.fromDate(input.resolvedDate),
+    resolutionWorkOrder: wo,
+    resolvedAt: serverTimestamp(),
+    resolvedBy: byUid,
+    updatedAt: serverTimestamp(),
+  });
+
+  const ttafSuffix =
+    prev.timerExpiryTimeMinutes != null
+      ? ` at TTAF ${formatMinutesAsDuration(prev.timerExpiryTimeMinutes)}`
+      : "";
+  logAudit(prev.tailNumber, {
+    action: "update",
+    entity: "event",
+    entityId: id,
+    summary: `Event closed: "${prev.warning}" (WO ${wo}, on ${formatDate(
+      Timestamp.fromDate(input.resolvedDate),
+    )})${ttafSuffix}`,
+  });
 }
 
 export async function deleteEvent(id: string): Promise<void> {

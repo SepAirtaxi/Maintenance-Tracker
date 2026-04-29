@@ -1,4 +1,4 @@
-import { Pencil, Trash2 } from "lucide-react";
+import { CheckCircle2, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
@@ -15,9 +15,9 @@ import WorkOrderCell from "@/components/overview/WorkOrderCell";
 import type { MaintenanceEvent } from "@/types";
 
 // Shared grid template — header row in AircraftCard must use the same one.
-// Columns: dot | Event | Status | Due-date | Due-TTAF | Days-left | Hours-left | WO | Actions
+// Columns: WO | Event(dot+name) | Status | Due-at(date|TTAF) | Time-left(days|hours) | Actions
 export const EVENTS_GRID_COLS =
-  "grid-cols-[14px_minmax(0,1fr)_72px_96px_96px_56px_72px_140px_56px]";
+  "grid-cols-[72px_minmax(0,1fr)_84px_200px_140px_84px]";
 
 const dotClass: Record<Severity, string> = {
   green: "bg-status-green",
@@ -26,17 +26,13 @@ const dotClass: Record<Severity, string> = {
   unknown: "bg-muted-foreground/40",
 };
 
-// Severity-tinted "data pill" used for Days / Hrs left.
-const severityPill: Record<Severity, string> = {
-  green: "bg-emerald-100 text-emerald-800 border-emerald-200",
-  yellow: "bg-amber-100 text-amber-900 border-amber-300",
-  red: "bg-rose-200 text-rose-900 border-rose-300 font-semibold",
-  unknown: "bg-muted/60 text-muted-foreground border-border",
+// Severity tints applied per-half inside the Time Left compartment.
+const severityHalf: Record<Severity, string> = {
+  green: "bg-emerald-100 text-emerald-800",
+  yellow: "bg-amber-100 text-amber-900",
+  red: "bg-rose-200 text-rose-900 font-semibold",
+  unknown: "bg-background text-muted-foreground",
 };
-
-// Neutral data pill for Due date and TTAF expiry.
-const neutralPill =
-  "inline-flex items-center justify-center rounded border border-border bg-background px-1.5 py-0.5 font-mono text-xs tabular-nums shadow-sm";
 
 type Props = {
   event: MaintenanceEvent;
@@ -44,6 +40,7 @@ type Props = {
   readOnly?: boolean;
   onEdit: () => void;
   onDelete: () => void;
+  onResolve: () => void;
 };
 
 export default function EventRow({
@@ -52,6 +49,7 @@ export default function EventRow({
   readOnly = false,
   onEdit,
   onDelete,
+  onResolve,
 }: Props) {
   const severity = getEventSeverity(event, currentTtafMinutes);
   const daysLeft = computeDaysLeft(event);
@@ -66,12 +64,19 @@ export default function EventRow({
         EVENTS_GRID_COLS,
       )}
     >
-      <span
-        className={cn("h-2.5 w-2.5 rounded-full", dotClass[severity])}
-        title={severity}
+      <WorkOrderCell
+        eventId={event.id}
+        value={event.workOrderNumber}
+        readOnly={readOnly}
       />
-      <span className="truncate" title={event.warning}>
-        {event.warning}
+      <span className="flex items-center gap-1.5 min-w-0">
+        <span
+          className={cn("h-2.5 w-2.5 rounded-full shrink-0", dotClass[severity])}
+          title={severity}
+        />
+        <span className="truncate" title={event.warning}>
+          {event.warning}
+        </span>
       </span>
       <span
         className={cn(
@@ -83,43 +88,46 @@ export default function EventRow({
       >
         {event.status}
       </span>
-      {/* Due at — date | TTAF */}
-      <span className={cn(neutralPill, "justify-self-start")}>
-        {formatDate(event.expiryDate)}
-      </span>
-      <span
-        className={cn(
-          neutralPill,
-          "justify-self-start border-r border-r-border/0",
-        )}
-      >
-        {formatMinutesAsDuration(event.timerExpiryTimeMinutes)}
-      </span>
-      {/* Time left — days | hours */}
-      <span
-        className={cn(
-          "justify-self-end inline-flex items-center justify-center rounded border px-1.5 py-0.5 font-mono text-xs tabular-nums shadow-sm min-w-[2.25rem]",
-          severityPill[daysSev],
-        )}
-      >
-        {daysLeft == null ? "—" : daysLeft}
-      </span>
-      <span
-        className={cn(
-          "justify-self-end inline-flex items-center justify-center rounded border px-1.5 py-0.5 font-mono text-xs tabular-nums shadow-sm min-w-[3rem]",
-          severityPill[hoursSev],
-        )}
-      >
-        {formatHoursLeft(minutesLeft)}
-      </span>
-      <WorkOrderCell
-        eventId={event.id}
-        value={event.workOrderNumber}
-        readOnly={readOnly}
-      />
+      {/* Due at — date | TTAF compartment */}
+      <div className="grid grid-cols-2 divide-x divide-border rounded-md border border-border bg-background shadow-sm overflow-hidden">
+        <span className="px-1.5 py-0.5 text-center font-mono text-xs tabular-nums">
+          {formatDate(event.expiryDate)}
+        </span>
+        <span className="px-1.5 py-0.5 text-center font-mono text-xs tabular-nums">
+          {formatMinutesAsDuration(event.timerExpiryTimeMinutes)}
+        </span>
+      </div>
+      {/* Time left — days | hours compartment with per-half severity tint */}
+      <div className="grid grid-cols-2 divide-x divide-border rounded-md border border-border shadow-sm overflow-hidden">
+        <span
+          className={cn(
+            "px-1.5 py-0.5 text-center font-mono text-xs tabular-nums",
+            severityHalf[daysSev],
+          )}
+        >
+          {daysLeft == null ? "—" : daysLeft}
+        </span>
+        <span
+          className={cn(
+            "px-1.5 py-0.5 text-center font-mono text-xs tabular-nums",
+            severityHalf[hoursSev],
+          )}
+        >
+          {formatHoursLeft(minutesLeft)}
+        </span>
+      </div>
       <div className="flex items-center justify-end gap-0.5">
         {!readOnly && (
           <>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800"
+              onClick={onResolve}
+              title="Close event (mark complete)"
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" />
+            </Button>
             <Button
               variant="ghost"
               size="icon"

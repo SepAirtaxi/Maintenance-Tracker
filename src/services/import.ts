@@ -57,7 +57,11 @@ async function fetchAllEventKeys(): Promise<Set<string>> {
       tailNumber: string;
       warning: string;
       importedWarning?: string | null;
+      resolvedAt?: Timestamp | null;
     };
+    // Closed events stay in Firestore as legacy but should not block a new
+    // occurrence of the same recurring item from being imported.
+    if (data.resolvedAt) return;
     // Prefer the locked Flightlogger title; fall back to the editable warning
     // for legacy docs predating importedWarning.
     const identity = data.importedWarning ?? data.warning;
@@ -280,6 +284,10 @@ export async function executeImport(
         workOrderNumber: null,
         status: "unplanned",
         source: "import",
+        resolvedDate: null,
+        resolutionWorkOrder: null,
+        resolvedAt: null,
+        resolvedBy: null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
