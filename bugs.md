@@ -1,0 +1,2 @@
+1: I tried doing a manual TTAF on OY-HHG, from 2438.49 to 2448.61. When entering it exactly as "2448.61", I get an error message saying "Enter a value like 1234.30 or 1234:30.". I then tried changing the decimals to .06, which it then approved without error. Now it seems there's a bug when trying to update the TTAF manually. Please look into what may be causing this.
+2: Aircraft with 'Grounded' status should not be calculated in the Upcoming Events function.

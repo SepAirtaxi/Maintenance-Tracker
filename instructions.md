@@ -1,6 +1,6 @@
 Copenhagen AirTaxi Maintenance Tracker:
 
-
+// User Notes //
 The purpose:
 An internal collaborative tool for an easy overview of the fleet of aircraft in service with Copenhagen AirTaxi.
 This will mainly be used/updated by the Part-145/CAMO.
@@ -67,6 +67,9 @@ const firebaseConfig = {
 };
 
 
+
+// Claude Notes //
+
 ---
 
 ## Implementation notes (additions beyond the original spec)
@@ -100,6 +103,13 @@ const firebaseConfig = {
 ### Upcoming events dialog
 - Top-level **Upcoming events** button on the overview, next to **Import flight data**.
 - Opens a popup with the 25 nearest events by date and 25 nearest by hours, fleet-wide. Severity-tinted (red/yellow/green) using the same thresholds as the per-aircraft rows.
+- Events on **grounded** aircraft (`airworthy === false`) are filtered out of both lists — a grounded aircraft is by definition not flying down its TTAF/calendar timers, so its events shouldn't compete for attention with the active fleet.
+
+### TTAF / duration format
+- Stored as integer minutes (base-60). Display everywhere in the app uses `HH:MM` (e.g. `2448:36`) so it's unambiguously not decimal hours.
+- The shared parser in `src/lib/time.ts` accepts either `HH:MM` or `HH.MM` on input — Flightlogger CSV uses `:`, older CAMO `.csv` exports use `.`. Either works.
+- TTAF/timer-expiry inputs (`TtafDialog`, `EventFormDialog`, `DefectFormDialog`) have a **HH:MM / Decimal** toggle next to the field label. HH:MM is the default. Switching modes auto-converts the current value (if it parses) so the number isn't lost.
+- **Decimal** mode parses decimal hours (e.g. `4969.5` → 4969h 30m), strips thousands-spaces (CAMO formats numbers like `4 969.5`), and rounds to the nearest minute. Use it when transcribing TTAF directly from the CAMO software's projection lists. Internal storage stays integer-minutes regardless of input mode.
 
 ### Booked maintenance — auto-expiry sweep
 - Bookings auto-clear on the day after their `to` date. The sweep runs client-side once per session when the overview first loads (skipped for viewers).

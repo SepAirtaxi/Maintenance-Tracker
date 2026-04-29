@@ -59,9 +59,22 @@ export default function UpcomingEventsDialog({
     return m;
   }, [aircraft]);
 
+  const groundedTails = useMemo(() => {
+    const s = new Set<string>();
+    for (const a of aircraft) {
+      if (a.airworthy === false) s.add(a.tailNumber);
+    }
+    return s;
+  }, [aircraft]);
+
+  const activeEvents = useMemo(
+    () => events.filter((e) => !groundedTails.has(e.tailNumber)),
+    [events, groundedTails],
+  );
+
   const byDate: ByDateRow[] = useMemo(() => {
     const rows: ByDateRow[] = [];
-    for (const e of events) {
+    for (const e of activeEvents) {
       const days = computeDaysLeft(e);
       if (days == null) continue;
       rows.push({
@@ -72,11 +85,11 @@ export default function UpcomingEventsDialog({
     }
     rows.sort((a, b) => a.daysLeft - b.daysLeft);
     return rows.slice(0, ROW_LIMIT);
-  }, [events]);
+  }, [activeEvents]);
 
   const byHours: ByHoursRow[] = useMemo(() => {
     const rows: ByHoursRow[] = [];
-    for (const e of events) {
+    for (const e of activeEvents) {
       const minutes = computeMinutesLeft(e, ttafByTail.get(e.tailNumber) ?? null);
       if (minutes == null) continue;
       rows.push({
@@ -87,7 +100,7 @@ export default function UpcomingEventsDialog({
     }
     rows.sort((a, b) => a.minutesLeft - b.minutesLeft);
     return rows.slice(0, ROW_LIMIT);
-  }, [events, ttafByTail]);
+  }, [activeEvents, ttafByTail]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

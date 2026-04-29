@@ -13,8 +13,11 @@ import { Label } from "@/components/ui/label";
 import { createDefect, updateDefect } from "@/services/defects";
 import {
   formatMinutesAsDuration,
+  formatMinutesAsDecimalHours,
   parseDurationToMinutes,
+  parseDecimalHoursToMinutes,
 } from "@/lib/time";
+import { cn } from "@/lib/utils";
 import type { Defect } from "@/types";
 
 type Props = {
@@ -48,11 +51,13 @@ export default function DefectFormDialog({
   const [title, setTitle] = useState("");
   const [reportedDate, setReportedDate] = useState(tsToInput(new Date()));
   const [reportedTtaf, setReportedTtaf] = useState("");
+  const [ttafMode, setTtafMode] = useState<"hhmm" | "decimal">("hhmm");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
+    setTtafMode("hhmm");
     if (defect) {
       setTitle(defect.title);
       setReportedDate(tsToInput(defect.reportedDate.toDate()));
@@ -66,6 +71,25 @@ export default function DefectFormDialog({
     setSaving(false);
   }, [open, defect]);
 
+  const switchTtafMode = (next: "hhmm" | "decimal") => {
+    if (next === ttafMode) return;
+    const trimmed = reportedTtaf.trim();
+    if (trimmed) {
+      const minutes =
+        ttafMode === "hhmm"
+          ? parseDurationToMinutes(trimmed)
+          : parseDecimalHoursToMinutes(trimmed);
+      if (minutes != null) {
+        setReportedTtaf(
+          next === "hhmm"
+            ? formatMinutesAsDuration(minutes)
+            : formatMinutesAsDecimalHours(minutes),
+        );
+      }
+    }
+    setTtafMode(next);
+  };
+
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -74,9 +98,16 @@ export default function DefectFormDialog({
       setError("Reported date is required.");
       return;
     }
-    const minutes = parseDurationToMinutes(reportedTtaf.trim());
+    const minutes =
+      ttafMode === "decimal"
+        ? parseDecimalHoursToMinutes(reportedTtaf.trim())
+        : parseDurationToMinutes(reportedTtaf.trim());
     if (minutes == null) {
-      setError("Reported TTAF must look like 1234.30.");
+      setError(
+        ttafMode === "decimal"
+          ? "Reported TTAF must look like 4969.5 (decimal hours)."
+          : "Reported TTAF must look like 1234:30 (minutes 00–59).",
+      );
       return;
     }
 
@@ -141,13 +172,43 @@ export default function DefectFormDialog({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="defectTtaf">TTAF at report (HH.MM)</Label>
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="defectTtaf">
+                    TTAF at report ({ttafMode === "decimal" ? "decimal hrs" : "HH:MM"})
+                  </Label>
+                  <div className="inline-flex rounded-md border bg-card p-0.5 text-[10px]">
+                    <button
+                      type="button"
+                      onClick={() => switchTtafMode("hhmm")}
+                      className={cn(
+                        "rounded px-1.5 py-0.5 font-mono transition-colors",
+                        ttafMode === "hhmm"
+                          ? "bg-foreground text-background"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      HH:MM
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => switchTtafMode("decimal")}
+                      className={cn(
+                        "rounded px-1.5 py-0.5 font-mono transition-colors",
+                        ttafMode === "decimal"
+                          ? "bg-foreground text-background"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      Decimal
+                    </button>
+                  </div>
+                </div>
                 <Input
                   id="defectTtaf"
                   value={reportedTtaf}
                   onChange={(e) => setReportedTtaf(e.target.value)}
                   required
-                  placeholder="e.g. 6466.36"
+                  placeholder={ttafMode === "decimal" ? "e.g. 6466.6" : "e.g. 6466:36"}
                   className="font-mono"
                 />
               </div>

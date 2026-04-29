@@ -15,7 +15,10 @@ import { createEvent, updateEvent } from "@/services/events";
 import {
   parseDurationToMinutes,
   formatMinutesAsDuration,
+  parseDecimalHoursToMinutes,
+  formatMinutesAsDecimalHours,
 } from "@/lib/time";
+import { cn } from "@/lib/utils";
 import type { MaintenanceEvent } from "@/types";
 
 type Props = {
@@ -50,7 +53,8 @@ export default function EventFormDialog({
   const isEdit = event !== null;
   const [warning, setWarning] = useState("");
   const [expiryDate, setExpiryDate] = useState(""); // yyyy-mm-dd
-  const [timerExpiry, setTimerExpiry] = useState(""); // HH.MM string
+  const [timerExpiry, setTimerExpiry] = useState(""); // HH:MM or decimal hours, depending on `timerMode`
+  const [timerMode, setTimerMode] = useState<"hhmm" | "decimal">("hhmm");
   const [workOrderNumber, setWorkOrderNumber] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,10 +68,30 @@ export default function EventFormDialog({
         ? formatMinutesAsDuration(event.timerExpiryTimeMinutes)
         : "",
     );
+    setTimerMode("hhmm");
     setWorkOrderNumber(event?.workOrderNumber ?? "");
     setError(null);
     setSaving(false);
   }, [open, event]);
+
+  const switchTimerMode = (next: "hhmm" | "decimal") => {
+    if (next === timerMode) return;
+    const trimmed = timerExpiry.trim();
+    if (trimmed) {
+      const minutes =
+        timerMode === "hhmm"
+          ? parseDurationToMinutes(trimmed)
+          : parseDecimalHoursToMinutes(trimmed);
+      if (minutes != null) {
+        setTimerExpiry(
+          next === "hhmm"
+            ? formatMinutesAsDuration(minutes)
+            : formatMinutesAsDecimalHours(minutes),
+        );
+      }
+    }
+    setTimerMode(next);
+  };
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -76,9 +100,16 @@ export default function EventFormDialog({
     const trimmedTimer = timerExpiry.trim();
     let timerMinutes: number | null = null;
     if (trimmedTimer) {
-      const parsed = parseDurationToMinutes(trimmedTimer);
+      const parsed =
+        timerMode === "decimal"
+          ? parseDecimalHoursToMinutes(trimmedTimer)
+          : parseDurationToMinutes(trimmedTimer);
       if (parsed == null) {
-        setError("TTAF expiry must look like 1234.30 or 1234:30.");
+        setError(
+          timerMode === "decimal"
+            ? "Decimal hours must look like 4969.5."
+            : "TTAF expiry must look like 1234:30 (minutes 00–59).",
+        );
         return;
       }
       timerMinutes = parsed;
@@ -151,12 +182,42 @@ export default function EventFormDialog({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="timerExpiry">TTAF expiry (HH.MM)</Label>
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="timerExpiry">
+                    TTAF expiry ({timerMode === "decimal" ? "decimal hrs" : "HH:MM"})
+                  </Label>
+                  <div className="inline-flex rounded-md border bg-card p-0.5 text-[10px]">
+                    <button
+                      type="button"
+                      onClick={() => switchTimerMode("hhmm")}
+                      className={cn(
+                        "rounded px-1.5 py-0.5 font-mono transition-colors",
+                        timerMode === "hhmm"
+                          ? "bg-foreground text-background"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      HH:MM
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => switchTimerMode("decimal")}
+                      className={cn(
+                        "rounded px-1.5 py-0.5 font-mono transition-colors",
+                        timerMode === "decimal"
+                          ? "bg-foreground text-background"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      Decimal
+                    </button>
+                  </div>
+                </div>
                 <Input
                   id="timerExpiry"
                   value={timerExpiry}
                   onChange={(e) => setTimerExpiry(e.target.value)}
-                  placeholder="e.g. 6466.36"
+                  placeholder={timerMode === "decimal" ? "e.g. 6466.6" : "e.g. 6466:36"}
                   className="font-mono"
                 />
               </div>
