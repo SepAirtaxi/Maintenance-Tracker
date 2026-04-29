@@ -76,6 +76,22 @@ const firebaseConfig = {
 - Resolved defects are kept in Firestore (`resolvedDate`, `resolutionWorkOrder`, `resolvedAt`, `resolvedBy` fields) but filtered out of the active overview.
 - The audit log captures the resolution with WO number and date.
 
+### Events — close (resolution) flow
+- Events can be **closed**, in addition to edited/deleted. Closing prompts for a completion date and a work-order number, ties the event to that WO, and marks it as legacy. Mirrors the defect resolution model — same four fields on the event document (`resolvedDate`, `resolutionWorkOrder`, `resolvedAt`, `resolvedBy`).
+- The dialog **pre-fills the WO field** from the event's existing `workOrderNumber` when one is set (planned events close in one click + Enter); for unplanned events the WO field is empty and auto-focused.
+- Closed events stay in Firestore but are filtered out of:
+  - the active overview cards (per-aircraft event list);
+  - the **Upcoming events** dialog;
+  - the **CSV import dedup set** — so the next import re-creates a fresh occurrence of the same recurring item (e.g. the next 100-Hour after closing the previous one). This is the intended way to roll a recurring event forward.
+- Audit log entry uses the form `Event closed: "<warning>" (WO <num>, on <date>) at TTAF <ttaf>`.
+
+### Event row layout
+- Six-column grid: **WO | Event | Status | Due at | Time left | Actions** (`EVENTS_GRID_COLS` in `EventRow.tsx`).
+- WO is the leftmost column (sized for short numeric work-order numbers, e.g. `6600`); the severity dot now lives inline next to the event name rather than as its own column.
+- **Due at** and **Time left** are each rendered as a single bordered "compartment" containing two halves (`Date | TTAF` and `Days | Hours`) split by a vertical divider. Severity tinting in Time left is applied **per half** so each value reads independently.
+- The header row mirrors that compartment style: each compartment has the supergroup label (`Due at` / `Time left`) stacked above its two sub-labels inside the same border, so the header structure visually matches the data row.
+- Actions column holds three icon buttons in this order: **Close** (green check), **Edit**, **Delete**.
+
 ### Aircraft header — two-row layout
 - **Row 1:** tail number, model, airworthy/grounded toggle, in-maintenance badge, defect badge, "Updated <date>" (latest aircraft-doc `updatedAt`), and Event/Defect/Log action buttons.
 - **Row 2:** TTAF and Booked maintenance as two equal-width cells with fixed-column grid layouts so values, meta date/source, and the edit pencil sit at predictable positions regardless of content width.
@@ -84,6 +100,18 @@ const firebaseConfig = {
 ### Upcoming events dialog
 - Top-level **Upcoming events** button on the overview, next to **Import flight data**.
 - Opens a popup with the 25 nearest events by date and 25 nearest by hours, fleet-wide. Severity-tinted (red/yellow/green) using the same thresholds as the per-aircraft rows.
+
+### Booked maintenance — auto-expiry sweep
+- Bookings auto-clear on the day after their `to` date. The sweep runs client-side once per session when the overview first loads (skipped for viewers).
+- Implemented as `sweepExpiredBookings` in `services/aircraft.ts`. Uses `runTransaction` with a from/to-timestamp guard so concurrent clients can't double-clear or double-log.
+- Open-ended bookings (`to: null`) are left alone — they require manual clear.
+- Audit entry on auto-clear: `Aircraft left maintenance hangar (booked DD.MM.YYYY – DD.MM.YYYY)` (action: `delete`, entity: `booking`).
+
+### Audit log dialog — filter + search
+- The transaction log dialog has a search box (matches summary + initials) and two rows of multi-select chips: **Entity** (Aircraft / TTAF / Booking / Event / Defect) and **Action** (Create / Update / Delete).
+- Empty filter set = "all" for that axis. A `Clear` button appears when any filter is active. A live "X of Y entries" counter shows how much the filters narrowed the view.
+- Subscription limit is **500** entries (up from 200) so the filter has more to work with on aircraft with long histories.
+- The flat list remains the underlying view; the planned grouped-per-entity ("history") view would layer on top of the same data without removing this one.
 
 ### Event identity (import dedup)
 - Each event stores its original Flightlogger `warning` text in a frozen `importedWarning` field. The visible `warning` is user-editable; the import dedup key is `(tailNumber, importedWarning)`.

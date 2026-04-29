@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -21,7 +21,7 @@ import ResolveEventDialog from "@/components/overview/ResolveEventDialog";
 import UpcomingEventsDialog from "@/components/overview/UpcomingEventsDialog";
 import AuditLogDialog from "@/components/overview/AuditLogDialog";
 import { useAuth } from "@/context/AuthContext";
-import { subscribeAircraft } from "@/services/aircraft";
+import { subscribeAircraft, sweepExpiredBookings } from "@/services/aircraft";
 import { subscribeEvents } from "@/services/events";
 import { subscribeDefects } from "@/services/defects";
 import {
@@ -128,6 +128,15 @@ export default function OverviewPage() {
   useEffect(() => subscribeAircraft(setAircraft), []);
   useEffect(() => subscribeEvents(setAllEvents), []);
   useEffect(() => subscribeDefects(setAllDefects), []);
+
+  const sweptRef = useRef(false);
+  useEffect(() => {
+    if (sweptRef.current) return;
+    if (!aircraft || aircraft.length === 0) return;
+    if (isViewer) return;
+    sweptRef.current = true;
+    void sweepExpiredBookings(aircraft);
+  }, [aircraft, isViewer]);
 
   const summaries: AircraftSummary[] = useMemo(() => {
     if (!aircraft) return [];

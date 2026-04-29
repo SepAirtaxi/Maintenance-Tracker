@@ -7,6 +7,7 @@ import {
   onSnapshot,
   orderBy,
   query,
+  runTransaction,
   serverTimestamp,
   setDoc,
   updateDoc,
@@ -202,6 +203,63 @@ export async function updateTtafManual(
       before != null && totalTimeMinutes < before ? ", decreased" : ""
     })`,
   });
+}
+
+// Auto-clears bookings whose `to` date has already passed, and writes an
+// audit entry for each one. Open-ended bookings (`to: null`) are left alone.
+// Uses a transaction with a guard so concurrent clients don't double-clear.
+export async function sweepExpiredBookings(
+  aircraft: Aircraft[],
+): Promise<void> {
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const startOfTodayMs = startOfToday.getTime();
+
+  for (const a of aircraft) {
+    const booking = a.nextBookedMaintenance;
+    if (!booking || !booking.to) continue;
+    if (booking.to.toMillis() >= startOfTodayMs) continue;
+
+    const expectedFromMs = booking.from.toMillis();
+    const expectedToMs = booking.to.toMillis();
+    const ref = aircraftDoc(a.tailNumber);
+
+    let cleared = false;
+    try {
+      await runTransaction(db, async (tx) => {
+        const snap = await tx.get(ref);
+        if (!snap.exists()) return;
+        const cur = snap.data() as Aircraft;
+        const curBooking = cur.nextBookedMaintenance;
+        if (!curBooking || !curBooking.to) return;
+        if (curBooking.from.toMillis() !== expectedFromMs) return;
+        if (curBooking.to.toMillis() !== expectedToMs) return;
+        tx.update(ref, {
+          nextBookedMaintenance: null,
+          updatedAt: serverTimestamp(),
+        });
+        cleared = true;
+      });
+    } catch (err) {
+      // Permission errors (viewer, sign-out race) and transient failures are
+      // non-fatal — the sweep will retry on the next page load.
+      if (import.meta.env.DEV) {
+        console.warn("sweepExpiredBookings failed for", a.tailNumber, err);
+      }
+      continue;
+    }
+
+    if (cleared) {
+      logAudit(a.tailNumber, {
+        action: "delete",
+        entity: "booking",
+        summary: `Aircraft left maintenance hangar (booked ${formatBookingRange(
+          booking.from,
+          booking.to,
+        )})`,
+      });
+    }
+  }
 }
 
 export async function upsertAircraftIfMissing(input: {
