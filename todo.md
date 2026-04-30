@@ -1,3 +1,5 @@
 1: Please remove the "grounded" text from the greyed out line in the calendar for grounded planes. It's sufficient that "Grounded" appears under the tail number in the left column.
 2: For calendar blocks, can you make it default that when clicked, it shows a pop up with the relevant information nicely formatted, and particularly segregating events and defects? Then add an edit button in that window, but keep the view function as the standard when clicking.
-3: 
+3: When clicking "Resolve" on a defect, if there's a WO defined on the defect, it should automatically detect and fill out in the WO field.
+4: Pop-up windows in general could use some styling because it's all grey now. Can you make data fields white so they stand out from the grey?
+5: Please change the view in the calendar module so when the week-view is active, Monday is always the first day.
