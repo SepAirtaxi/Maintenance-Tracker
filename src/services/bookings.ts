@@ -23,12 +23,14 @@ import type { Booking } from "@/types";
 const bookingsCol = () => collection(db, "bookings");
 const bookingDoc = (id: string) => doc(db, "bookings", id);
 const eventDocRef = (id: string) => doc(db, "events", id);
+const defectDocRef = (id: string) => doc(db, "defects", id);
 
 export type BookingInput = {
   tailNumber: string;
   from: Date;
   to: Date | null;
   eventId: string | null;
+  defectIds: string[];
   notes: string | null;
 };
 
@@ -56,12 +58,17 @@ function rangesOverlap(
 }
 
 function docToBooking(id: string, data: Record<string, unknown>): Booking {
+  const rawDefectIds = data.defectIds;
+  const defectIds = Array.isArray(rawDefectIds)
+    ? (rawDefectIds.filter((v) => typeof v === "string") as string[])
+    : [];
   return {
     id,
     tailNumber: data.tailNumber as string,
     from: data.from as Timestamp,
     to: (data.to as Timestamp | null) ?? null,
     eventId: (data.eventId as string | null) ?? null,
+    defectIds,
     notes: (data.notes as string | null) ?? null,
     createdAt: data.createdAt as Timestamp,
     createdBy: (data.createdBy as string) ?? "",
@@ -108,6 +115,7 @@ async function describeForAudit(input: {
   from: Date;
   to: Date | null;
   eventId: string | null;
+  defectIds: string[];
   notes: string | null;
 }): Promise<string> {
   const range = formatBookingRange(
@@ -127,6 +135,23 @@ async function describeForAudit(input: {
       parts.push(`event: ${input.eventId} (missing)`);
     }
   }
+  if (input.defectIds.length > 0) {
+    const labels: string[] = [];
+    for (const id of input.defectIds) {
+      const snap = await getDoc(defectDocRef(id));
+      if (snap.exists()) {
+        const d = snap.data();
+        const wo = (d.workOrderNumber as string | null) ?? null;
+        const title = (d.title as string | undefined) ?? "";
+        labels.push(wo ? `WO ${wo} ${title}`.trim() : title || id);
+      } else {
+        labels.push(`${id} (missing)`);
+      }
+    }
+    parts.push(
+      `${labels.length === 1 ? "defect" : "defects"}: ${labels.join(", ")}`,
+    );
+  }
   if (input.notes) parts.push(`"${input.notes}"`);
   return parts.join(" · ");
 }
@@ -145,6 +170,22 @@ async function validateEventBelongsToTail(
   }
 }
 
+async function validateDefectsBelongToTail(
+  defectIds: string[],
+  tail: string,
+): Promise<void> {
+  for (const id of defectIds) {
+    const snap = await getDoc(defectDocRef(id));
+    if (!snap.exists()) {
+      throw new Error(`Selected defect no longer exists.`);
+    }
+    const data = snap.data();
+    if ((data.tailNumber as string) !== tail) {
+      throw new Error(`Selected defect belongs to a different tail.`);
+    }
+  }
+}
+
 export async function createBooking(input: BookingInput): Promise<string> {
   const tail = normaliseTailNumber(input.tailNumber);
   if (!tail) throw new Error("Tail number is required.");
@@ -160,9 +201,11 @@ export async function createBooking(input: BookingInput): Promise<string> {
     }
   }
   const eventId = input.eventId || null;
+  const defectIds = Array.from(new Set(input.defectIds));
   const notes = input.notes?.trim() || null;
 
   if (eventId) await validateEventBelongsToTail(eventId, tail);
+  if (defectIds.length > 0) await validateDefectsBelongToTail(defectIds, tail);
 
   const existing = await fetchBookingsForTail(tail);
   validateNoOverlap(tail, input.from, input.to, existing, null);
@@ -173,6 +216,7 @@ export async function createBooking(input: BookingInput): Promise<string> {
     from: Timestamp.fromDate(input.from),
     to: input.to ? Timestamp.fromDate(input.to) : null,
     eventId,
+    defectIds,
     notes,
     createdAt: serverTimestamp(),
     createdBy: user.uid,
@@ -184,6 +228,7 @@ export async function createBooking(input: BookingInput): Promise<string> {
     from: input.from,
     to: input.to,
     eventId,
+    defectIds,
     notes,
   });
   logAudit(tail, {
@@ -224,10 +269,15 @@ export async function updateBooking(
   }
   const eventId =
     patch.eventId !== undefined ? patch.eventId || null : prev.eventId;
+  const defectIds =
+    patch.defectIds !== undefined
+      ? Array.from(new Set(patch.defectIds))
+      : prev.defectIds;
   const notes =
     patch.notes !== undefined ? patch.notes?.trim() || null : prev.notes;
 
   if (eventId) await validateEventBelongsToTail(eventId, tail);
+  if (defectIds.length > 0) await validateDefectsBelongToTail(defectIds, tail);
 
   const existing = await fetchBookingsForTail(tail);
   validateNoOverlap(tail, fromDate, toDate, existing, id);
@@ -238,6 +288,7 @@ export async function updateBooking(
     from: Timestamp.fromDate(fromDate),
     to: toDate ? Timestamp.fromDate(toDate) : null,
     eventId,
+    defectIds,
     notes,
   });
 
@@ -246,6 +297,7 @@ export async function updateBooking(
     from: prev.from.toDate(),
     to: prev.to ? prev.to.toDate() : null,
     eventId: prev.eventId,
+    defectIds: prev.defectIds,
     notes: prev.notes,
   });
   const afterStr = await describeForAudit({
@@ -253,6 +305,7 @@ export async function updateBooking(
     from: fromDate,
     to: toDate,
     eventId,
+    defectIds,
     notes,
   });
   if (beforeStr !== afterStr) {
@@ -283,6 +336,7 @@ export async function deleteBooking(id: string): Promise<void> {
       from: prev.from.toDate(),
       to: prev.to ? prev.to.toDate() : null,
       eventId: prev.eventId,
+      defectIds: prev.defectIds,
       notes: prev.notes,
     });
     logAudit(prev.tailNumber, {

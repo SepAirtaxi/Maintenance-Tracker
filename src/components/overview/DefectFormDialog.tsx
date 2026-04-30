@@ -52,6 +52,7 @@ export default function DefectFormDialog({
   const [reportedDate, setReportedDate] = useState(tsToInput(new Date()));
   const [reportedTtaf, setReportedTtaf] = useState("");
   const [ttafMode, setTtafMode] = useState<"hhmm" | "decimal">("hhmm");
+  const [workOrderNumber, setWorkOrderNumber] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,10 +63,12 @@ export default function DefectFormDialog({
       setTitle(defect.title);
       setReportedDate(tsToInput(defect.reportedDate.toDate()));
       setReportedTtaf(formatMinutesAsDuration(defect.reportedTtafMinutes));
+      setWorkOrderNumber(defect.workOrderNumber ?? "");
     } else {
       setTitle("");
       setReportedDate(tsToInput(new Date()));
       setReportedTtaf("");
+      setWorkOrderNumber("");
     }
     setError(null);
     setSaving(false);
@@ -118,6 +121,7 @@ export default function DefectFormDialog({
           title,
           reportedDate: date,
           reportedTtafMinutes: minutes,
+          workOrderNumber: workOrderNumber.trim() || null,
         });
       } else {
         await createDefect({
@@ -125,6 +129,7 @@ export default function DefectFormDialog({
           title,
           reportedDate: date,
           reportedTtafMinutes: minutes,
+          workOrderNumber: workOrderNumber.trim() || null,
         });
       }
       onOpenChange(false);
@@ -212,6 +217,16 @@ export default function DefectFormDialog({
                   className="font-mono"
                 />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="defectWo">Work order number (optional)</Label>
+              <Input
+                id="defectWo"
+                value={workOrderNumber}
+                onChange={(e) => setWorkOrderNumber(e.target.value)}
+                placeholder="e.g. WO-1234"
+              />
             </div>
 
             {error && (

@@ -26,6 +26,7 @@ export type DefectInput = {
   title: string;
   reportedDate: Date;
   reportedTtafMinutes: number;
+  workOrderNumber: string | null;
 };
 
 function validate(input: DefectInput) {
@@ -49,6 +50,7 @@ function docToDefect(id: string, data: Record<string, unknown>): Defect {
     title: data.title as string,
     reportedDate: data.reportedDate as Timestamp,
     reportedTtafMinutes: data.reportedTtafMinutes as number,
+    workOrderNumber: (data.workOrderNumber as string | undefined) ?? null,
     resolvedDate: (data.resolvedDate as Timestamp | undefined) ?? null,
     resolutionWorkOrder:
       (data.resolutionWorkOrder as string | undefined) ?? null,
@@ -71,11 +73,13 @@ export function subscribeDefects(
 export async function createDefect(input: DefectInput): Promise<string> {
   validate(input);
   const tail = normaliseTailNumber(input.tailNumber);
+  const wo = input.workOrderNumber?.trim() || null;
   const ref = await addDoc(defectsCol(), {
     tailNumber: tail,
     title: input.title.trim(),
     reportedDate: Timestamp.fromDate(input.reportedDate),
     reportedTtafMinutes: input.reportedTtafMinutes,
+    workOrderNumber: wo,
     resolvedDate: null,
     resolutionWorkOrder: null,
     resolvedAt: null,
@@ -87,7 +91,7 @@ export async function createDefect(input: DefectInput): Promise<string> {
     action: "create",
     entity: "defect",
     entityId: ref.id,
-    summary: `Defect reported: ${input.title.trim()} (at TTAF ${formatMinutesAsDuration(input.reportedTtafMinutes)}, reported ${formatDate(Timestamp.fromDate(input.reportedDate))})`,
+    summary: `Defect reported: ${input.title.trim()} (at TTAF ${formatMinutesAsDuration(input.reportedTtafMinutes)}, reported ${formatDate(Timestamp.fromDate(input.reportedDate))}${wo ? `, WO ${wo}` : ""})`,
   });
   return ref.id;
 }
@@ -109,6 +113,9 @@ export async function updateDefect(
   if (patch.reportedTtafMinutes !== undefined) {
     update.reportedTtafMinutes = patch.reportedTtafMinutes;
   }
+  if (patch.workOrderNumber !== undefined) {
+    update.workOrderNumber = patch.workOrderNumber?.trim() || null;
+  }
   await updateDoc(defectDoc(id), update);
 
   if (prev) {
@@ -126,6 +133,12 @@ export async function updateDefect(
         changes.push(
           `TTAF ${formatMinutesAsDuration(prev.reportedTtafMinutes)} → ${formatMinutesAsDuration(patch.reportedTtafMinutes)}`,
         );
+      }
+    }
+    if (patch.workOrderNumber !== undefined) {
+      const nextWo = patch.workOrderNumber?.trim() || null;
+      if ((prev.workOrderNumber ?? null) !== nextWo) {
+        changes.push(`WO ${prev.workOrderNumber ?? "—"} → ${nextWo ?? "—"}`);
       }
     }
     if (changes.length > 0) {

@@ -2,12 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
-import { updateEvent } from "@/services/events";
 
 type Props = {
-  eventId: string;
   value: string | null;
   readOnly?: boolean;
+  onSave: (next: string | null) => Promise<void>;
 };
 
 export default function WorkOrderCell(props: Props) {
@@ -27,7 +26,7 @@ export default function WorkOrderCell(props: Props) {
   return <EditableWorkOrderCell {...props} />;
 }
 
-function EditableWorkOrderCell({ eventId, value }: Props) {
+function EditableWorkOrderCell({ value, onSave }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value ?? "");
   const [saving, setSaving] = useState(false);
@@ -52,7 +51,7 @@ function EditableWorkOrderCell({ eventId, value }: Props) {
     setSaving(true);
     setError(null);
     try {
-      await updateEvent(eventId, { workOrderNumber: next });
+      await onSave(next);
       setEditing(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save.");

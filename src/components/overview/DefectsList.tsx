@@ -3,10 +3,12 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
 import { formatMinutesAsDuration } from "@/lib/time";
+import WorkOrderCell from "@/components/overview/WorkOrderCell";
+import { updateDefect } from "@/services/defects";
 import type { Defect } from "@/types";
 
 const DEFECTS_GRID_COLS =
-  "grid-cols-[minmax(0,1fr)_92px_92px_84px]";
+  "grid-cols-[72px_minmax(0,1fr)_92px_92px_84px]";
 
 type Props = {
   defects: Defect[];
@@ -33,6 +35,7 @@ export default function DefectsList({
           DEFECTS_GRID_COLS,
         )}
       >
+        <span>WO</span>
         <span>Defect ({defects.length})</span>
         <span>Reported</span>
         <span>TTAF</span>
@@ -46,6 +49,11 @@ export default function DefectsList({
             DEFECTS_GRID_COLS,
           )}
         >
+          <WorkOrderCell
+            value={d.workOrderNumber}
+            readOnly={readOnly}
+            onSave={(wo) => updateDefect(d.id, { workOrderNumber: wo })}
+          />
           <div className="truncate" title={d.title}>
             {d.title}
           </div>

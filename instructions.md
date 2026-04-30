@@ -131,6 +131,36 @@ const firebaseConfig = {
 - Subscription limit is **500** entries (up from 200) so the filter has more to work with on aircraft with long histories.
 - The flat list remains the underlying view; the planned grouped-per-entity ("history") view would layer on top of the same data without removing this one.
 
+### Bookings — linked event + linked defects
+- A booking can link **one event** (`eventId`) and **any number of defects** (`defectIds: string[]`) on the same tail. Both are validated server-side (defect/event must belong to the booking's tail).
+- The dialog has the existing event dropdown plus a checkbox list for defects. Resolved-but-still-linked items remain visible in the picker so users can see what's there before changing it (matches the existing event-link behavior).
+- Display logic lives in `src/lib/bookingDisplay.ts` (`buildBookingGroups` + `describeBookingGroups`) and is shared by both the calendar block and the Overview "In hangar"/"Booked" tile.
+  - Items are **grouped by WO#**. The event's group is rendered first (the parent); defect-only WO groups follow; items with no WO# come last.
+  - Within a group: event before defects.
+  - Resolved items keep their link but render with `line-through` + a small `Check` icon so closed work is still visible on the calendar.
+- Audit log captures defect labels and WO# alongside the event, same format pattern as before.
+
+### Calendar — grounded aircraft rows
+- Rows for non-airworthy tails (`airworthy === false`) get a slate background tint, a "Grounded" subtitle in the tail-cell, and a centered `GROUNDED` watermark across the row.
+- Bookings on a grounded tail render with their normal sky/blue colors — the tail being grounded is what's signaled, not the booking. The rationale is that grounded aircraft are exactly the ones most likely to need new bookings to return to service.
+
+### Overview — aircraft filter dropdown
+- Sort bar has a multi-select tail filter next to the sort options. Session-only state (resets on reload), all aircraft included by default.
+- Filter logic stores **excluded** tails (not included), so newly-added aircraft show up automatically without a re-tick.
+- Click behavior: **checkbox** toggles add/remove additively; **clicking the tail name** solos to that one tail (sets every other tail to excluded). The dropdown header has Select all / Unselect all and a one-line hint.
+
+### Defects — work order field
+- `Defect.workOrderNumber: string | null`. Same input semantics as events: an inline-editable cell on the defect row plus a field on the create/edit dialog.
+- `WorkOrderCell` was made entity-agnostic (takes `value` + `onSave`) so events and defects share the same inline-edit UX.
+- Unlike events, **a defect's WO# does not change its status** — defects don't have planned/unplanned. The WO# is purely metadata for cross-referencing maintenance work.
+
+### "Last updated:" prefix
+- Aircraft header timestamp and TTAF cell both display `Last updated: <date>` rather than `Updated <date>` / a bare date. Convention applies anywhere a "last updated" timestamp is shown to the user.
+
+### Branding — logo and favicon
+- `src/img/logo.png` shown small (`h-7`) next to the title in the app header, larger (`h-16`) above the title on the login screen.
+- `src/img/favicon.ico` + `favicon.png` both wired in `index.html`; browsers pick the best fit.
+
 ### Event identity (import dedup)
 - Each event stores its original Flightlogger `warning` text in a frozen `importedWarning` field. The visible `warning` is user-editable; the import dedup key is `(tailNumber, importedWarning)`.
 - This means renaming an event title (e.g. *"Next inspection (Date/flighthours/Landings)"* → *"100 Hour Inspection"*) does not break dedup or cause duplicates on re-import.

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { deriveInitialsFromEmail } from "@/lib/initials";
+import logoUrl from "@/img/logo.png";
 
 type Mode = "signin" | "signup";
 
@@ -80,15 +81,23 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen grid place-items-center p-6">
       <div className="w-full max-w-sm space-y-6">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            CAT Maintenance Tracker
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {mode === "signin"
-              ? "Sign in to continue."
-              : "Create an account to continue."}
-          </p>
+        <div className="flex flex-col items-center space-y-3">
+          <img
+            src={logoUrl}
+            alt=""
+            aria-hidden="true"
+            className="h-16 w-auto"
+          />
+          <div className="space-y-1 text-center">
+            <h1 className="text-2xl font-semibold tracking-tight">
+              CAT Maintenance Tracker
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {mode === "signin"
+                ? "Sign in to continue."
+                : "Create an account to continue."}
+            </p>
+          </div>
         </div>
 
         <form onSubmit={onSubmit} className="space-y-4">

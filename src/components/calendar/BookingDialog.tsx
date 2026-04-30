@@ -13,7 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createBooking, deleteBooking, updateBooking } from "@/services/bookings";
 import { normaliseTailNumber } from "@/lib/tails";
-import type { Aircraft, Booking, MaintenanceEvent } from "@/types";
+import { cn } from "@/lib/utils";
+import type { Aircraft, Booking, Defect, MaintenanceEvent } from "@/types";
 
 type Props = {
   open: boolean;
@@ -23,6 +24,8 @@ type Props = {
   // unresolved status, plus keeps the currently linked event in scope even
   // if it's been resolved or moved.
   events: MaintenanceEvent[];
+  // All defects. Same filtering rules as events.
+  defects: Defect[];
   // Edit mode: pass the booking to edit. Create mode: pass null.
   booking: Booking | null;
   // Create-mode prefill (tail & from date).
@@ -53,6 +56,7 @@ export default function BookingDialog({
   onOpenChange,
   fleet,
   events,
+  defects,
   booking,
   prefill,
 }: Props) {
@@ -62,6 +66,7 @@ export default function BookingDialog({
   const [to, setTo] = useState("");
   const [openEnded, setOpenEnded] = useState(false);
   const [eventId, setEventId] = useState<string>("");
+  const [defectIds, setDefectIds] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -76,6 +81,7 @@ export default function BookingDialog({
       setTo(tsToInputDate(booking.to));
       setOpenEnded(booking.to == null);
       setEventId(booking.eventId ?? "");
+      setDefectIds(booking.defectIds ?? []);
       setNotes(booking.notes ?? "");
     } else {
       setTail(prefill?.tailNumber ?? "");
@@ -83,6 +89,7 @@ export default function BookingDialog({
       setTo("");
       setOpenEnded(false);
       setEventId("");
+      setDefectIds([]);
       setNotes("");
     }
     setError(null);
@@ -113,13 +120,40 @@ export default function BookingDialog({
     return list;
   }, [events, normalisedTail, booking?.eventId]);
 
-  // When the tail changes (in create mode), drop a stale event link.
+  const defectOptions = useMemo(() => {
+    const list = defects
+      .filter((d) => d.tailNumber === normalisedTail && !d.resolvedAt)
+      .sort((a, b) => a.title.localeCompare(b.title));
+    // Keep currently-linked defects visible even if they're resolved.
+    const linkedIds = booking?.defectIds ?? [];
+    for (const id of linkedIds) {
+      if (!list.some((d) => d.id === id)) {
+        const linked = defects.find((d) => d.id === id);
+        if (linked) list.unshift(linked);
+      }
+    }
+    return list;
+  }, [defects, normalisedTail, booking?.defectIds]);
+
+  // When the tail changes (in create mode), drop stale event/defect links.
   useEffect(() => {
     if (isEdit) return;
-    if (!eventId) return;
-    const stillValid = eventOptions.some((e) => e.id === eventId);
-    if (!stillValid) setEventId("");
-  }, [normalisedTail, eventOptions, eventId, isEdit]);
+    if (eventId && !eventOptions.some((e) => e.id === eventId)) {
+      setEventId("");
+    }
+    setDefectIds((prev) => {
+      const next = prev.filter((id) =>
+        defectOptions.some((d) => d.id === id),
+      );
+      return next.length === prev.length ? prev : next;
+    });
+  }, [normalisedTail, eventOptions, defectOptions, eventId, isEdit]);
+
+  const toggleDefect = (id: string) => {
+    setDefectIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -157,6 +191,7 @@ export default function BookingDialog({
           from: fromDate,
           to: toDate,
           eventId: eventId || null,
+          defectIds,
           notes,
         });
       } else {
@@ -165,6 +200,7 @@ export default function BookingDialog({
           from: fromDate,
           to: toDate,
           eventId: eventId || null,
+          defectIds,
           notes: notes || null,
         });
       }
@@ -190,11 +226,12 @@ export default function BookingDialog({
   };
 
   const eventSelectDisabled = !normalisedTail || eventOptions.length === 0;
+  const defectSelectDisabled = !normalisedTail || defectOptions.length === 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <form onSubmit={onSubmit}>
+      <DialogContent className="overflow-hidden">
+        <form onSubmit={onSubmit} className="min-w-0">
           <DialogHeader>
             <DialogTitle>
               {isEdit ? `Edit booking — ${booking?.tailNumber}` : "New booking"}
@@ -205,7 +242,7 @@ export default function BookingDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="py-4 space-y-4">
+          <div className="py-4 space-y-4 min-w-0">
             <div className="space-y-2">
               <Label htmlFor="bookingTail">Tail number</Label>
               <Input
@@ -227,7 +264,7 @@ export default function BookingDialog({
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
+              <div className="space-y-2 min-w-0">
                 <Label htmlFor="bookingFrom">From</Label>
                 <Input
                   id="bookingFrom"
@@ -237,7 +274,7 @@ export default function BookingDialog({
                   required
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 min-w-0">
                 <Label
                   htmlFor="bookingTo"
                   className={openEnded ? "text-muted-foreground" : undefined}
@@ -278,7 +315,7 @@ export default function BookingDialog({
                 value={eventId}
                 onChange={(e) => setEventId(e.target.value)}
                 disabled={eventSelectDisabled}
-                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="flex h-9 w-full min-w-0 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 <option value="">— None / custom block —</option>
                 {eventOptions.map((e) => {
@@ -297,6 +334,64 @@ export default function BookingDialog({
                   : eventOptions.length === 0
                     ? "No open events on this tail. Add one from the overview if you want to link."
                     : "WO# (if set) and the event name will appear on the calendar block."}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Linked defects (optional)</Label>
+              {defectSelectDisabled ? (
+                <p className="text-xs text-muted-foreground">
+                  {!normalisedTail
+                    ? "Pick a tail number to see its defects."
+                    : "No open defects on this tail."}
+                </p>
+              ) : (
+                <div className="rounded-md border bg-background max-h-40 overflow-y-auto overflow-x-hidden">
+                  {defectOptions.map((d) => {
+                    const checked = defectIds.includes(d.id);
+                    const wo = d.workOrderNumber?.trim();
+                    const resolved = !!d.resolvedAt;
+                    return (
+                      <label
+                        key={d.id}
+                        className={cn(
+                          "flex cursor-pointer items-center gap-2 px-2 py-1 text-xs hover:bg-secondary/60 border-b last:border-b-0 min-w-0",
+                          resolved && "text-muted-foreground",
+                        )}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleDefect(d.id)}
+                          className="h-3.5 w-3.5 rounded border-input shrink-0"
+                        />
+                        {wo && (
+                          <span className="shrink-0 rounded bg-muted px-1 py-0.5 font-mono text-[10px] font-semibold">
+                            WO: {wo}
+                          </span>
+                        )}
+                        <span
+                          className={cn(
+                            "flex-1 min-w-0 truncate",
+                            resolved && "line-through",
+                          )}
+                          title={d.title}
+                        >
+                          {d.title}
+                        </span>
+                        {resolved && (
+                          <span className="shrink-0 text-[10px] italic">
+                            resolved
+                          </span>
+                        )}
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Defects sharing a WO# with the linked event are grouped under
+                that WO on the calendar block.
               </p>
             </div>
 

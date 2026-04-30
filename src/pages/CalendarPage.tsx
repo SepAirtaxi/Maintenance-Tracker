@@ -9,7 +9,8 @@ import { useAuth } from "@/context/AuthContext";
 import { subscribeAircraft } from "@/services/aircraft";
 import { subscribeBookings } from "@/services/bookings";
 import { subscribeEvents } from "@/services/events";
-import type { Aircraft, Booking, MaintenanceEvent } from "@/types";
+import { subscribeDefects } from "@/services/defects";
+import type { Aircraft, Booking, Defect, MaintenanceEvent } from "@/types";
 
 type ViewMode = "week" | "month";
 
@@ -65,6 +66,7 @@ export default function CalendarPage() {
   const [fleet, setFleet] = useState<Aircraft[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [events, setEvents] = useState<MaintenanceEvent[]>([]);
+  const [defects, setDefects] = useState<Defect[]>([]);
 
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [anchor, setAnchor] = useState<Date>(() => startOfDay(new Date()));
@@ -77,6 +79,7 @@ export default function CalendarPage() {
   useEffect(() => subscribeAircraft(setFleet), []);
   useEffect(() => subscribeBookings(setBookings), []);
   useEffect(() => subscribeEvents(setEvents), []);
+  useEffect(() => subscribeDefects(setDefects), []);
 
   const days = useMemo(() => getVisibleDays(viewMode, anchor), [viewMode, anchor]);
   const rangeLabel = useMemo(
@@ -210,6 +213,7 @@ export default function CalendarPage() {
         fleet={fleet}
         bookings={bookings}
         events={events}
+        defects={defects}
         viewMode={viewMode}
         readOnly={isViewer}
         onSelectBooking={(b) => (isViewer ? undefined : openEdit(b))}
@@ -223,6 +227,7 @@ export default function CalendarPage() {
         onOpenChange={setDialogOpen}
         fleet={fleet}
         events={events}
+        defects={defects}
         booking={editingBooking}
         prefill={{ tailNumber: prefillTail, from: prefillFrom }}
       />

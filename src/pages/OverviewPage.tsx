@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDown,
   ArrowUp,
   CalendarClock,
+  ChevronDown,
+  Filter,
   ShieldOff,
   Upload,
 } from "lucide-react";
@@ -79,6 +81,7 @@ type AircraftSummary = {
   defects: Defect[];
   nextBooking: Booking | null;
   nextBookingEvent: MaintenanceEvent | null;
+  nextBookingDefects: Defect[];
   worst: Severity;
   earliestDueMillis: number | null;
   airworthy: boolean;
@@ -104,6 +107,12 @@ export default function OverviewPage() {
 
   const [sortKey, setSortKey] = useState<SortKey>("tail");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  // Filter is session-only; defaults to all aircraft included. We track
+  // *excluded* tails so newly-added aircraft are visible by default.
+  const [excludedTails, setExcludedTails] = useState<Set<string>>(new Set());
+  const [filterOpen, setFilterOpen] = useState(false);
+  const filterRef = useRef<HTMLDivElement>(null);
 
   const [eventFormOpen, setEventFormOpen] = useState(false);
   const [eventFormTail, setEventFormTail] = useState<string>("");
@@ -137,6 +146,25 @@ export default function OverviewPage() {
   useEffect(() => subscribeDefects(setAllDefects), []);
   useEffect(() => subscribeBookings(setAllBookings), []);
 
+  useEffect(() => {
+    if (!filterOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
+        setFilterOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [filterOpen]);
+
+  const fleetTails = useMemo(
+    () =>
+      (aircraft ?? [])
+        .map((a) => a.tailNumber)
+        .sort((a, b) => a.localeCompare(b)),
+    [aircraft],
+  );
+
   const summaries: AircraftSummary[] = useMemo(() => {
     if (!aircraft) return [];
     const eventsByTail = new Map<string, MaintenanceEvent[]>();
@@ -157,6 +185,9 @@ export default function OverviewPage() {
     const eventsById = new Map<string, MaintenanceEvent>();
     for (const e of allEvents) eventsById.set(e.id, e);
 
+    const defectsById = new Map<string, Defect>();
+    for (const d of allDefects) defectsById.set(d.id, d);
+
     return aircraft.map((a) => {
       const events = eventsByTail.get(a.tailNumber) ?? [];
       let worst: Severity = "unknown";
@@ -175,12 +206,16 @@ export default function OverviewPage() {
       const nextBooking = nextBookingForTail(allBookings, a.tailNumber);
       const nextBookingEvent =
         nextBooking?.eventId ? eventsById.get(nextBooking.eventId) ?? null : null;
+      const nextBookingDefects = (nextBooking?.defectIds ?? [])
+        .map((id) => defectsById.get(id))
+        .filter((d): d is Defect => !!d);
       return {
         aircraft: a,
         events: sortEvents(events, a.totalTimeMinutes),
         defects: defectsByTail.get(a.tailNumber) ?? [],
         nextBooking,
         nextBookingEvent,
+        nextBookingDefects,
         worst,
         earliestDueMillis,
         airworthy: a.airworthy !== false,
@@ -225,12 +260,36 @@ export default function OverviewPage() {
     const aw: AircraftSummary[] = [];
     const gr: AircraftSummary[] = [];
     for (const s of summaries) {
+      if (excludedTails.has(s.aircraft.tailNumber)) continue;
       (s.airworthy ? aw : gr).push(s);
     }
     aw.sort(sortFn);
     gr.sort(sortFn);
     return { airworthyList: aw, groundedList: gr };
-  }, [summaries, sortFn]);
+  }, [summaries, sortFn, excludedTails]);
+
+  const includedCount = fleetTails.length - excludedTails.size;
+  const allIncluded = excludedTails.size === 0;
+  const noneIncluded = includedCount === 0 && fleetTails.length > 0;
+  const filterLabel = allIncluded
+    ? "All aircraft"
+    : noneIncluded
+      ? "No aircraft"
+      : `${includedCount} of ${fleetTails.length}`;
+
+  const toggleTail = (tail: string) => {
+    setExcludedTails((prev) => {
+      const next = new Set(prev);
+      if (next.has(tail)) next.delete(tail);
+      else next.add(tail);
+      return next;
+    });
+  };
+  const soloTail = (tail: string) => {
+    setExcludedTails(new Set(fleetTails.filter((t) => t !== tail)));
+  };
+  const selectAllTails = () => setExcludedTails(new Set());
+  const deselectAllTails = () => setExcludedTails(new Set(fleetTails));
 
   const onSortClick = (key: SortKey) => {
     if (key === sortKey) {
@@ -279,6 +338,7 @@ export default function OverviewPage() {
       defects={s.defects}
       nextBooking={s.nextBooking}
       nextBookingEvent={s.nextBookingEvent}
+      nextBookingDefects={s.nextBookingDefects}
       worstSeverity={s.worst}
       airworthy={s.airworthy}
       readOnly={isViewer}
@@ -352,6 +412,80 @@ export default function OverviewPage() {
             </button>
           );
         })}
+
+        <span className="mx-1 h-4 w-px bg-border" aria-hidden="true" />
+
+        <div className="relative" ref={filterRef}>
+          <button
+            type="button"
+            onClick={() => setFilterOpen((v) => !v)}
+            disabled={fleetTails.length === 0}
+            className={cn(
+              "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
+              !allIncluded
+                ? "border-primary bg-primary/5 text-foreground"
+                : "border-border bg-card text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
+            )}
+            title="Filter by tail number"
+          >
+            <Filter className="h-3 w-3" />
+            <span>{filterLabel}</span>
+            <ChevronDown className="h-3 w-3" />
+          </button>
+          {filterOpen && (
+            <div className="absolute left-0 top-full z-20 mt-1 w-60 rounded-md border bg-card text-foreground shadow-lg">
+              <div className="flex items-center justify-between gap-2 border-b px-2 py-1.5">
+                <button
+                  type="button"
+                  onClick={selectAllTails}
+                  disabled={allIncluded}
+                  className="text-[11px] font-medium text-primary hover:underline disabled:cursor-not-allowed disabled:text-muted-foreground disabled:no-underline"
+                >
+                  Select all
+                </button>
+                <button
+                  type="button"
+                  onClick={deselectAllTails}
+                  disabled={noneIncluded || fleetTails.length === 0}
+                  className="text-[11px] font-medium text-primary hover:underline disabled:cursor-not-allowed disabled:text-muted-foreground disabled:no-underline"
+                >
+                  Unselect all
+                </button>
+              </div>
+              <div className="border-b px-2 py-1 text-[10px] text-muted-foreground">
+                Click a tail to show only it. Use the checkbox to add/remove.
+              </div>
+              <div className="max-h-64 overflow-y-auto py-1">
+                {fleetTails.map((tail) => {
+                  const included = !excludedTails.has(tail);
+                  return (
+                    <div
+                      key={tail}
+                      className="flex items-center gap-2 px-2 py-1 text-xs hover:bg-secondary/60"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={included}
+                        onChange={() => toggleTail(tail)}
+                        aria-label={`Toggle ${tail}`}
+                        className="h-3.5 w-3.5 rounded border-input shrink-0 cursor-pointer"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => soloTail(tail)}
+                        title={`Show only ${tail}`}
+                        className="flex-1 min-w-0 text-left font-mono truncate cursor-pointer hover:underline"
+                      >
+                        {tail}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
         <span className="ml-auto text-xs text-muted-foreground">
           {airworthyList.length} airworthy
           {groundedList.length > 0 && ` · ${groundedList.length} grounded`}
@@ -371,6 +505,21 @@ export default function OverviewPage() {
       )}
       {aircraft && aircraft.length > 0 && (
         <>
+          {airworthyList.length === 0 && groundedList.length === 0 && (
+            <div className="rounded-md border border-dashed p-6 text-center">
+              <p className="text-sm text-muted-foreground">
+                No aircraft match the current filter.{" "}
+                <button
+                  type="button"
+                  onClick={selectAllTails}
+                  className="text-primary underline hover:no-underline"
+                >
+                  Select all
+                </button>
+                .
+              </p>
+            </div>
+          )}
           <div className="space-y-2">{airworthyList.map(renderCard)}</div>
 
           {groundedList.length > 0 && (
@@ -412,6 +561,7 @@ export default function OverviewPage() {
         onOpenChange={setBookingDialogOpen}
         fleet={aircraft ?? []}
         events={allEvents}
+        defects={allDefects}
         booking={null}
         prefill={{ tailNumber: bookingPrefillTail }}
       />

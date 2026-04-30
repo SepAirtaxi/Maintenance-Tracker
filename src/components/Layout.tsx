@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { CalendarDays, Eye, Plane, LayoutGrid, LogOut } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
+import logoUrl from "@/img/logo.png";
 
 const navItems = [
   { to: "/", label: "Overview", icon: LayoutGrid, end: true, viewerVisible: true },
@@ -27,9 +28,17 @@ export default function Layout() {
     <div className="min-h-screen flex flex-col">
       <header className="border-b bg-card">
         <div className="container flex h-14 items-center gap-6">
-          <span className="font-semibold tracking-tight">
-            CAT Maintenance Tracker
-          </span>
+          <div className="flex items-center gap-2">
+            <img
+              src={logoUrl}
+              alt=""
+              aria-hidden="true"
+              className="h-7 w-auto shrink-0"
+            />
+            <span className="font-semibold tracking-tight">
+              CAT Maintenance Tracker
+            </span>
+          </div>
           <nav className="flex items-center gap-1">
             {visibleNavItems.map(({ to, label, icon: Icon, end }) => (
               <NavLink

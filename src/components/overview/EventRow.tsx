@@ -12,6 +12,7 @@ import {
   type Severity,
 } from "@/lib/eventStatus";
 import WorkOrderCell from "@/components/overview/WorkOrderCell";
+import { updateEvent } from "@/services/events";
 import type { MaintenanceEvent } from "@/types";
 
 // Shared grid template — header row in AircraftCard must use the same one.
@@ -65,9 +66,9 @@ export default function EventRow({
       )}
     >
       <WorkOrderCell
-        eventId={event.id}
         value={event.workOrderNumber}
         readOnly={readOnly}
+        onSave={(wo) => updateEvent(event.id, { workOrderNumber: wo })}
       />
       <span className="flex items-center gap-1.5 min-w-0">
         <span

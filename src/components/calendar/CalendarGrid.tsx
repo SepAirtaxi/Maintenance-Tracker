@@ -1,14 +1,19 @@
-import { useMemo } from "react";
+import { Fragment, useMemo } from "react";
 import { format, isSameDay, isToday } from "date-fns";
-import { StickyNote } from "lucide-react";
+import { Check, StickyNote } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { Aircraft, Booking, MaintenanceEvent } from "@/types";
+import {
+  buildBookingGroups,
+  describeBookingGroups,
+} from "@/lib/bookingDisplay";
+import type { Aircraft, Booking, Defect, MaintenanceEvent } from "@/types";
 
 type Props = {
   days: Date[];
   fleet: Aircraft[];
   bookings: Booking[];
   events: MaintenanceEvent[];
+  defects: Defect[];
   viewMode: "week" | "month";
   readOnly: boolean;
   onSelectBooking: (booking: Booking) => void;
@@ -100,6 +105,7 @@ export default function CalendarGrid({
   fleet,
   bookings,
   events,
+  defects,
   viewMode,
   readOnly,
   onSelectBooking,
@@ -123,6 +129,12 @@ export default function CalendarGrid({
     for (const e of events) m.set(e.id, e);
     return m;
   }, [events]);
+
+  const defectsById = useMemo(() => {
+    const m = new Map<string, Defect>();
+    for (const d of defects) m.set(d.id, d);
+    return m;
+  }, [defects]);
 
   const todayIdx = useMemo(() => {
     return days.findIndex((d) => isToday(d));
@@ -188,17 +200,30 @@ export default function CalendarGrid({
       {/* Tail rows */}
       {fleet.map((a, rowIdx) => {
         const tailBookings = bookingsByTail.get(a.tailNumber) ?? [];
+        const grounded = a.airworthy === false;
         return (
           <div
             key={a.tailNumber}
             className={cn(
               "relative grid border-b last:border-b-0",
-              rowIdx % 2 === 1 && "bg-muted/20",
+              grounded
+                ? "bg-slate-300/50"
+                : rowIdx % 2 === 1 && "bg-muted/20",
             )}
             style={{ gridTemplateColumns: gridTemplate, height: ROW_HEIGHT_PX }}
           >
-            <div className="border-r px-2 flex items-center font-mono text-xs font-semibold tabular-nums truncate">
-              {a.tailNumber}
+            <div
+              className={cn(
+                "border-r px-2 flex flex-col justify-center font-mono text-xs font-semibold tabular-nums",
+                grounded && "text-slate-700",
+              )}
+            >
+              <span className="truncate leading-tight">{a.tailNumber}</span>
+              {grounded && (
+                <span className="text-[8px] font-bold uppercase tracking-wider text-slate-600 leading-none">
+                  Grounded
+                </span>
+              )}
             </div>
             {days.map((d, i) => {
               const today = i === todayIdx;
@@ -211,15 +236,28 @@ export default function CalendarGrid({
                   onClick={() => onCreateForCell(a.tailNumber, d)}
                   className={cn(
                     "border-r last:border-r-0 transition-colors",
-                    !readOnly && "hover:bg-sky-50",
-                    weekend && "bg-muted/20",
-                    today && "bg-amber-50/60",
+                    !readOnly &&
+                      (grounded ? "hover:bg-slate-400/40" : "hover:bg-sky-50"),
+                    weekend && (grounded ? "bg-slate-400/20" : "bg-muted/20"),
+                    today && !grounded && "bg-amber-50/60",
                     readOnly && "cursor-default",
                   )}
                   aria-label={`Book ${a.tailNumber} on ${format(d, "PP")}`}
                 />
               );
             })}
+
+            {grounded && (
+              <div
+                className="pointer-events-none absolute inset-y-0 flex items-center justify-center"
+                style={{ left: TAIL_COL_PX, right: 0 }}
+                aria-hidden="true"
+              >
+                <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-slate-500/70">
+                  Grounded
+                </span>
+              </div>
+            )}
 
             {/* Booking blocks layered above the day cells */}
             {tailBookings.map((b) => {
@@ -235,22 +273,29 @@ export default function CalendarGrid({
               const left = `calc(${TAIL_COL_PX}px + (100% - ${TAIL_COL_PX}px) * ${startCol} / ${dayCount})`;
               const width = `calc((100% - ${TAIL_COL_PX}px) * ${span} / ${dayCount})`;
 
-              const linkedEvent = b.eventId ? eventsById.get(b.eventId) : null;
-              const wo = linkedEvent?.workOrderNumber?.trim() || null;
-              const eventName = linkedEvent?.warning?.trim() || null;
+              const linkedEvent = b.eventId
+                ? eventsById.get(b.eventId) ?? null
+                : null;
+              const linkedDefects = (b.defectIds ?? [])
+                .map((id) => defectsById.get(id))
+                .filter((d): d is Defect => !!d);
+              const groups = buildBookingGroups(linkedEvent, linkedDefects);
               const notes = b.notes?.trim() || null;
-
-              const primary = eventName ?? notes ?? "Booking";
-              const secondary = eventName && notes ? notes : null;
+              const description = describeBookingGroups(groups);
 
               const titleAttr = [
                 a.tailNumber,
-                wo ? `WO ${wo}` : null,
-                eventName,
+                description,
                 notes,
               ]
                 .filter(Boolean)
                 .join(" · ");
+
+              const woBadgeClass = active
+                ? "bg-blue-200 text-blue-900"
+                : past
+                  ? "bg-zinc-200 text-zinc-700"
+                  : "bg-sky-200 text-sky-900";
 
               return (
                 <button
@@ -285,24 +330,48 @@ export default function CalendarGrid({
                       : null),
                   }}
                 >
-                  {wo && (
-                    <span
-                      className={cn(
-                        "shrink-0 rounded px-1 py-0.5 text-[10px] font-mono font-bold",
-                        active
-                          ? "bg-blue-200 text-blue-900"
-                          : past
-                            ? "bg-zinc-200 text-zinc-700"
-                            : "bg-sky-200 text-sky-900",
-                      )}
-                    >
-                      WO: {wo}
+                  {groups.length === 0 ? (
+                    <span className="truncate">
+                      {notes ?? "Booking"}
                     </span>
+                  ) : (
+                    groups.map((g, gi) => (
+                      <Fragment key={gi}>
+                        {gi > 0 && (
+                          <span className="shrink-0 opacity-50">|</span>
+                        )}
+                        {g.wo && (
+                          <span
+                            className={cn(
+                              "shrink-0 rounded px-1 py-0.5 text-[10px] font-mono font-bold",
+                              woBadgeClass,
+                            )}
+                          >
+                            WO: {g.wo}
+                          </span>
+                        )}
+                        <span className="truncate shrink min-w-0">
+                          {g.items.map((it, ii) => (
+                            <span
+                              key={ii}
+                              className={cn(
+                                it.resolved && "line-through opacity-60",
+                              )}
+                            >
+                              {ii > 0 ? " · " : ""}
+                              {it.resolved && (
+                                <Check className="inline h-2.5 w-2.5 mr-0.5" />
+                              )}
+                              {it.label}
+                            </span>
+                          ))}
+                        </span>
+                      </Fragment>
+                    ))
                   )}
-                  <span className="truncate">{primary}</span>
-                  {secondary && (
+                  {notes && groups.length > 0 && (
                     <span className="truncate italic opacity-80">
-                      · {secondary}
+                      · {notes}
                     </span>
                   )}
                   {notes && (

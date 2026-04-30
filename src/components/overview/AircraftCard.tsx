@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   CalendarDays,
+  Check,
   Gauge,
   History,
   Pencil,
@@ -19,6 +20,10 @@ import { formatMinutesAsDuration } from "@/lib/time";
 import { type Severity } from "@/lib/eventStatus";
 import { setAircraftAirworthy } from "@/services/aircraft";
 import { isBookingActive } from "@/services/bookings";
+import {
+  buildBookingGroups,
+  describeBookingGroups,
+} from "@/lib/bookingDisplay";
 import EventRow, { EVENTS_GRID_COLS } from "@/components/overview/EventRow";
 import DefectsList from "@/components/overview/DefectsList";
 import type { Aircraft, Booking, Defect, MaintenanceEvent } from "@/types";
@@ -31,6 +36,9 @@ type Props = {
   // The maintenance event linked from `nextBooking.eventId`, if any. Resolved
   // here in the parent so we don't have to thread the events list down.
   nextBookingEvent: MaintenanceEvent | null;
+  // Defects linked from `nextBooking.defectIds`. Same render-time-resolution
+  // pattern as `nextBookingEvent` — passed in already filtered.
+  nextBookingDefects: Defect[];
   worstSeverity: Severity;
   airworthy: boolean;
   readOnly?: boolean;
@@ -68,6 +76,7 @@ export default function AircraftCard({
   defects,
   nextBooking,
   nextBookingEvent,
+  nextBookingDefects,
   worstSeverity,
   airworthy,
   readOnly = false,
@@ -87,9 +96,12 @@ export default function AircraftCard({
   const [togglingAirworthy, setTogglingAirworthy] = useState(false);
   const navigate = useNavigate();
   const inHangar = isBookingActive(nextBooking);
-  const activeWo = inHangar
-    ? nextBookingEvent?.workOrderNumber?.trim() || null
-    : null;
+  const bookingGroups = nextBooking
+    ? buildBookingGroups(nextBookingEvent, nextBookingDefects)
+    : [];
+  // First group is the "primary" one — event's group, else first defect group.
+  const primaryGroup = bookingGroups[0] ?? null;
+  const activeWo = inHangar ? primaryGroup?.wo ?? null : null;
 
   const onToggleAirworthy = async () => {
     setTogglingAirworthy(true);
@@ -108,14 +120,11 @@ export default function AircraftCard({
   const bookingText = nextBooking
     ? formatBookingRange(nextBooking.from, nextBooking.to)
     : null;
-  const bookingWo = nextBookingEvent?.workOrderNumber?.trim() || null;
-  const bookingEventName = nextBookingEvent?.warning?.trim() || null;
   const bookingNotes = nextBooking?.notes?.trim() || null;
-  const bookingSecondary = bookingEventName ?? bookingNotes ?? null;
+  const bookingDescription = describeBookingGroups(bookingGroups);
   const bookingTitleAttr = [
     `Booked ${bookingText ?? ""}`,
-    bookingWo ? `WO ${bookingWo}` : null,
-    bookingEventName,
+    bookingDescription,
     bookingNotes,
   ]
     .filter(Boolean)
@@ -209,7 +218,7 @@ export default function AircraftCard({
                 className="text-[10px] text-muted-foreground whitespace-nowrap"
                 title="Last update to any data on this aircraft"
               >
-                Updated {formatDate(aircraft.updatedAt)}
+                Last updated: {formatDate(aircraft.updatedAt)}
               </span>
             )}
             <div className="flex items-center gap-0.5">
@@ -275,7 +284,7 @@ export default function AircraftCard({
             </span>
             <span className="text-[10px] text-muted-foreground whitespace-nowrap justify-self-end">
               {aircraft.totalTimeUpdatedAt
-                ? `${formatDate(aircraft.totalTimeUpdatedAt)}${
+                ? `Last updated: ${formatDate(aircraft.totalTimeUpdatedAt)}${
                     aircraft.totalTimeSource
                       ? ` · ${aircraft.totalTimeSource}`
                       : ""
@@ -330,30 +339,65 @@ export default function AircraftCard({
               >
                 {bookingText}
               </span>
-              {bookingWo && (
+              {bookingGroups.length > 0 ? (
+                bookingGroups.map((g, gi) => (
+                  <Fragment key={gi}>
+                    {gi > 0 && (
+                      <span
+                        className={cn(
+                          "shrink-0 opacity-50",
+                          inHangar ? "text-blue-800" : "text-sky-800",
+                        )}
+                      >
+                        |
+                      </span>
+                    )}
+                    {g.wo && (
+                      <span
+                        className={cn(
+                          "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-mono font-semibold",
+                          inHangar
+                            ? "bg-blue-200 text-blue-900"
+                            : "bg-sky-200 text-sky-900",
+                        )}
+                      >
+                        WO: {g.wo}
+                      </span>
+                    )}
+                    <span
+                      className={cn(
+                        "shrink min-w-0 truncate text-[11px]",
+                        inHangar ? "text-blue-800/80" : "text-sky-800/80",
+                      )}
+                    >
+                      {g.items.map((it, ii) => (
+                        <span
+                          key={ii}
+                          className={cn(
+                            it.resolved && "line-through opacity-60",
+                          )}
+                        >
+                          {ii > 0 ? " · " : ""}
+                          {it.resolved && (
+                            <Check className="inline h-2.5 w-2.5 mr-0.5" />
+                          )}
+                          {it.label}
+                        </span>
+                      ))}
+                    </span>
+                  </Fragment>
+                ))
+              ) : bookingNotes ? (
                 <span
                   className={cn(
-                    "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-mono font-semibold",
-                    inHangar
-                      ? "bg-blue-200 text-blue-900"
-                      : "bg-sky-200 text-sky-900",
-                  )}
-                >
-                  WO: {bookingWo}
-                </span>
-              )}
-              {bookingSecondary && (
-                <span
-                  className={cn(
-                    "shrink min-w-0 truncate text-[11px]",
-                    bookingEventName ? "" : "italic",
+                    "shrink min-w-0 truncate text-[11px] italic",
                     inHangar ? "text-blue-800/80" : "text-sky-800/80",
                   )}
                 >
-                  · {bookingSecondary}
+                  · {bookingNotes}
                 </span>
-              )}
-              {bookingNotes && bookingEventName && (
+              ) : null}
+              {bookingNotes && bookingGroups.length > 0 && (
                 <StickyNote
                   className={cn(
                     "h-3 w-3 shrink-0",

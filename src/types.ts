@@ -36,6 +36,9 @@ export type Booking = {
   // Optional link to a maintenance event on the same tail. WO# and event name
   // are derived from the linked event at render time, not stored here.
   eventId: string | null;
+  // Optional links to defects on the same tail. Same render-time-derivation
+  // pattern as `eventId`.
+  defectIds: string[];
   // Free-text notes for the booking — shown after the event name on the
   // calendar block, or on hover when space is tight.
   notes: string | null;
@@ -77,6 +80,7 @@ export type Defect = {
   title: string;
   reportedDate: Timestamp;
   reportedTtafMinutes: number;
+  workOrderNumber: string | null;
   // Resolution metadata. Resolved defects stay in Firestore as legacy; the
   // overview filters them out. All four resolution fields are set together.
   resolvedDate: Timestamp | null;
