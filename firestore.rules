@@ -40,5 +40,10 @@ service cloud.firestore {
       allow read: if signedIn();
       allow write: if isMember();
     }
+
+    match /bookings/{bookingId} {
+      allow read: if signedIn();
+      allow write: if isMember();
+    }
   }
 }

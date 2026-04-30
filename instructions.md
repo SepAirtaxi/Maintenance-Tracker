@@ -96,10 +96,10 @@ const firebaseConfig = {
 - Actions column holds three icon buttons in this order: **Close** (green check), **Edit**, **Delete**.
 
 ### Aircraft header — two-row layout
-- **Row 1:** tail number, model, airworthy/grounded toggle, in-maintenance badge, defect badge, "Updated <date>" (latest aircraft-doc `updatedAt`), and Event/Defect/Note/Log action buttons.
-- **Row 2:** TTAF and Booked maintenance as two equal-width cells with fixed-column grid layouts so values, meta date/source, and the edit pencil sit at predictable positions regardless of content width.
+- **Row 1:** tail number, model, airworthy/grounded toggle, in-maintenance badge (appends `WO: <num>` when the active booking has a linked event with a WO#), defect badge, "Updated <date>" (latest aircraft-doc `updatedAt`), and Event/Defect/Note/Log action buttons.
+- **Row 2:** TTAF as a fixed-column grid cell (predictable positions for value, meta date/source, edit pencil); Booked as a distinctive sky-tinted pill (or blue "In hangar" when today is within the active booking) — see *Maintenance calendar / bookings* below for content layout.
 - **Note banner (conditional):** when the aircraft has a free-text note set, an amber sticky-note banner appears below row 2 with the note text and an edit pencil (members only).
-- "Updated <date>" reflects any change to the aircraft document — TTAF, booking, model change, airworthiness toggle, note.
+- "Updated <date>" reflects any change to the aircraft document — TTAF, model change, airworthiness toggle, note. (Bookings live in their own collection now and don't bump the aircraft `updatedAt`.)
 
 ### Aircraft notes
 - Free-text remark field on the aircraft document (`note: string | null`). Up to 500 characters.

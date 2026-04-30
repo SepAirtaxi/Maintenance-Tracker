@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { differenceInCalendarDays } from "date-fns";
+import { useNavigate } from "react-router-dom";
 import {
   CalendarDays,
   Gauge,
@@ -18,9 +18,35 @@ import { formatBookingRange, formatDate } from "@/lib/format";
 import { formatMinutesAsDuration } from "@/lib/time";
 import { type Severity } from "@/lib/eventStatus";
 import { setAircraftAirworthy } from "@/services/aircraft";
+import { isBookingActive } from "@/services/bookings";
 import EventRow, { EVENTS_GRID_COLS } from "@/components/overview/EventRow";
 import DefectsList from "@/components/overview/DefectsList";
-import type { Aircraft, Defect, MaintenanceEvent } from "@/types";
+import type { Aircraft, Booking, Defect, MaintenanceEvent } from "@/types";
+
+type Props = {
+  aircraft: Aircraft;
+  events: MaintenanceEvent[];
+  defects: Defect[];
+  nextBooking: Booking | null;
+  // The maintenance event linked from `nextBooking.eventId`, if any. Resolved
+  // here in the parent so we don't have to thread the events list down.
+  nextBookingEvent: MaintenanceEvent | null;
+  worstSeverity: Severity;
+  airworthy: boolean;
+  readOnly?: boolean;
+  onOpenEditLog: () => void;
+  onUpdateTtaf: () => void;
+  onAddBooking: () => void;
+  onAddEvent: () => void;
+  onEditEvent: (event: MaintenanceEvent) => void;
+  onDeleteEvent: (event: MaintenanceEvent) => void;
+  onResolveEvent: (event: MaintenanceEvent) => void;
+  onAddDefect: () => void;
+  onEditDefect: (defect: Defect) => void;
+  onDeleteDefect: (defect: Defect) => void;
+  onResolveDefect: (defect: Defect) => void;
+  onEditNote: () => void;
+};
 
 const stripe: Record<Severity, string> = {
   red: "border-l-status-red bg-rose-50",
@@ -36,49 +62,18 @@ const headerBg: Record<Severity, string> = {
   unknown: "bg-secondary",
 };
 
-function isInHangar(
-  booking: Aircraft["nextBookedMaintenance"],
-  now: Date,
-): boolean {
-  if (!booking) return false;
-  const fromDelta = differenceInCalendarDays(now, booking.from.toDate());
-  if (fromDelta < 0) return false; // booking hasn't started yet
-  if (!booking.to) return true; // open-ended, in hangar
-  const toDelta = differenceInCalendarDays(now, booking.to.toDate());
-  return toDelta <= 0; // today is on/before the to date (inclusive)
-}
-
-type Props = {
-  aircraft: Aircraft;
-  events: MaintenanceEvent[];
-  defects: Defect[];
-  worstSeverity: Severity;
-  airworthy: boolean;
-  readOnly?: boolean;
-  onOpenEditLog: () => void;
-  onUpdateTtaf: () => void;
-  onEditBooked: () => void;
-  onAddEvent: () => void;
-  onEditEvent: (event: MaintenanceEvent) => void;
-  onDeleteEvent: (event: MaintenanceEvent) => void;
-  onResolveEvent: (event: MaintenanceEvent) => void;
-  onAddDefect: () => void;
-  onEditDefect: (defect: Defect) => void;
-  onDeleteDefect: (defect: Defect) => void;
-  onResolveDefect: (defect: Defect) => void;
-  onEditNote: () => void;
-};
-
 export default function AircraftCard({
   aircraft,
   events,
   defects,
+  nextBooking,
+  nextBookingEvent,
   worstSeverity,
   airworthy,
   readOnly = false,
   onOpenEditLog,
   onUpdateTtaf,
-  onEditBooked,
+  onAddBooking,
   onAddEvent,
   onEditEvent,
   onDeleteEvent,
@@ -90,7 +85,11 @@ export default function AircraftCard({
   onEditNote,
 }: Props) {
   const [togglingAirworthy, setTogglingAirworthy] = useState(false);
-  const inHangar = isInHangar(aircraft.nextBookedMaintenance, new Date());
+  const navigate = useNavigate();
+  const inHangar = isBookingActive(nextBooking);
+  const activeWo = inHangar
+    ? nextBookingEvent?.workOrderNumber?.trim() || null
+    : null;
 
   const onToggleAirworthy = async () => {
     setTogglingAirworthy(true);
@@ -106,12 +105,21 @@ export default function AircraftCard({
     : "border-l-4 border-l-destructive bg-muted";
   const headerClass = airworthy ? headerBg[worstSeverity] : "bg-muted/80";
 
-  const bookingText = aircraft.nextBookedMaintenance
-    ? formatBookingRange(
-        aircraft.nextBookedMaintenance.from,
-        aircraft.nextBookedMaintenance.to,
-      )
+  const bookingText = nextBooking
+    ? formatBookingRange(nextBooking.from, nextBooking.to)
     : null;
+  const bookingWo = nextBookingEvent?.workOrderNumber?.trim() || null;
+  const bookingEventName = nextBookingEvent?.warning?.trim() || null;
+  const bookingNotes = nextBooking?.notes?.trim() || null;
+  const bookingSecondary = bookingEventName ?? bookingNotes ?? null;
+  const bookingTitleAttr = [
+    `Booked ${bookingText ?? ""}`,
+    bookingWo ? `WO ${bookingWo}` : null,
+    bookingEventName,
+    bookingNotes,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <section
@@ -180,6 +188,11 @@ export default function AircraftCard({
             >
               <Wrench className="h-3.5 w-3.5" />
               In maintenance
+              {activeWo && (
+                <span className="ml-1 rounded bg-white/20 px-1 py-0.5 text-[10px] font-mono normal-case tracking-normal">
+                  WO: {activeWo}
+                </span>
+              )}
             </span>
           )}
 
@@ -283,29 +296,110 @@ export default function AircraftCard({
             )}
           </div>
 
-          <div className="grid grid-cols-[14px_3rem_minmax(0,1fr)_22px] items-center gap-x-2 rounded-md border bg-background px-2 py-1 shadow-sm">
-            <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-              Booked
-            </span>
-            <span className="font-mono tabular-nums text-xs truncate">
-              {bookingText ?? (
-                <span className="italic text-muted-foreground">not set</span>
+          {nextBooking ? (
+            <button
+              type="button"
+              onClick={() => navigate("/calendar")}
+              title={bookingTitleAttr || "Open calendar"}
+              className={cn(
+                "group flex items-center gap-2 rounded-md border px-2 py-1 shadow-sm text-left transition-colors",
+                inHangar
+                  ? "border-blue-300 bg-blue-50 hover:bg-blue-100"
+                  : "border-sky-200 bg-sky-50 hover:bg-sky-100",
               )}
-            </span>
-            {readOnly ? (
-              <span className="justify-self-end" />
-            ) : (
-              <button
-                type="button"
-                onClick={onEditBooked}
-                title="Edit booked maintenance"
-                className="rounded p-0.5 text-muted-foreground hover:bg-secondary hover:text-foreground justify-self-end"
+            >
+              <CalendarDays
+                className={cn(
+                  "h-3.5 w-3.5 shrink-0",
+                  inHangar ? "text-blue-700" : "text-sky-700",
+                )}
+              />
+              <span
+                className={cn(
+                  "text-[10px] font-bold uppercase tracking-wider shrink-0",
+                  inHangar ? "text-blue-800" : "text-sky-800",
+                )}
               >
-                <Pencil className="h-3 w-3" />
-              </button>
-            )}
-          </div>
+                {inHangar ? "In hangar" : "Booked"}
+              </span>
+              <span
+                className={cn(
+                  "font-mono tabular-nums text-xs shrink-0",
+                  inHangar ? "text-blue-900" : "text-sky-900",
+                )}
+              >
+                {bookingText}
+              </span>
+              {bookingWo && (
+                <span
+                  className={cn(
+                    "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-mono font-semibold",
+                    inHangar
+                      ? "bg-blue-200 text-blue-900"
+                      : "bg-sky-200 text-sky-900",
+                  )}
+                >
+                  WO: {bookingWo}
+                </span>
+              )}
+              {bookingSecondary && (
+                <span
+                  className={cn(
+                    "shrink min-w-0 truncate text-[11px]",
+                    bookingEventName ? "" : "italic",
+                    inHangar ? "text-blue-800/80" : "text-sky-800/80",
+                  )}
+                >
+                  · {bookingSecondary}
+                </span>
+              )}
+              {bookingNotes && bookingEventName && (
+                <StickyNote
+                  className={cn(
+                    "h-3 w-3 shrink-0",
+                    inHangar ? "text-blue-700/80" : "text-sky-700/80",
+                  )}
+                />
+              )}
+              {!readOnly && (
+                <span
+                  role="button"
+                  tabIndex={-1}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAddBooking();
+                  }}
+                  title="Add booking for this tail"
+                  className={cn(
+                    "ml-auto rounded p-0.5 transition-colors",
+                    inHangar
+                      ? "text-blue-700/70 hover:bg-blue-200 hover:text-blue-900"
+                      : "text-sky-700/70 hover:bg-sky-200 hover:text-sky-900",
+                  )}
+                >
+                  <Plus className="h-3 w-3" />
+                </span>
+              )}
+            </button>
+          ) : (
+            <div className="flex items-center gap-2 rounded-md border border-dashed bg-background/60 px-2 py-1 text-muted-foreground">
+              <CalendarDays className="h-3.5 w-3.5" />
+              <span className="text-[10px] font-medium uppercase tracking-wider">
+                Booked
+              </span>
+              <span className="text-xs italic">not set</span>
+              {!readOnly && (
+                <button
+                  type="button"
+                  onClick={onAddBooking}
+                  title="Book maintenance slot"
+                  className="ml-auto rounded p-0.5 hover:bg-secondary hover:text-foreground"
+                >
+                  <Plus className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {aircraft.note && (

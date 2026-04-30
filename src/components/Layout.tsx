@@ -1,12 +1,13 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Eye, Plane, LayoutGrid, LogOut } from "lucide-react";
+import { CalendarDays, Eye, Plane, LayoutGrid, LogOut } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 
 const navItems = [
-  { to: "/", label: "Overview", icon: LayoutGrid, end: true },
-  { to: "/aircraft", label: "Aircraft", icon: Plane, end: false },
+  { to: "/", label: "Overview", icon: LayoutGrid, end: true, viewerVisible: true },
+  { to: "/calendar", label: "Calendar", icon: CalendarDays, end: false, viewerVisible: true },
+  { to: "/aircraft", label: "Aircraft", icon: Plane, end: false, viewerVisible: false },
 ];
 
 export default function Layout() {
@@ -19,7 +20,7 @@ export default function Layout() {
   };
 
   const visibleNavItems = isViewer
-    ? navItems.filter((item) => item.to === "/")
+    ? navItems.filter((item) => item.viewerVisible)
     : navItems;
 
   return (

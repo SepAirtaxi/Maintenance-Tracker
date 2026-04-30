@@ -19,16 +19,28 @@ export type Aircraft = {
   totalTimeUpdatedAt: Timestamp | null;
   totalTimeUpdatedBy: string | null;
   totalTimeSource: "import" | "manual" | null;
-  nextBookedMaintenance: {
-    from: Timestamp;
-    // `to: null` = open-ended booking (release date unknown).
-    to: Timestamp | null;
-  } | null;
   // Free-text remark shown in the aircraft header. Used for context that
   // doesn't belong on a specific event/defect (e.g. "grounded — waiting on
   // spare part"). Null/absent when no note is set.
   note?: string | null;
   createdAt: Timestamp;
+  updatedAt: Timestamp;
+};
+
+export type Booking = {
+  id: string;
+  tailNumber: string;
+  from: Timestamp;
+  // `to: null` = open-ended booking (release date unknown).
+  to: Timestamp | null;
+  // Optional link to a maintenance event on the same tail. WO# and event name
+  // are derived from the linked event at render time, not stored here.
+  eventId: string | null;
+  // Free-text notes for the booking — shown after the event name on the
+  // calendar block, or on hover when space is tight.
+  notes: string | null;
+  createdAt: Timestamp;
+  createdBy: string;
   updatedAt: Timestamp;
 };
 

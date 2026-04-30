@@ -185,7 +185,6 @@ export async function executeImport(
         totalTimeUpdatedAt: null,
         totalTimeUpdatedBy: null,
         totalTimeSource: null,
-        nextBookedMaintenance: null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -209,7 +208,6 @@ export async function executeImport(
         totalTimeUpdatedAt: null,
         totalTimeUpdatedBy: null,
         totalTimeSource: null,
-        nextBookedMaintenance: null,
         // createdAt/updatedAt unused in-memory
       } as unknown as Aircraft);
     } else if (decision.action === "dismiss") {

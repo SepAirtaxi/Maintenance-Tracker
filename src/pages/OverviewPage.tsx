@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -13,7 +13,7 @@ import EventFormDialog from "@/components/overview/EventFormDialog";
 import DeleteEventDialog from "@/components/overview/DeleteEventDialog";
 import ImportDialog from "@/components/overview/ImportDialog";
 import TtafDialog from "@/components/overview/TtafDialog";
-import BookedMaintenanceDialog from "@/components/overview/BookedMaintenanceDialog";
+import BookingDialog from "@/components/calendar/BookingDialog";
 import NoteDialog from "@/components/overview/NoteDialog";
 import DefectFormDialog from "@/components/overview/DefectFormDialog";
 import DeleteDefectDialog from "@/components/overview/DeleteDefectDialog";
@@ -22,15 +22,16 @@ import ResolveEventDialog from "@/components/overview/ResolveEventDialog";
 import UpcomingEventsDialog from "@/components/overview/UpcomingEventsDialog";
 import AuditLogDialog from "@/components/overview/AuditLogDialog";
 import { useAuth } from "@/context/AuthContext";
-import { subscribeAircraft, sweepExpiredBookings } from "@/services/aircraft";
+import { subscribeAircraft } from "@/services/aircraft";
 import { subscribeEvents } from "@/services/events";
 import { subscribeDefects } from "@/services/defects";
+import { nextBookingForTail, subscribeBookings } from "@/services/bookings";
 import {
   getEventSeverity,
   worstSeverity,
   type Severity,
 } from "@/lib/eventStatus";
-import type { Aircraft, Defect, MaintenanceEvent } from "@/types";
+import type { Aircraft, Booking, Defect, MaintenanceEvent } from "@/types";
 
 const EVENT_SEVERITY_ORDER: Record<Severity, number> = {
   red: 0,
@@ -76,6 +77,8 @@ type AircraftSummary = {
   aircraft: Aircraft;
   events: MaintenanceEvent[];
   defects: Defect[];
+  nextBooking: Booking | null;
+  nextBookingEvent: MaintenanceEvent | null;
   worst: Severity;
   earliestDueMillis: number | null;
   airworthy: boolean;
@@ -97,6 +100,7 @@ export default function OverviewPage() {
   const [aircraft, setAircraft] = useState<Aircraft[] | null>(null);
   const [allEvents, setAllEvents] = useState<MaintenanceEvent[]>([]);
   const [allDefects, setAllDefects] = useState<Defect[]>([]);
+  const [allBookings, setAllBookings] = useState<Booking[]>([]);
 
   const [sortKey, setSortKey] = useState<SortKey>("tail");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
@@ -112,7 +116,8 @@ export default function OverviewPage() {
     useState<MaintenanceEvent | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [ttafTarget, setTtafTarget] = useState<Aircraft | null>(null);
-  const [bookedTarget, setBookedTarget] = useState<Aircraft | null>(null);
+  const [bookingDialogOpen, setBookingDialogOpen] = useState(false);
+  const [bookingPrefillTail, setBookingPrefillTail] = useState<string>("");
   const [noteTarget, setNoteTarget] = useState<Aircraft | null>(null);
 
   const [defectFormOpen, setDefectFormOpen] = useState(false);
@@ -130,15 +135,7 @@ export default function OverviewPage() {
   useEffect(() => subscribeAircraft(setAircraft), []);
   useEffect(() => subscribeEvents(setAllEvents), []);
   useEffect(() => subscribeDefects(setAllDefects), []);
-
-  const sweptRef = useRef(false);
-  useEffect(() => {
-    if (sweptRef.current) return;
-    if (!aircraft || aircraft.length === 0) return;
-    if (isViewer) return;
-    sweptRef.current = true;
-    void sweepExpiredBookings(aircraft);
-  }, [aircraft, isViewer]);
+  useEffect(() => subscribeBookings(setAllBookings), []);
 
   const summaries: AircraftSummary[] = useMemo(() => {
     if (!aircraft) return [];
@@ -157,6 +154,9 @@ export default function OverviewPage() {
       defectsByTail.set(d.tailNumber, arr);
     }
 
+    const eventsById = new Map<string, MaintenanceEvent>();
+    for (const e of allEvents) eventsById.set(e.id, e);
+
     return aircraft.map((a) => {
       const events = eventsByTail.get(a.tailNumber) ?? [];
       let worst: Severity = "unknown";
@@ -172,16 +172,21 @@ export default function OverviewPage() {
           earliestDueMillis = due;
         }
       }
+      const nextBooking = nextBookingForTail(allBookings, a.tailNumber);
+      const nextBookingEvent =
+        nextBooking?.eventId ? eventsById.get(nextBooking.eventId) ?? null : null;
       return {
         aircraft: a,
         events: sortEvents(events, a.totalTimeMinutes),
         defects: defectsByTail.get(a.tailNumber) ?? [],
+        nextBooking,
+        nextBookingEvent,
         worst,
         earliestDueMillis,
         airworthy: a.airworthy !== false,
       };
     });
-  }, [aircraft, allEvents, allDefects]);
+  }, [aircraft, allEvents, allDefects, allBookings]);
 
   const sortFn = useMemo(() => {
     const dir: 1 | -1 = sortDir === "asc" ? 1 : -1;
@@ -261,18 +266,25 @@ export default function OverviewPage() {
     setEventFormOpen(true);
   };
 
+  const openAddBooking = (tailNumber: string) => {
+    setBookingPrefillTail(tailNumber);
+    setBookingDialogOpen(true);
+  };
+
   const renderCard = (s: AircraftSummary) => (
     <AircraftCard
       key={s.aircraft.tailNumber}
       aircraft={s.aircraft}
       events={s.events}
       defects={s.defects}
+      nextBooking={s.nextBooking}
+      nextBookingEvent={s.nextBookingEvent}
       worstSeverity={s.worst}
       airworthy={s.airworthy}
       readOnly={isViewer}
       onOpenEditLog={() => setAuditLogTail(s.aircraft.tailNumber)}
       onUpdateTtaf={() => setTtafTarget(s.aircraft)}
-      onEditBooked={() => setBookedTarget(s.aircraft)}
+      onAddBooking={() => openAddBooking(s.aircraft.tailNumber)}
       onAddEvent={() => openAddEvent(s.aircraft.tailNumber)}
       onEditEvent={openEditEvent}
       onDeleteEvent={setDeleteTarget}
@@ -395,9 +407,13 @@ export default function OverviewPage() {
         aircraft={ttafTarget}
         onClose={() => setTtafTarget(null)}
       />
-      <BookedMaintenanceDialog
-        aircraft={bookedTarget}
-        onClose={() => setBookedTarget(null)}
+      <BookingDialog
+        open={bookingDialogOpen}
+        onOpenChange={setBookingDialogOpen}
+        fleet={aircraft ?? []}
+        events={allEvents}
+        booking={null}
+        prefill={{ tailNumber: bookingPrefillTail }}
       />
       <NoteDialog
         aircraft={noteTarget}

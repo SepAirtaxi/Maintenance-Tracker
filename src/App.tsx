@@ -3,6 +3,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Layout from "@/components/Layout";
 import OverviewPage from "@/pages/OverviewPage";
+import CalendarPage from "@/pages/CalendarPage";
 import AircraftPage from "@/pages/AircraftPage";
 import LoginPage from "@/pages/LoginPage";
 import ProfilePage from "@/pages/ProfilePage";
@@ -20,6 +21,7 @@ export default function App() {
           }
         >
           <Route path="/" element={<OverviewPage />} />
+          <Route path="/calendar" element={<CalendarPage />} />
           <Route
             path="/aircraft"
             element={
