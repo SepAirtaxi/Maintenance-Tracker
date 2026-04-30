@@ -84,7 +84,7 @@ export default function NoteDialog({ aircraft, onClose }: Props) {
               rows={4}
               autoFocus
               placeholder="e.g. Grounded — waiting on spare part (ETA 2 weeks)"
-              className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
+              className="flex w-full rounded-md border border-input bg-card px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
             />
             <p className="text-[11px] text-muted-foreground text-right tabular-nums">
               {remaining} characters left

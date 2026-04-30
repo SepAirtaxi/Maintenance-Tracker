@@ -247,18 +247,6 @@ export default function CalendarGrid({
               );
             })}
 
-            {grounded && (
-              <div
-                className="pointer-events-none absolute inset-y-0 flex items-center justify-center"
-                style={{ left: TAIL_COL_PX, right: 0 }}
-                aria-hidden="true"
-              >
-                <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-slate-500/70">
-                  Grounded
-                </span>
-              </div>
-            )}
-
             {/* Booking blocks layered above the day cells */}
             {tailBookings.map((b) => {
               const cols = bookingColumns(b, days);

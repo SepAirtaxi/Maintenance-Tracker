@@ -141,8 +141,23 @@ const firebaseConfig = {
 - Audit log captures defect labels and WO# alongside the event, same format pattern as before.
 
 ### Calendar — grounded aircraft rows
-- Rows for non-airworthy tails (`airworthy === false`) get a slate background tint, a "Grounded" subtitle in the tail-cell, and a centered `GROUNDED` watermark across the row.
+- Rows for non-airworthy tails (`airworthy === false`) get a slate background tint and a "Grounded" subtitle in the tail-cell. The cell label alone signals the status — no centered watermark across the row.
 - Bookings on a grounded tail render with their normal sky/blue colors — the tail being grounded is what's signaled, not the booking. The rationale is that grounded aircraft are exactly the ones most likely to need new bookings to return to service.
+
+### Calendar — week view starts on Monday
+- The 7-day week view is anchored to **Monday** as the leftmost column (ISO week convention). Initial mount, "Today", prev/next, and switching from month → week all snap the anchor to the Monday of the current week.
+- Month view is unchanged — it always renders the calendar days of the anchored month.
+
+### Calendar — booking view popup
+- Clicking a booking block opens a **read-only view popup** by default, not the editor. The popup shows hangar period, duration, work grouped by WO# (with event/defect badges and resolved strikethroughs), and notes.
+- The popup has an **Edit** button that closes the view and opens the existing `BookingDialog` editor. Viewers see the popup without the Edit button.
+- The view mirrors live data: if the underlying booking changes while the popup is open, the popup re-renders with the latest values.
+
+### Defects — resolve dialog pre-fills WO
+- `ResolveDefectDialog` pre-fills the resolution WO field from the defect's `workOrderNumber` when one is set, mirroring `ResolveEventDialog`. Auto-focus moves to the date field when WO is pre-filled (and stays on the WO field when it's empty).
+
+### Dialog input styling
+- Form inputs (`Input`, the booking event `<select>`, the booking defect checkbox list, and the note `<textarea>`) use `bg-card` (white) so they stand out against the grey dialog body. Disabled inputs use `bg-muted` to read as inert.
 
 ### Overview — aircraft filter dropdown
 - Sort bar has a multi-select tail filter next to the sort options. Session-only state (resets on reload), all aircraft included by default.

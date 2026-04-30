@@ -4,6 +4,7 @@ import { CalendarDays, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import BookingDialog from "@/components/calendar/BookingDialog";
+import BookingViewDialog from "@/components/calendar/BookingViewDialog";
 import CalendarGrid from "@/components/calendar/CalendarGrid";
 import { useAuth } from "@/context/AuthContext";
 import { subscribeAircraft } from "@/services/aircraft";
@@ -20,6 +21,14 @@ function startOfDay(d: Date): Date {
 
 function startOfMonth(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), 1);
+}
+
+// Monday-anchored week start. JS getDay() is 0=Sun..6=Sat; we want Mon as the
+// first column, so shift so that Monday → 0 and Sunday → 6.
+function startOfWeekMonday(d: Date): Date {
+  const day = d.getDay();
+  const offset = (day + 6) % 7;
+  return addDays(startOfDay(d), -offset);
 }
 
 function addDays(d: Date, days: number): Date {
@@ -69,12 +78,13 @@ export default function CalendarPage() {
   const [defects, setDefects] = useState<Defect[]>([]);
 
   const [viewMode, setViewMode] = useState<ViewMode>("week");
-  const [anchor, setAnchor] = useState<Date>(() => startOfDay(new Date()));
+  const [anchor, setAnchor] = useState<Date>(() => startOfWeekMonday(new Date()));
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
   const [prefillTail, setPrefillTail] = useState<string>("");
   const [prefillFrom, setPrefillFrom] = useState<Date | null>(null);
+  const [viewingBooking, setViewingBooking] = useState<Booking | null>(null);
 
   useEffect(() => subscribeAircraft(setFleet), []);
   useEffect(() => subscribeBookings(setBookings), []);
@@ -100,7 +110,7 @@ export default function CalendarPage() {
   const goToday = () => {
     setAnchor(
       viewMode === "week"
-        ? startOfDay(new Date())
+        ? startOfWeekMonday(new Date())
         : startOfMonth(new Date()),
     );
   };
@@ -110,7 +120,7 @@ export default function CalendarPage() {
     setViewMode(next);
     setAnchor(
       next === "week"
-        ? startOfDay(new Date())
+        ? startOfWeekMonday(new Date())
         : startOfMonth(new Date()),
     );
   };
@@ -128,6 +138,23 @@ export default function CalendarPage() {
     setPrefillFrom(null);
     setDialogOpen(true);
   };
+
+  const openView = (b: Booking) => {
+    setViewingBooking(b);
+  };
+
+  const promoteViewToEdit = () => {
+    if (!viewingBooking) return;
+    const target = viewingBooking;
+    setViewingBooking(null);
+    openEdit(target);
+  };
+
+  // Keep the view dialog showing live data if the booking is updated upstream.
+  const liveViewingBooking = useMemo(() => {
+    if (!viewingBooking) return null;
+    return bookings.find((b) => b.id === viewingBooking.id) ?? viewingBooking;
+  }, [bookings, viewingBooking]);
 
   return (
     <div className="space-y-3">
@@ -216,7 +243,7 @@ export default function CalendarPage() {
         defects={defects}
         viewMode={viewMode}
         readOnly={isViewer}
-        onSelectBooking={(b) => (isViewer ? undefined : openEdit(b))}
+        onSelectBooking={(b) => openView(b)}
         onCreateForCell={(tail, day) =>
           isViewer ? undefined : openCreate(tail, day)
         }
@@ -230,6 +257,15 @@ export default function CalendarPage() {
         defects={defects}
         booking={editingBooking}
         prefill={{ tailNumber: prefillTail, from: prefillFrom }}
+      />
+
+      <BookingViewDialog
+        booking={liveViewingBooking}
+        events={events}
+        defects={defects}
+        onClose={() => setViewingBooking(null)}
+        onEdit={promoteViewToEdit}
+        readOnly={isViewer}
       />
     </div>
   );

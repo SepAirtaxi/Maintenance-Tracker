@@ -45,7 +45,7 @@ export default function ResolveDefectDialog({ defect, onClose }: Props) {
   useEffect(() => {
     if (defect) {
       setResolvedDate(tsToInput(new Date()));
-      setWorkOrder("");
+      setWorkOrder(defect.workOrderNumber ?? "");
       setError(null);
       setSaving(false);
     }
@@ -119,7 +119,7 @@ export default function ResolveDefectDialog({ defect, onClose }: Props) {
                   required
                   placeholder="e.g. WO-12345"
                   className="font-mono"
-                  autoFocus
+                  autoFocus={!defect.workOrderNumber}
                 />
               </div>
             </div>

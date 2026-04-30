@@ -315,7 +315,7 @@ export default function BookingDialog({
                 value={eventId}
                 onChange={(e) => setEventId(e.target.value)}
                 disabled={eventSelectDisabled}
-                className="flex h-9 w-full min-w-0 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="flex h-9 w-full min-w-0 rounded-md border border-input bg-card px-3 py-1 text-sm shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 <option value="">— None / custom block —</option>
                 {eventOptions.map((e) => {
@@ -346,7 +346,7 @@ export default function BookingDialog({
                     : "No open defects on this tail."}
                 </p>
               ) : (
-                <div className="rounded-md border bg-background max-h-40 overflow-y-auto overflow-x-hidden">
+                <div className="rounded-md border bg-card max-h-40 overflow-y-auto overflow-x-hidden">
                   {defectOptions.map((d) => {
                     const checked = defectIds.includes(d.id);
                     const wo = d.workOrderNumber?.trim();
