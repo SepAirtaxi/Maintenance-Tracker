@@ -56,6 +56,7 @@ export default function EventFormDialog({
   const [timerExpiry, setTimerExpiry] = useState(""); // HH:MM or decimal hours, depending on `timerMode`
   const [timerMode, setTimerMode] = useState<"hhmm" | "decimal">("hhmm");
   const [workOrderNumber, setWorkOrderNumber] = useState("");
+  const [requisitionNumber, setRequisitionNumber] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -70,6 +71,7 @@ export default function EventFormDialog({
     );
     setTimerMode("hhmm");
     setWorkOrderNumber(event?.workOrderNumber ?? "");
+    setRequisitionNumber(event?.requisitionNumber ?? "");
     setError(null);
     setSaving(false);
   }, [open, event]);
@@ -129,6 +131,7 @@ export default function EventFormDialog({
           expiryDate: due,
           timerExpiryTimeMinutes: timerMinutes,
           workOrderNumber,
+          requisitionNumber: requisitionNumber || null,
         });
       } else {
         await createEvent({
@@ -137,6 +140,7 @@ export default function EventFormDialog({
           expiryDate: due,
           timerExpiryTimeMinutes: timerMinutes,
           workOrderNumber: workOrderNumber || null,
+          requisitionNumber: requisitionNumber || null,
         });
       }
       onOpenChange(false);
@@ -222,18 +226,32 @@ export default function EventFormDialog({
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="wo">Work order number (optional)</Label>
-              <Input
-                id="wo"
-                value={workOrderNumber}
-                onChange={(e) => setWorkOrderNumber(e.target.value)}
-                placeholder="e.g. WO-1234"
-              />
-              <p className="text-xs text-muted-foreground">
-                Filling this sets the event status to{" "}
-                <span className="font-medium">planned</span>.
-              </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="wo">Work order number (optional)</Label>
+                <Input
+                  id="wo"
+                  value={workOrderNumber}
+                  onChange={(e) => setWorkOrderNumber(e.target.value)}
+                  placeholder="e.g. WO-1234"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Filling this sets the event status to{" "}
+                  <span className="font-medium">WO created</span>.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="req">Requisition number (optional)</Label>
+                <Input
+                  id="req"
+                  value={requisitionNumber}
+                  onChange={(e) => setRequisitionNumber(e.target.value)}
+                  placeholder="e.g. REQ-9876"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Logistics-only. Doesn't affect status or bookings.
+                </p>
+              </div>
             </div>
 
             {error && (

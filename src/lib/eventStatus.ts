@@ -1,5 +1,5 @@
 import { differenceInCalendarDays } from "date-fns";
-import type { MaintenanceEvent } from "@/types";
+import type { Booking, Defect, MaintenanceEvent } from "@/types";
 
 // Severity thresholds. "Green until <X" semantics:
 //   days >= 7  → green
@@ -65,4 +65,52 @@ export function getEventSeverity(
     computeMinutesLeft(event, currentTtafMinutes),
   );
   return worstSeverity(daysSeverity, minutesSeverity);
+}
+
+// Planned/action status surfaced in the overview.
+//   • unplanned → no work order assigned yet ("no action taken")
+//   • planned   → a work order has been created
+//   • booked    → WO exists AND a calendar block links it (booking → eventId
+//                 for events, booking → defectIds for defects)
+export type PlanStatus = "unplanned" | "planned" | "booked";
+
+export function getEventPlanStatus(
+  event: MaintenanceEvent,
+  bookedEventIds: ReadonlySet<string>,
+): PlanStatus {
+  const wo = event.workOrderNumber?.trim();
+  if (!wo) return "unplanned";
+  return bookedEventIds.has(event.id) ? "booked" : "planned";
+}
+
+export function getDefectPlanStatus(
+  defect: Defect,
+  bookedDefectIds: ReadonlySet<string>,
+): PlanStatus {
+  const wo = defect.workOrderNumber?.trim();
+  if (!wo) return "unplanned";
+  return bookedDefectIds.has(defect.id) ? "booked" : "planned";
+}
+
+// Builds two id-sets describing which events / defects appear on a booking.
+// Only bookings whose linked entity has a WO# count — without one, the entity
+// can't be in the "WO + booked" state.
+export function buildBookedIdSets(
+  bookings: Booking[],
+  events: ReadonlyMap<string, MaintenanceEvent>,
+  defects: ReadonlyMap<string, Defect>,
+): { eventIds: Set<string>; defectIds: Set<string> } {
+  const eventIds = new Set<string>();
+  const defectIds = new Set<string>();
+  for (const b of bookings) {
+    if (b.eventId) {
+      const e = events.get(b.eventId);
+      if (e && e.workOrderNumber?.trim()) eventIds.add(e.id);
+    }
+    for (const did of b.defectIds ?? []) {
+      const d = defects.get(did);
+      if (d && d.workOrderNumber?.trim()) defectIds.add(d.id);
+    }
+  }
+  return { eventIds, defectIds };
 }

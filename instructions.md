@@ -182,3 +182,51 @@ const firebaseConfig = {
 - The `importedWarning` field is hidden from the UI — it's set automatically on import and used internally.
 - Manual events have `importedWarning: null` (they have no Flightlogger identity); the dedup falls back to the visible `warning` for those, but only as a safety net since manual events are not expected to collide with Flightlogger rows.
 - A one-time backfill runs at the start of the first import after this feature shipped, populating `importedWarning` from `warning` for legacy events. Idempotent — silent no-op on subsequent runs.
+
+### Sticky app header
+- The top app bar (`Layout.tsx`) is `sticky top-0 z-40`. The nav between Overview / Calendar / Settings stays reachable while scrolling long event lists.
+
+### Calendar — week numbers
+- ISO week numbers are surfaced in two places:
+  - The range label appends the week info: `5 – 11 May 2026 · W19` for week view, `May 2026 · W18–W22` for month view.
+  - In the day-header row of the grid, every Monday cell shows a small `Wxx` badge above the day. This works for both views — week view tags the single Monday, month view tags each one.
+- Implementation uses `date-fns` `getISOWeek`. Monday-anchoring already existed (see *week view starts on Monday* above), so week boundaries line up.
+
+### Overview — booking pill opens the view dialog
+- Clicking the booking pill in the aircraft header opens the same `BookingViewDialog` used by the calendar page (read-only view, with an Edit button that promotes to `BookingDialog`). It no longer navigates to `/calendar`.
+- The pill click target is the whole pill *minus* the inline `+` (add booking) button — that one still triggers the create flow.
+- `OverviewPage` owns the view/edit state for this flow; the underlying booking is looked up live from `allBookings` so the popup stays in sync if the booking changes upstream.
+
+### Plan status (three states)
+- Events and defects display a derived **PlanStatus**: `unplanned` / `planned` / `booked` (rendered as *no action* / *WO created* / *WO + booked*).
+- `unplanned` = no work-order number set.
+- `planned` = WO# set, no booking links this entity.
+- `booked` = WO# set **and** at least one booking links the entity (event via `eventId`, defect via `defectIds`). The booked-set is precomputed in `OverviewPage` via `buildBookedIdSets` (`src/lib/eventStatus.ts`) and passed down to the rows.
+- The Firestore `event.status` field is still written (`statusFromWo`) for historical/audit continuity but the overview rendering uses the derived status. Defects had no status badge before — they now show one symmetric to events.
+
+### Requisition numbers
+- Logistics-only number on events and defects: `requisitionNumber: string | null` on both types. Purely informational — it does **not** participate in plan status, calendar links, or import dedup.
+- Same UX as the WO field: an inline-editable cell on each row (the `WorkOrderCell` component is generalized via optional `placeholder` / `editTitle` / `emptyAffordance` props), and a field in the create/edit dialogs.
+- Audit-log on change emits `REQ <prev> → <next>` lines, parallel to the existing `WO …` ones.
+- Imports and seed write `null` for the field; legacy events read `null` via the standard `?? null` defaulting in `docToEvent` / `docToDefect`.
+
+### Settings module — Aircraft + Locations
+- The old `/aircraft` page was renamed to **Settings** (`/settings`, `src/pages/SettingsPage.tsx`). Two tabbed sections:
+  - **Aircraft** — unchanged behavior; same form/delete dialogs, same seed button.
+  - **Locations** — CRUD for hangar/sub-contractor entries used as the booking location.
+- `/aircraft` still resolves: `App.tsx` redirects it to `/settings` so old bookmarks don't break. Layout nav points at `/settings` directly with a `Settings` icon.
+- `Location` type (`src/types.ts`):
+  - `name: string` (required)
+  - `kind: "hangar" | "external"` — own hangar vs. sub-contractor / out-of-house
+  - `notes: string | null` (free text — address, contact, capacity, etc.)
+  - `active: boolean` — inactive locations are hidden from new-booking pickers but kept for legacy bookings; the picker re-introduces a currently-linked inactive location so it stays editable.
+- Service: `src/services/locations.ts` (subscribe / create / update / delete). Stored in Firestore collection `locations`. `firestore.rules` now permits read for any signed-in user, write for members. **Deploy needs `firebase deploy --only firestore:rules`** to take effect.
+
+### Bookings — location field
+- New `Booking.locationId: string | null`. The `BookingDialog` form has a Location selector below the defect list. Selecting `— No location —` stores `null`. The selected location is looked up at render time, so renaming a location updates everywhere live.
+- Location label is rendered in three places:
+  - **Calendar grid block** — small chip with name + hangar/external icon, sized to fit alongside the WO group(s).
+  - **Overview booking pill** — same chip, alongside the date range and WO/event labels.
+  - **`BookingViewDialog`** — full row with name, kind label (`own hangar` / `external / sub-contractor`), and notes if any. Inactive locations show a discreet `inactive` tag.
+- Audit log captures location changes — `describeForAudit` adds `location: <name>` to the create/update/delete summary lines.
+- Bookings created before this feature have `locationId: null` and render without a location chip; setting one is non-destructive.

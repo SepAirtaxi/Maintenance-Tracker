@@ -7,6 +7,11 @@ type Props = {
   value: string | null;
   readOnly?: boolean;
   onSave: (next: string | null) => Promise<void>;
+  // Defaults to work-order copy. Pass custom strings to reuse for other
+  // numbers (e.g. requisition).
+  placeholder?: string;
+  editTitle?: string;
+  emptyAffordance?: string;
 };
 
 export default function WorkOrderCell(props: Props) {
@@ -26,7 +31,13 @@ export default function WorkOrderCell(props: Props) {
   return <EditableWorkOrderCell {...props} />;
 }
 
-function EditableWorkOrderCell({ value, onSave }: Props) {
+function EditableWorkOrderCell({
+  value,
+  onSave,
+  placeholder = "WO number",
+  editTitle = "Click to edit work order number",
+  emptyAffordance = "add…",
+}: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value ?? "");
   const [saving, setSaving] = useState(false);
@@ -91,7 +102,7 @@ function EditableWorkOrderCell({ value, onSave }: Props) {
             }}
             disabled={saving}
             className="h-6 px-1.5 text-xs font-mono"
-            placeholder="WO number"
+            placeholder={placeholder}
           />
           <button
             type="button"
@@ -124,7 +135,7 @@ function EditableWorkOrderCell({ value, onSave }: Props) {
       type="button"
       onClick={() => setEditing(true)}
       className="text-left min-w-0 group rounded px-1 py-0.5 hover:bg-secondary"
-      title="Click to edit work order number"
+      title={editTitle}
     >
       <span
         className={cn(
@@ -132,7 +143,7 @@ function EditableWorkOrderCell({ value, onSave }: Props) {
           !value && "text-muted-foreground italic",
         )}
       >
-        {value ?? "add…"}
+        {value ?? emptyAffordance}
       </span>
     </button>
   );

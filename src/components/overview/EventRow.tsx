@@ -6,9 +6,11 @@ import { formatHoursLeft, formatMinutesAsDuration } from "@/lib/time";
 import {
   computeDaysLeft,
   computeMinutesLeft,
+  getEventPlanStatus,
   getEventSeverity,
   severityFromDays,
   severityFromMinutes,
+  type PlanStatus,
   type Severity,
 } from "@/lib/eventStatus";
 import WorkOrderCell from "@/components/overview/WorkOrderCell";
@@ -16,9 +18,9 @@ import { updateEvent } from "@/services/events";
 import type { MaintenanceEvent } from "@/types";
 
 // Shared grid template — header row in AircraftCard must use the same one.
-// Columns: WO | Event(dot+name) | Status | Due-at(date|TTAF) | Time-left(days|hours) | Actions
+// Columns: WO | REQ | Event(dot+name) | Status | Due-at(date|TTAF) | Time-left(days|hours) | Actions
 export const EVENTS_GRID_COLS =
-  "grid-cols-[72px_minmax(0,1fr)_84px_200px_140px_84px]";
+  "grid-cols-[72px_72px_minmax(0,1fr)_120px_200px_140px_84px]";
 
 const dotClass: Record<Severity, string> = {
   green: "bg-status-green",
@@ -38,21 +40,40 @@ const severityHalf: Record<Severity, string> = {
 type Props = {
   event: MaintenanceEvent;
   currentTtafMinutes: number | null;
+  // True when a booking links this event — drives the third "Booked" status.
+  booked: boolean;
   readOnly?: boolean;
   onEdit: () => void;
   onDelete: () => void;
   onResolve: () => void;
 };
 
+const PLAN_STATUS_LABEL: Record<PlanStatus, string> = {
+  unplanned: "no action",
+  planned: "WO created",
+  booked: "WO + booked",
+};
+
+const PLAN_STATUS_CLASS: Record<PlanStatus, string> = {
+  unplanned: "bg-amber-100/70 text-amber-800",
+  planned: "bg-emerald-100 text-emerald-700",
+  booked: "bg-blue-100 text-blue-800",
+};
+
 export default function EventRow({
   event,
   currentTtafMinutes,
+  booked,
   readOnly = false,
   onEdit,
   onDelete,
   onResolve,
 }: Props) {
   const severity = getEventSeverity(event, currentTtafMinutes);
+  const planStatus = getEventPlanStatus(
+    event,
+    booked ? new Set([event.id]) : new Set(),
+  );
   const daysLeft = computeDaysLeft(event);
   const minutesLeft = computeMinutesLeft(event, currentTtafMinutes);
   const daysSev = severityFromDays(daysLeft);
@@ -70,6 +91,13 @@ export default function EventRow({
         readOnly={readOnly}
         onSave={(wo) => updateEvent(event.id, { workOrderNumber: wo })}
       />
+      <WorkOrderCell
+        value={event.requisitionNumber}
+        readOnly={readOnly}
+        onSave={(req) => updateEvent(event.id, { requisitionNumber: req })}
+        placeholder="REQ number"
+        editTitle="Click to edit requisition number"
+      />
       <span className="flex items-center gap-1.5 min-w-0">
         <span
           className={cn("h-2.5 w-2.5 rounded-full shrink-0", dotClass[severity])}
@@ -82,12 +110,17 @@ export default function EventRow({
       <span
         className={cn(
           "justify-self-start rounded-full px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider",
-          event.status === "planned"
-            ? "bg-emerald-100 text-emerald-700"
-            : "bg-amber-100/70 text-amber-800",
+          PLAN_STATUS_CLASS[planStatus],
         )}
+        title={
+          planStatus === "booked"
+            ? "WO assigned and a calendar block is linked to this event"
+            : planStatus === "planned"
+              ? "Work order assigned — no hangar slot booked yet"
+              : "No work order assigned yet"
+        }
       >
-        {event.status}
+        {PLAN_STATUS_LABEL[planStatus]}
       </span>
       {/* Due at — date | TTAF compartment */}
       <div className="grid grid-cols-2 divide-x divide-border rounded-md border border-border bg-background shadow-sm overflow-hidden">

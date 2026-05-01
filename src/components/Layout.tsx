@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { CalendarDays, Eye, Plane, LayoutGrid, LogOut } from "lucide-react";
+import { CalendarDays, Eye, LayoutGrid, LogOut, Settings } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import logoUrl from "@/img/logo.png";
@@ -8,7 +8,7 @@ import logoUrl from "@/img/logo.png";
 const navItems = [
   { to: "/", label: "Overview", icon: LayoutGrid, end: true, viewerVisible: true },
   { to: "/calendar", label: "Calendar", icon: CalendarDays, end: false, viewerVisible: true },
-  { to: "/aircraft", label: "Aircraft", icon: Plane, end: false, viewerVisible: false },
+  { to: "/settings", label: "Settings", icon: Settings, end: false, viewerVisible: false },
 ];
 
 export default function Layout() {
@@ -26,7 +26,7 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="border-b bg-card">
+      <header className="sticky top-0 z-40 border-b bg-card shadow-sm">
         <div className="container flex h-14 items-center gap-6">
           <div className="flex items-center gap-2">
             <img

@@ -16,6 +16,7 @@ import DeleteEventDialog from "@/components/overview/DeleteEventDialog";
 import ImportDialog from "@/components/overview/ImportDialog";
 import TtafDialog from "@/components/overview/TtafDialog";
 import BookingDialog from "@/components/calendar/BookingDialog";
+import BookingViewDialog from "@/components/calendar/BookingViewDialog";
 import NoteDialog from "@/components/overview/NoteDialog";
 import DefectFormDialog from "@/components/overview/DefectFormDialog";
 import DeleteDefectDialog from "@/components/overview/DeleteDefectDialog";
@@ -28,12 +29,20 @@ import { subscribeAircraft } from "@/services/aircraft";
 import { subscribeEvents } from "@/services/events";
 import { subscribeDefects } from "@/services/defects";
 import { nextBookingForTail, subscribeBookings } from "@/services/bookings";
+import { subscribeLocations } from "@/services/locations";
 import {
+  buildBookedIdSets,
   getEventSeverity,
   worstSeverity,
   type Severity,
 } from "@/lib/eventStatus";
-import type { Aircraft, Booking, Defect, MaintenanceEvent } from "@/types";
+import type {
+  Aircraft,
+  Booking,
+  Defect,
+  Location,
+  MaintenanceEvent,
+} from "@/types";
 
 const EVENT_SEVERITY_ORDER: Record<Severity, number> = {
   red: 0,
@@ -104,6 +113,7 @@ export default function OverviewPage() {
   const [allEvents, setAllEvents] = useState<MaintenanceEvent[]>([]);
   const [allDefects, setAllDefects] = useState<Defect[]>([]);
   const [allBookings, setAllBookings] = useState<Booking[]>([]);
+  const [allLocations, setAllLocations] = useState<Location[]>([]);
 
   const [sortKey, setSortKey] = useState<SortKey>("tail");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
@@ -127,6 +137,8 @@ export default function OverviewPage() {
   const [ttafTarget, setTtafTarget] = useState<Aircraft | null>(null);
   const [bookingDialogOpen, setBookingDialogOpen] = useState(false);
   const [bookingPrefillTail, setBookingPrefillTail] = useState<string>("");
+  const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
+  const [viewingBooking, setViewingBooking] = useState<Booking | null>(null);
   const [noteTarget, setNoteTarget] = useState<Aircraft | null>(null);
 
   const [defectFormOpen, setDefectFormOpen] = useState(false);
@@ -145,6 +157,7 @@ export default function OverviewPage() {
   useEffect(() => subscribeEvents(setAllEvents), []);
   useEffect(() => subscribeDefects(setAllDefects), []);
   useEffect(() => subscribeBookings(setAllBookings), []);
+  useEffect(() => subscribeLocations(setAllLocations), []);
 
   useEffect(() => {
     if (!filterOpen) return;
@@ -165,6 +178,29 @@ export default function OverviewPage() {
     [aircraft],
   );
 
+  const eventsById = useMemo(() => {
+    const m = new Map<string, MaintenanceEvent>();
+    for (const e of allEvents) m.set(e.id, e);
+    return m;
+  }, [allEvents]);
+
+  const defectsById = useMemo(() => {
+    const m = new Map<string, Defect>();
+    for (const d of allDefects) m.set(d.id, d);
+    return m;
+  }, [allDefects]);
+
+  const locationsById = useMemo(() => {
+    const m = new Map<string, Location>();
+    for (const l of allLocations) m.set(l.id, l);
+    return m;
+  }, [allLocations]);
+
+  const bookedIds = useMemo(
+    () => buildBookedIdSets(allBookings, eventsById, defectsById),
+    [allBookings, eventsById, defectsById],
+  );
+
   const summaries: AircraftSummary[] = useMemo(() => {
     if (!aircraft) return [];
     const eventsByTail = new Map<string, MaintenanceEvent[]>();
@@ -181,12 +217,6 @@ export default function OverviewPage() {
       arr.push(d);
       defectsByTail.set(d.tailNumber, arr);
     }
-
-    const eventsById = new Map<string, MaintenanceEvent>();
-    for (const e of allEvents) eventsById.set(e.id, e);
-
-    const defectsById = new Map<string, Defect>();
-    for (const d of allDefects) defectsById.set(d.id, d);
 
     return aircraft.map((a) => {
       const events = eventsByTail.get(a.tailNumber) ?? [];
@@ -221,7 +251,7 @@ export default function OverviewPage() {
         airworthy: a.airworthy !== false,
       };
     });
-  }, [aircraft, allEvents, allDefects, allBookings]);
+  }, [aircraft, allEvents, allDefects, allBookings, eventsById, defectsById]);
 
   const sortFn = useMemo(() => {
     const dir: 1 | -1 = sortDir === "asc" ? 1 : -1;
@@ -326,7 +356,23 @@ export default function OverviewPage() {
   };
 
   const openAddBooking = (tailNumber: string) => {
+    setEditingBooking(null);
     setBookingPrefillTail(tailNumber);
+    setBookingDialogOpen(true);
+  };
+
+  // Keep the view dialog showing live data if the booking is updated upstream.
+  const liveViewingBooking = useMemo(() => {
+    if (!viewingBooking) return null;
+    return allBookings.find((b) => b.id === viewingBooking.id) ?? viewingBooking;
+  }, [allBookings, viewingBooking]);
+
+  const promoteViewToEdit = () => {
+    if (!viewingBooking) return;
+    const target = viewingBooking;
+    setViewingBooking(null);
+    setEditingBooking(target);
+    setBookingPrefillTail("");
     setBookingDialogOpen(true);
   };
 
@@ -341,10 +387,14 @@ export default function OverviewPage() {
       nextBookingDefects={s.nextBookingDefects}
       worstSeverity={s.worst}
       airworthy={s.airworthy}
+      bookedEventIds={bookedIds.eventIds}
+      bookedDefectIds={bookedIds.defectIds}
+      locationsById={locationsById}
       readOnly={isViewer}
       onOpenEditLog={() => setAuditLogTail(s.aircraft.tailNumber)}
       onUpdateTtaf={() => setTtafTarget(s.aircraft)}
       onAddBooking={() => openAddBooking(s.aircraft.tailNumber)}
+      onViewBooking={setViewingBooking}
       onAddEvent={() => openAddEvent(s.aircraft.tailNumber)}
       onEditEvent={openEditEvent}
       onDeleteEvent={setDeleteTarget}
@@ -558,12 +608,24 @@ export default function OverviewPage() {
       />
       <BookingDialog
         open={bookingDialogOpen}
-        onOpenChange={setBookingDialogOpen}
+        onOpenChange={(open) => {
+          setBookingDialogOpen(open);
+          if (!open) setEditingBooking(null);
+        }}
         fleet={aircraft ?? []}
         events={allEvents}
         defects={allDefects}
-        booking={null}
+        booking={editingBooking}
         prefill={{ tailNumber: bookingPrefillTail }}
+      />
+      <BookingViewDialog
+        booking={liveViewingBooking}
+        events={allEvents}
+        defects={allDefects}
+        locations={allLocations}
+        onClose={() => setViewingBooking(null)}
+        onEdit={promoteViewToEdit}
+        readOnly={isViewer}
       />
       <NoteDialog
         aircraft={noteTarget}

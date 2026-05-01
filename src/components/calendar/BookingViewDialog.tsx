@@ -1,5 +1,5 @@
 import { Fragment, useMemo } from "react";
-import { Check, Pencil, StickyNote } from "lucide-react";
+import { Building2, Check, MapPin, Pencil, StickyNote } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -14,12 +14,13 @@ import {
 } from "@/lib/bookingDisplay";
 import { formatBookingRange } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import type { Booking, Defect, MaintenanceEvent } from "@/types";
+import type { Booking, Defect, Location, MaintenanceEvent } from "@/types";
 
 type Props = {
   booking: Booking | null;
   events: MaintenanceEvent[];
   defects: Defect[];
+  locations: Location[];
   onClose: () => void;
   onEdit: () => void;
   readOnly: boolean;
@@ -34,10 +35,15 @@ export default function BookingViewDialog({
   booking,
   events,
   defects,
+  locations,
   onClose,
   onEdit,
   readOnly,
 }: Props) {
+  const linkedLocation = useMemo(() => {
+    if (!booking?.locationId) return null;
+    return locations.find((l) => l.id === booking.locationId) ?? null;
+  }, [booking, locations]);
   const linkedEvent = useMemo(() => {
     if (!booking?.eventId) return null;
     return events.find((e) => e.id === booking.eventId) ?? null;
@@ -99,6 +105,37 @@ export default function BookingViewDialog({
               <div className="text-sm mt-0.5">{durationLabel}</div>
             </div>
           </div>
+
+          {linkedLocation && (
+            <div className="rounded-md border bg-card px-3 py-2 shadow-sm">
+              <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {linkedLocation.kind === "external" ? (
+                  <MapPin className="h-3 w-3" />
+                ) : (
+                  <Building2 className="h-3 w-3" />
+                )}
+                Location
+              </div>
+              <div className="text-sm mt-0.5 flex items-center gap-2">
+                <span className="font-medium">{linkedLocation.name}</span>
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  {linkedLocation.kind === "external"
+                    ? "external / sub-contractor"
+                    : "own hangar"}
+                </span>
+                {!linkedLocation.active && (
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground italic">
+                    inactive
+                  </span>
+                )}
+              </div>
+              {linkedLocation.notes && (
+                <div className="text-xs text-muted-foreground mt-0.5">
+                  {linkedLocation.notes}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="rounded-md border bg-card px-3 py-2 shadow-sm">
             <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">

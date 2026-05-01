@@ -1,12 +1,18 @@
 import { Fragment, useMemo } from "react";
-import { format, isSameDay, isToday } from "date-fns";
-import { Check, StickyNote } from "lucide-react";
+import { format, getISOWeek, isSameDay, isToday } from "date-fns";
+import { Building2, Check, MapPin, StickyNote } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   buildBookingGroups,
   describeBookingGroups,
 } from "@/lib/bookingDisplay";
-import type { Aircraft, Booking, Defect, MaintenanceEvent } from "@/types";
+import type {
+  Aircraft,
+  Booking,
+  Defect,
+  Location,
+  MaintenanceEvent,
+} from "@/types";
 
 type Props = {
   days: Date[];
@@ -14,6 +20,7 @@ type Props = {
   bookings: Booking[];
   events: MaintenanceEvent[];
   defects: Defect[];
+  locations: Location[];
   viewMode: "week" | "month";
   readOnly: boolean;
   onSelectBooking: (booking: Booking) => void;
@@ -106,6 +113,7 @@ export default function CalendarGrid({
   bookings,
   events,
   defects,
+  locations,
   viewMode,
   readOnly,
   onSelectBooking,
@@ -136,6 +144,12 @@ export default function CalendarGrid({
     return m;
   }, [defects]);
 
+  const locationsById = useMemo(() => {
+    const m = new Map<string, Location>();
+    for (const l of locations) m.set(l.id, l);
+    return m;
+  }, [locations]);
+
   const todayIdx = useMemo(() => {
     return days.findIndex((d) => isToday(d));
   }, [days]);
@@ -165,6 +179,9 @@ export default function CalendarGrid({
         {days.map((d, i) => {
           const today = i === todayIdx;
           const weekend = d.getDay() === 0 || d.getDay() === 6;
+          // Show ISO week number above Mondays — gives a per-week marker that
+          // works for both week (one Monday) and month (several) views.
+          const isMonday = d.getDay() === 1;
           return (
             <div
               key={d.toISOString()}
@@ -174,11 +191,15 @@ export default function CalendarGrid({
                 today && "bg-amber-100/80",
               )}
             >
-              {today && (
+              {today ? (
                 <span className="text-[8px] font-bold uppercase tracking-wider text-amber-800">
                   Today
                 </span>
-              )}
+              ) : isMonday ? (
+                <span className="text-[8px] font-bold uppercase tracking-wider text-sky-700">
+                  W{getISOWeek(d)}
+                </span>
+              ) : null}
               <div className="flex items-baseline justify-center gap-1 leading-none">
                 <span className="text-[9px] uppercase text-muted-foreground">
                   {viewMode === "week" ? format(d, "EEE") : format(d, "EEEEE")}
@@ -267,12 +288,18 @@ export default function CalendarGrid({
               const linkedDefects = (b.defectIds ?? [])
                 .map((id) => defectsById.get(id))
                 .filter((d): d is Defect => !!d);
+              const linkedLocation = b.locationId
+                ? locationsById.get(b.locationId) ?? null
+                : null;
               const groups = buildBookingGroups(linkedEvent, linkedDefects);
               const notes = b.notes?.trim() || null;
               const description = describeBookingGroups(groups);
 
               const titleAttr = [
                 a.tailNumber,
+                linkedLocation
+                  ? `at ${linkedLocation.name}${linkedLocation.kind === "external" ? " (external)" : ""}`
+                  : null,
                 description,
                 notes,
               ]
@@ -318,6 +345,26 @@ export default function CalendarGrid({
                       : null),
                   }}
                 >
+                  {linkedLocation && (
+                    <span
+                      className={cn(
+                        "shrink-0 inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[9px] font-medium",
+                        active
+                          ? "bg-blue-200 text-blue-900"
+                          : past
+                            ? "bg-zinc-200 text-zinc-700"
+                            : "bg-sky-200 text-sky-900",
+                      )}
+                      title={`Location: ${linkedLocation.name}`}
+                    >
+                      {linkedLocation.kind === "external" ? (
+                        <MapPin className="h-2.5 w-2.5" />
+                      ) : (
+                        <Building2 className="h-2.5 w-2.5" />
+                      )}
+                      {linkedLocation.name}
+                    </span>
+                  )}
                   {groups.length === 0 ? (
                     <span className="truncate">
                       {notes ?? "Booking"}

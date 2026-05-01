@@ -4,7 +4,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import Layout from "@/components/Layout";
 import OverviewPage from "@/pages/OverviewPage";
 import CalendarPage from "@/pages/CalendarPage";
-import AircraftPage from "@/pages/AircraftPage";
+import SettingsPage from "@/pages/SettingsPage";
 import LoginPage from "@/pages/LoginPage";
 import ProfilePage from "@/pages/ProfilePage";
 
@@ -23,12 +23,17 @@ export default function App() {
           <Route path="/" element={<OverviewPage />} />
           <Route path="/calendar" element={<CalendarPage />} />
           <Route
-            path="/aircraft"
+            path="/settings"
             element={
               <ProtectedRoute membersOnly>
-                <AircraftPage />
+                <SettingsPage />
               </ProtectedRoute>
             }
+          />
+          {/* Old /aircraft URL — redirect to settings for any bookmarked links. */}
+          <Route
+            path="/aircraft"
+            element={<Navigate to="/settings" replace />}
           />
           <Route
             path="/profile"

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { format } from "date-fns";
+import { format, getISOWeek } from "date-fns";
 import { CalendarDays, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -11,7 +11,14 @@ import { subscribeAircraft } from "@/services/aircraft";
 import { subscribeBookings } from "@/services/bookings";
 import { subscribeEvents } from "@/services/events";
 import { subscribeDefects } from "@/services/defects";
-import type { Aircraft, Booking, Defect, MaintenanceEvent } from "@/types";
+import { subscribeLocations } from "@/services/locations";
+import type {
+  Aircraft,
+  Booking,
+  Defect,
+  Location,
+  MaintenanceEvent,
+} from "@/types";
 
 type ViewMode = "week" | "month";
 
@@ -59,15 +66,30 @@ function formatRangeLabel(days: Date[], viewMode: ViewMode): string {
   if (viewMode === "week") {
     const first = days[0];
     const last = days[days.length - 1];
+    const wk = `W${getISOWeek(first)}`;
+    let range: string;
     if (first.getFullYear() === last.getFullYear()) {
       if (first.getMonth() === last.getMonth()) {
-        return `${format(first, "d")} – ${format(last, "d MMM yyyy")}`;
+        range = `${format(first, "d")} – ${format(last, "d MMM yyyy")}`;
+      } else {
+        range = `${format(first, "d MMM")} – ${format(last, "d MMM yyyy")}`;
       }
-      return `${format(first, "d MMM")} – ${format(last, "d MMM yyyy")}`;
+    } else {
+      range = `${format(first, "d MMM yyyy")} – ${format(last, "d MMM yyyy")}`;
     }
-    return `${format(first, "d MMM yyyy")} – ${format(last, "d MMM yyyy")}`;
+    return `${range} · ${wk}`;
   }
-  return format(days[0], "MMMM yyyy");
+  // Month view: collect distinct ISO week numbers shown in this month.
+  const weekNums = Array.from(
+    new Set(days.map((d) => getISOWeek(d))),
+  );
+  const wkLabel =
+    weekNums.length === 0
+      ? ""
+      : weekNums.length === 1
+        ? `W${weekNums[0]}`
+        : `W${weekNums[0]}–${weekNums[weekNums.length - 1]}`;
+  return `${format(days[0], "MMMM yyyy")}${wkLabel ? ` · ${wkLabel}` : ""}`;
 }
 
 export default function CalendarPage() {
@@ -76,6 +98,7 @@ export default function CalendarPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [events, setEvents] = useState<MaintenanceEvent[]>([]);
   const [defects, setDefects] = useState<Defect[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
 
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [anchor, setAnchor] = useState<Date>(() => startOfWeekMonday(new Date()));
@@ -90,6 +113,7 @@ export default function CalendarPage() {
   useEffect(() => subscribeBookings(setBookings), []);
   useEffect(() => subscribeEvents(setEvents), []);
   useEffect(() => subscribeDefects(setDefects), []);
+  useEffect(() => subscribeLocations(setLocations), []);
 
   const days = useMemo(() => getVisibleDays(viewMode, anchor), [viewMode, anchor]);
   const rangeLabel = useMemo(
@@ -241,6 +265,7 @@ export default function CalendarPage() {
         bookings={bookings}
         events={events}
         defects={defects}
+        locations={locations}
         viewMode={viewMode}
         readOnly={isViewer}
         onSelectBooking={(b) => openView(b)}
@@ -263,6 +288,7 @@ export default function CalendarPage() {
         booking={liveViewingBooking}
         events={events}
         defects={defects}
+        locations={locations}
         onClose={() => setViewingBooking(null)}
         onEdit={promoteViewToEdit}
         readOnly={isViewer}

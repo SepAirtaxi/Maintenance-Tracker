@@ -1,10 +1,11 @@
 import { Fragment, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import {
+  Building2,
   CalendarDays,
   Check,
   Gauge,
   History,
+  MapPin,
   Pencil,
   Plus,
   ShieldAlert,
@@ -26,7 +27,13 @@ import {
 } from "@/lib/bookingDisplay";
 import EventRow, { EVENTS_GRID_COLS } from "@/components/overview/EventRow";
 import DefectsList from "@/components/overview/DefectsList";
-import type { Aircraft, Booking, Defect, MaintenanceEvent } from "@/types";
+import type {
+  Aircraft,
+  Booking,
+  Defect,
+  Location,
+  MaintenanceEvent,
+} from "@/types";
 
 type Props = {
   aircraft: Aircraft;
@@ -41,10 +48,14 @@ type Props = {
   nextBookingDefects: Defect[];
   worstSeverity: Severity;
   airworthy: boolean;
+  bookedEventIds: ReadonlySet<string>;
+  bookedDefectIds: ReadonlySet<string>;
+  locationsById: ReadonlyMap<string, Location>;
   readOnly?: boolean;
   onOpenEditLog: () => void;
   onUpdateTtaf: () => void;
   onAddBooking: () => void;
+  onViewBooking: (booking: Booking) => void;
   onAddEvent: () => void;
   onEditEvent: (event: MaintenanceEvent) => void;
   onDeleteEvent: (event: MaintenanceEvent) => void;
@@ -79,10 +90,14 @@ export default function AircraftCard({
   nextBookingDefects,
   worstSeverity,
   airworthy,
+  bookedEventIds,
+  bookedDefectIds,
+  locationsById,
   readOnly = false,
   onOpenEditLog,
   onUpdateTtaf,
   onAddBooking,
+  onViewBooking,
   onAddEvent,
   onEditEvent,
   onDeleteEvent,
@@ -94,7 +109,6 @@ export default function AircraftCard({
   onEditNote,
 }: Props) {
   const [togglingAirworthy, setTogglingAirworthy] = useState(false);
-  const navigate = useNavigate();
   const inHangar = isBookingActive(nextBooking);
   const bookingGroups = nextBooking
     ? buildBookingGroups(nextBookingEvent, nextBookingDefects)
@@ -122,8 +136,12 @@ export default function AircraftCard({
     : null;
   const bookingNotes = nextBooking?.notes?.trim() || null;
   const bookingDescription = describeBookingGroups(bookingGroups);
+  const bookingLocation = nextBooking?.locationId
+    ? locationsById.get(nextBooking.locationId) ?? null
+    : null;
   const bookingTitleAttr = [
     `Booked ${bookingText ?? ""}`,
+    bookingLocation ? `at ${bookingLocation.name}` : null,
     bookingDescription,
     bookingNotes,
   ]
@@ -308,8 +326,8 @@ export default function AircraftCard({
           {nextBooking ? (
             <button
               type="button"
-              onClick={() => navigate("/calendar")}
-              title={bookingTitleAttr || "Open calendar"}
+              onClick={() => onViewBooking(nextBooking)}
+              title={bookingTitleAttr || "View booking"}
               className={cn(
                 "group flex items-center gap-2 rounded-md border px-2 py-1 shadow-sm text-left transition-colors",
                 inHangar
@@ -339,6 +357,24 @@ export default function AircraftCard({
               >
                 {bookingText}
               </span>
+              {bookingLocation && (
+                <span
+                  className={cn(
+                    "shrink-0 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium",
+                    inHangar
+                      ? "bg-blue-100 text-blue-900 border border-blue-300"
+                      : "bg-sky-100 text-sky-900 border border-sky-300",
+                  )}
+                  title={`Location: ${bookingLocation.name}${bookingLocation.kind === "external" ? " (external)" : ""}`}
+                >
+                  {bookingLocation.kind === "external" ? (
+                    <MapPin className="h-2.5 w-2.5" />
+                  ) : (
+                    <Building2 className="h-2.5 w-2.5" />
+                  )}
+                  {bookingLocation.name}
+                </span>
+              )}
               {bookingGroups.length > 0 ? (
                 bookingGroups.map((g, gi) => (
                   <Fragment key={gi}>
@@ -482,6 +518,7 @@ export default function AircraftCard({
             )}
           >
             <span className="self-end pb-0.5">WO</span>
+            <span className="self-end pb-0.5">REQ</span>
             <span className="self-end pb-0.5">Event</span>
             <span className="self-end pb-0.5">Status</span>
             <div className="rounded-md border border-border overflow-hidden">
@@ -511,6 +548,7 @@ export default function AircraftCard({
               key={event.id}
               event={event}
               currentTtafMinutes={aircraft.totalTimeMinutes}
+              booked={bookedEventIds.has(event.id)}
               readOnly={readOnly}
               onEdit={() => onEditEvent(event)}
               onDelete={() => onDeleteEvent(event)}
@@ -522,6 +560,7 @@ export default function AircraftCard({
 
       <DefectsList
         defects={defects}
+        bookedDefectIds={bookedDefectIds}
         readOnly={readOnly}
         onEdit={onEditDefect}
         onDelete={onDeleteDefect}

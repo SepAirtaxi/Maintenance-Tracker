@@ -280,6 +280,7 @@ export async function executeImport(
         expiryDate: row.expiryDate ? Timestamp.fromDate(row.expiryDate) : null,
         timerExpiryTimeMinutes: row.timerExpiryTimeMinutes,
         workOrderNumber: null,
+        requisitionNumber: null,
         status: "unplanned",
         source: "import",
         resolvedDate: null,

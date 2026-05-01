@@ -31,6 +31,7 @@ export type BookingInput = {
   to: Date | null;
   eventId: string | null;
   defectIds: string[];
+  locationId: string | null;
   notes: string | null;
 };
 
@@ -69,6 +70,7 @@ function docToBooking(id: string, data: Record<string, unknown>): Booking {
     to: (data.to as Timestamp | null) ?? null,
     eventId: (data.eventId as string | null) ?? null,
     defectIds,
+    locationId: (data.locationId as string | null) ?? null,
     notes: (data.notes as string | null) ?? null,
     createdAt: data.createdAt as Timestamp,
     createdBy: (data.createdBy as string) ?? "",
@@ -110,12 +112,15 @@ function validateNoOverlap(
   }
 }
 
+const locationDocRef = (id: string) => doc(db, "locations", id);
+
 async function describeForAudit(input: {
   tailNumber: string;
   from: Date;
   to: Date | null;
   eventId: string | null;
   defectIds: string[];
+  locationId: string | null;
   notes: string | null;
 }): Promise<string> {
   const range = formatBookingRange(
@@ -151,6 +156,14 @@ async function describeForAudit(input: {
     parts.push(
       `${labels.length === 1 ? "defect" : "defects"}: ${labels.join(", ")}`,
     );
+  }
+  if (input.locationId) {
+    const snap = await getDoc(locationDocRef(input.locationId));
+    if (snap.exists()) {
+      parts.push(`location: ${(snap.data().name as string) ?? input.locationId}`);
+    } else {
+      parts.push(`location: ${input.locationId} (missing)`);
+    }
   }
   if (input.notes) parts.push(`"${input.notes}"`);
   return parts.join(" · ");
@@ -202,6 +215,7 @@ export async function createBooking(input: BookingInput): Promise<string> {
   }
   const eventId = input.eventId || null;
   const defectIds = Array.from(new Set(input.defectIds));
+  const locationId = input.locationId || null;
   const notes = input.notes?.trim() || null;
 
   if (eventId) await validateEventBelongsToTail(eventId, tail);
@@ -217,6 +231,7 @@ export async function createBooking(input: BookingInput): Promise<string> {
     to: input.to ? Timestamp.fromDate(input.to) : null,
     eventId,
     defectIds,
+    locationId,
     notes,
     createdAt: serverTimestamp(),
     createdBy: user.uid,
@@ -229,6 +244,7 @@ export async function createBooking(input: BookingInput): Promise<string> {
     to: input.to,
     eventId,
     defectIds,
+    locationId,
     notes,
   });
   logAudit(tail, {
@@ -273,6 +289,10 @@ export async function updateBooking(
     patch.defectIds !== undefined
       ? Array.from(new Set(patch.defectIds))
       : prev.defectIds;
+  const locationId =
+    patch.locationId !== undefined
+      ? patch.locationId || null
+      : prev.locationId;
   const notes =
     patch.notes !== undefined ? patch.notes?.trim() || null : prev.notes;
 
@@ -289,6 +309,7 @@ export async function updateBooking(
     to: toDate ? Timestamp.fromDate(toDate) : null,
     eventId,
     defectIds,
+    locationId,
     notes,
   });
 
@@ -298,6 +319,7 @@ export async function updateBooking(
     to: prev.to ? prev.to.toDate() : null,
     eventId: prev.eventId,
     defectIds: prev.defectIds,
+    locationId: prev.locationId,
     notes: prev.notes,
   });
   const afterStr = await describeForAudit({
@@ -306,6 +328,7 @@ export async function updateBooking(
     to: toDate,
     eventId,
     defectIds,
+    locationId,
     notes,
   });
   if (beforeStr !== afterStr) {
@@ -337,6 +360,7 @@ export async function deleteBooking(id: string): Promise<void> {
       to: prev.to ? prev.to.toDate() : null,
       eventId: prev.eventId,
       defectIds: prev.defectIds,
+      locationId: prev.locationId,
       notes: prev.notes,
     });
     logAudit(prev.tailNumber, {

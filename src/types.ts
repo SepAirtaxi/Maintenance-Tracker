@@ -39,11 +39,30 @@ export type Booking = {
   // Optional links to defects on the same tail. Same render-time-derivation
   // pattern as `eventId`.
   defectIds: string[];
+  // Optional location/hangar assignment — managed via Settings → Locations.
+  // Render time looks the doc up by id; the label can change over time.
+  locationId: string | null;
   // Free-text notes for the booking — shown after the event name on the
   // calendar block, or on hover when space is tight.
   notes: string | null;
   createdAt: Timestamp;
   createdBy: string;
+  updatedAt: Timestamp;
+};
+
+export type LocationKind = "hangar" | "external";
+
+export type Location = {
+  id: string;
+  name: string;
+  // "hangar" = own hangar/maintenance bay, "external" = sub-contractor / out
+  // of house. Only used for grouping/icon hints in the UI.
+  kind: LocationKind;
+  notes: string | null;
+  // Inactive locations are hidden from new-booking selection but kept so old
+  // bookings still resolve to their original label.
+  active: boolean;
+  createdAt: Timestamp;
   updatedAt: Timestamp;
 };
 
@@ -62,6 +81,9 @@ export type MaintenanceEvent = {
   expiryDate: Timestamp | null;
   timerExpiryTimeMinutes: number | null;
   workOrderNumber: string | null;
+  // Logistics-only requisition number. Purely informational — does not affect
+  // status, calendar bookings, or any computed state.
+  requisitionNumber: string | null;
   status: EventStatus;
   source: EventSource;
   // Resolution metadata. Resolved events stay in Firestore as legacy; the
@@ -81,6 +103,9 @@ export type Defect = {
   reportedDate: Timestamp;
   reportedTtafMinutes: number;
   workOrderNumber: string | null;
+  // Logistics-only requisition number. Purely informational — does not affect
+  // status, calendar bookings, or any computed state.
+  requisitionNumber: string | null;
   // Resolution metadata. Resolved defects stay in Firestore as legacy; the
   // overview filters them out. All four resolution fields are set together.
   resolvedDate: Timestamp | null;

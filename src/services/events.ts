@@ -29,6 +29,7 @@ export type EventInput = {
   expiryDate: Date | null;
   timerExpiryTimeMinutes: number | null;
   workOrderNumber: string | null;
+  requisitionNumber: string | null;
 };
 
 export type EventPatch = Partial<EventInput> & {
@@ -53,6 +54,7 @@ function docToEvent(
     timerExpiryTimeMinutes:
       (data.timerExpiryTimeMinutes as number | null) ?? null,
     workOrderNumber: (data.workOrderNumber as string | null) ?? null,
+    requisitionNumber: (data.requisitionNumber as string | null) ?? null,
     status: data.status as EventStatus,
     source: (data.source as "import" | "manual") ?? "manual",
     resolvedDate: (data.resolvedDate as Timestamp | undefined) ?? null,
@@ -100,6 +102,7 @@ export async function createEvent(
     throw new Error("Provide a due date, a TTAF expiry value, or both.");
   }
   const wo = input.workOrderNumber?.trim() || null;
+  const req = input.requisitionNumber?.trim() || null;
   const ref = await addDoc(eventsCol(), {
     tailNumber: tail,
     warning,
@@ -109,6 +112,7 @@ export async function createEvent(
       : null,
     timerExpiryTimeMinutes: input.timerExpiryTimeMinutes,
     workOrderNumber: wo,
+    requisitionNumber: req,
     status: statusFromWo(wo),
     source: opts.source,
     resolvedDate: null,
@@ -163,6 +167,9 @@ export async function updateEvent(
     update.workOrderNumber = wo;
     update.status = statusFromWo(wo);
   }
+  if (patch.requisitionNumber !== undefined) {
+    update.requisitionNumber = patch.requisitionNumber?.trim() || null;
+  }
   await updateDoc(eventDoc(id), update);
 
   if (prev) {
@@ -204,6 +211,12 @@ export async function updateEvent(
         changes.push(
           `TTAF expiry ${prev.timerExpiryTimeMinutes ?? "—"} → ${patch.timerExpiryTimeMinutes ?? "—"}`,
         );
+      }
+    }
+    if (patch.requisitionNumber !== undefined) {
+      const nextReq = patch.requisitionNumber?.trim() || null;
+      if ((prev.requisitionNumber ?? null) !== nextReq) {
+        changes.push(`REQ ${prev.requisitionNumber ?? "—"} → ${nextReq ?? "—"}`);
       }
     }
     if (changes.length > 0) {

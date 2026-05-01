@@ -12,9 +12,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createBooking, deleteBooking, updateBooking } from "@/services/bookings";
+import { subscribeLocations } from "@/services/locations";
 import { normaliseTailNumber } from "@/lib/tails";
 import { cn } from "@/lib/utils";
-import type { Aircraft, Booking, Defect, MaintenanceEvent } from "@/types";
+import type { Aircraft, Booking, Defect, Location, MaintenanceEvent } from "@/types";
 
 type Props = {
   open: boolean;
@@ -67,11 +68,18 @@ export default function BookingDialog({
   const [openEnded, setOpenEnded] = useState(false);
   const [eventId, setEventId] = useState<string>("");
   const [defectIds, setDefectIds] = useState<string[]>([]);
+  const [locationId, setLocationId] = useState<string>("");
+  const [locations, setLocations] = useState<Location[]>([]);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    return subscribeLocations(setLocations);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -82,6 +90,7 @@ export default function BookingDialog({
       setOpenEnded(booking.to == null);
       setEventId(booking.eventId ?? "");
       setDefectIds(booking.defectIds ?? []);
+      setLocationId(booking.locationId ?? "");
       setNotes(booking.notes ?? "");
     } else {
       setTail(prefill?.tailNumber ?? "");
@@ -90,6 +99,7 @@ export default function BookingDialog({
       setOpenEnded(false);
       setEventId("");
       setDefectIds([]);
+      setLocationId("");
       setNotes("");
     }
     setError(null);
@@ -192,6 +202,7 @@ export default function BookingDialog({
           to: toDate,
           eventId: eventId || null,
           defectIds,
+          locationId: locationId || null,
           notes,
         });
       } else {
@@ -201,6 +212,7 @@ export default function BookingDialog({
           to: toDate,
           eventId: eventId || null,
           defectIds,
+          locationId: locationId || null,
           notes: notes || null,
         });
       }
@@ -227,6 +239,17 @@ export default function BookingDialog({
 
   const eventSelectDisabled = !normalisedTail || eventOptions.length === 0;
   const defectSelectDisabled = !normalisedTail || defectOptions.length === 0;
+
+  const locationOptions = useMemo(() => {
+    const active = locations.filter((l) => l.active);
+    // Keep an inactive but currently-selected location visible so the user can
+    // still see/edit it.
+    if (locationId && !active.some((l) => l.id === locationId)) {
+      const linked = locations.find((l) => l.id === locationId);
+      if (linked) return [linked, ...active];
+    }
+    return active;
+  }, [locations, locationId]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -392,6 +415,31 @@ export default function BookingDialog({
               <p className="text-xs text-muted-foreground">
                 Defects sharing a WO# with the linked event are grouped under
                 that WO on the calendar block.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="bookingLocation">Location (optional)</Label>
+              <select
+                id="bookingLocation"
+                value={locationId}
+                onChange={(e) => setLocationId(e.target.value)}
+                disabled={locationOptions.length === 0}
+                className="flex h-9 w-full min-w-0 rounded-md border border-input bg-card px-3 py-1 text-sm shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <option value="">— No location —</option>
+                {locationOptions.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.name}
+                    {l.active === false ? " (inactive)" : ""}
+                    {l.kind === "external" ? " · external" : ""}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">
+                {locationOptions.length === 0
+                  ? "Add hangars/locations under Settings → Locations to assign one."
+                  : "Where the aircraft will be parked during this booking."}
               </p>
             </div>
 

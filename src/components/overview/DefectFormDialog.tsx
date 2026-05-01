@@ -53,6 +53,7 @@ export default function DefectFormDialog({
   const [reportedTtaf, setReportedTtaf] = useState("");
   const [ttafMode, setTtafMode] = useState<"hhmm" | "decimal">("hhmm");
   const [workOrderNumber, setWorkOrderNumber] = useState("");
+  const [requisitionNumber, setRequisitionNumber] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,11 +65,13 @@ export default function DefectFormDialog({
       setReportedDate(tsToInput(defect.reportedDate.toDate()));
       setReportedTtaf(formatMinutesAsDuration(defect.reportedTtafMinutes));
       setWorkOrderNumber(defect.workOrderNumber ?? "");
+      setRequisitionNumber(defect.requisitionNumber ?? "");
     } else {
       setTitle("");
       setReportedDate(tsToInput(new Date()));
       setReportedTtaf("");
       setWorkOrderNumber("");
+      setRequisitionNumber("");
     }
     setError(null);
     setSaving(false);
@@ -122,6 +125,7 @@ export default function DefectFormDialog({
           reportedDate: date,
           reportedTtafMinutes: minutes,
           workOrderNumber: workOrderNumber.trim() || null,
+          requisitionNumber: requisitionNumber.trim() || null,
         });
       } else {
         await createDefect({
@@ -130,6 +134,7 @@ export default function DefectFormDialog({
           reportedDate: date,
           reportedTtafMinutes: minutes,
           workOrderNumber: workOrderNumber.trim() || null,
+          requisitionNumber: requisitionNumber.trim() || null,
         });
       }
       onOpenChange(false);
@@ -219,14 +224,28 @@ export default function DefectFormDialog({
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="defectWo">Work order number (optional)</Label>
-              <Input
-                id="defectWo"
-                value={workOrderNumber}
-                onChange={(e) => setWorkOrderNumber(e.target.value)}
-                placeholder="e.g. WO-1234"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="defectWo">Work order number (optional)</Label>
+                <Input
+                  id="defectWo"
+                  value={workOrderNumber}
+                  onChange={(e) => setWorkOrderNumber(e.target.value)}
+                  placeholder="e.g. WO-1234"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="defectReq">Requisition number (optional)</Label>
+                <Input
+                  id="defectReq"
+                  value={requisitionNumber}
+                  onChange={(e) => setRequisitionNumber(e.target.value)}
+                  placeholder="e.g. REQ-9876"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Logistics-only. Doesn't affect status or bookings.
+                </p>
+              </div>
             </div>
 
             {error && (

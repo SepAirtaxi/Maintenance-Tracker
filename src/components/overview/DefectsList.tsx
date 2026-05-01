@@ -3,15 +3,29 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
 import { formatMinutesAsDuration } from "@/lib/time";
+import { getDefectPlanStatus, type PlanStatus } from "@/lib/eventStatus";
 import WorkOrderCell from "@/components/overview/WorkOrderCell";
 import { updateDefect } from "@/services/defects";
 import type { Defect } from "@/types";
 
 const DEFECTS_GRID_COLS =
-  "grid-cols-[72px_minmax(0,1fr)_92px_92px_84px]";
+  "grid-cols-[72px_72px_minmax(0,1fr)_120px_92px_92px_84px]";
+
+const PLAN_STATUS_LABEL: Record<PlanStatus, string> = {
+  unplanned: "no action",
+  planned: "WO created",
+  booked: "WO + booked",
+};
+
+const PLAN_STATUS_CLASS: Record<PlanStatus, string> = {
+  unplanned: "bg-amber-100/70 text-amber-800",
+  planned: "bg-emerald-100 text-emerald-700",
+  booked: "bg-blue-100 text-blue-800",
+};
 
 type Props = {
   defects: Defect[];
+  bookedDefectIds: ReadonlySet<string>;
   readOnly?: boolean;
   onEdit: (defect: Defect) => void;
   onDelete: (defect: Defect) => void;
@@ -20,6 +34,7 @@ type Props = {
 
 export default function DefectsList({
   defects,
+  bookedDefectIds,
   readOnly = false,
   onEdit,
   onDelete,
@@ -36,12 +51,16 @@ export default function DefectsList({
         )}
       >
         <span>WO</span>
+        <span>REQ</span>
         <span>Defect ({defects.length})</span>
+        <span>Status</span>
         <span>Reported</span>
         <span>TTAF</span>
         <span className="text-right">{readOnly ? "" : "Actions"}</span>
       </div>
-      {defects.map((d) => (
+      {defects.map((d) => {
+        const planStatus = getDefectPlanStatus(d, bookedDefectIds);
+        return (
         <div
           key={d.id}
           className={cn(
@@ -54,9 +73,31 @@ export default function DefectsList({
             readOnly={readOnly}
             onSave={(wo) => updateDefect(d.id, { workOrderNumber: wo })}
           />
+          <WorkOrderCell
+            value={d.requisitionNumber}
+            readOnly={readOnly}
+            onSave={(req) => updateDefect(d.id, { requisitionNumber: req })}
+            placeholder="REQ number"
+            editTitle="Click to edit requisition number"
+          />
           <div className="truncate" title={d.title}>
             {d.title}
           </div>
+          <span
+            className={cn(
+              "justify-self-start rounded-full px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider",
+              PLAN_STATUS_CLASS[planStatus],
+            )}
+            title={
+              planStatus === "booked"
+                ? "WO assigned and a calendar block is linked to this defect"
+                : planStatus === "planned"
+                  ? "Work order assigned — no hangar slot booked yet"
+                  : "No work order assigned yet"
+            }
+          >
+            {PLAN_STATUS_LABEL[planStatus]}
+          </span>
           <div className="font-mono tabular-nums">
             {formatDate(d.reportedDate)}
           </div>
@@ -97,7 +138,8 @@ export default function DefectsList({
             )}
           </div>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
