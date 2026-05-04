@@ -517,8 +517,8 @@ export default function AircraftCard({
               EVENTS_GRID_COLS,
             )}
           >
-            <span className="self-end pb-0.5">WO</span>
-            <span className="self-end pb-0.5">REQ</span>
+            <span className="self-end pb-0.5 px-1">WO</span>
+            <span className="self-end pb-0.5 px-1">REQ</span>
             <span className="self-end pb-0.5">Event</span>
             <span className="self-end pb-0.5">Status</span>
             <div className="rounded-md border border-border overflow-hidden">

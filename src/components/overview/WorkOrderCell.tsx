@@ -78,54 +78,58 @@ function EditableWorkOrderCell({
   };
 
   if (editing) {
+    // Overlay so the input can be wider than the narrow grid column
+    // without disturbing neighbouring cells.
     return (
-      <div className="flex flex-col min-w-0">
-        <div className="flex items-center gap-1">
-          <Input
-            ref={inputRef}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                void commit();
-              } else if (e.key === "Escape") {
-                cancel();
-              }
-            }}
-            onBlur={() => {
-              setTimeout(() => {
-                if (document.activeElement?.tagName !== "BUTTON") {
+      <div className="relative min-w-0 h-6">
+        <div className="absolute left-0 top-0 z-20 flex flex-col rounded-md border bg-card shadow-md p-0.5">
+          <div className="flex items-center gap-1">
+            <Input
+              ref={inputRef}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
                   void commit();
+                } else if (e.key === "Escape") {
+                  cancel();
                 }
-              }, 100);
-            }}
-            disabled={saving}
-            className="h-6 px-1.5 text-xs font-mono"
-            placeholder={placeholder}
-          />
-          <button
-            type="button"
-            className="rounded p-0.5 hover:bg-secondary"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => void commit()}
-            title="Save"
-          >
-            <Check className="h-3 w-3" />
-          </button>
-          <button
-            type="button"
-            className="rounded p-0.5 hover:bg-secondary"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={cancel}
-            title="Cancel"
-          >
-            <X className="h-3 w-3" />
-          </button>
+              }}
+              onBlur={() => {
+                setTimeout(() => {
+                  if (document.activeElement?.tagName !== "BUTTON") {
+                    void commit();
+                  }
+                }, 100);
+              }}
+              disabled={saving}
+              className="h-6 w-24 px-1.5 text-xs font-mono"
+              placeholder={placeholder}
+            />
+            <button
+              type="button"
+              className="rounded p-0.5 hover:bg-secondary"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => void commit()}
+              title="Save"
+            >
+              <Check className="h-3 w-3" />
+            </button>
+            <button
+              type="button"
+              className="rounded p-0.5 hover:bg-secondary"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={cancel}
+              title="Cancel"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+          {error && (
+            <span className="px-1 text-[10px] text-destructive">{error}</span>
+          )}
         </div>
-        {error && (
-          <span className="text-[10px] text-destructive">{error}</span>
-        )}
       </div>
     );
   }

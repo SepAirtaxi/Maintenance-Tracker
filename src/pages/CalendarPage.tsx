@@ -61,35 +61,32 @@ function getVisibleDays(viewMode: ViewMode, anchor: Date): Date[] {
   return Array.from({ length: n }, (_, i) => addDays(start, i));
 }
 
-function formatRangeLabel(days: Date[], viewMode: ViewMode): string {
-  if (days.length === 0) return "";
+type RangeLabel = { range: string; week: string };
+
+function formatRangeLabel(days: Date[], viewMode: ViewMode): RangeLabel {
+  if (days.length === 0) return { range: "", week: "" };
   if (viewMode === "week") {
     const first = days[0];
     const last = days[days.length - 1];
-    const wk = `W${getISOWeek(first)}`;
     let range: string;
     if (first.getFullYear() === last.getFullYear()) {
-      if (first.getMonth() === last.getMonth()) {
-        range = `${format(first, "d")} – ${format(last, "d MMM yyyy")}`;
-      } else {
-        range = `${format(first, "d MMM")} – ${format(last, "d MMM yyyy")}`;
-      }
+      // Same year — drop the year for everyday compactness.
+      range = `${format(first, "MMM d")} to ${format(last, "MMM d")}`;
     } else {
-      range = `${format(first, "d MMM yyyy")} – ${format(last, "d MMM yyyy")}`;
+      // Cross-year week — keep year on both sides to remove ambiguity.
+      range = `${format(first, "MMM d yyyy")} to ${format(last, "MMM d yyyy")}`;
     }
-    return `${range} · ${wk}`;
+    return { range, week: `Week ${getISOWeek(first)}` };
   }
   // Month view: collect distinct ISO week numbers shown in this month.
-  const weekNums = Array.from(
-    new Set(days.map((d) => getISOWeek(d))),
-  );
-  const wkLabel =
+  const weekNums = Array.from(new Set(days.map((d) => getISOWeek(d))));
+  const week =
     weekNums.length === 0
       ? ""
       : weekNums.length === 1
-        ? `W${weekNums[0]}`
-        : `W${weekNums[0]}–${weekNums[weekNums.length - 1]}`;
-  return `${format(days[0], "MMMM yyyy")}${wkLabel ? ` · ${wkLabel}` : ""}`;
+        ? `Week ${weekNums[0]}`
+        : `Week ${weekNums[0]} - ${weekNums[weekNums.length - 1]}`;
+  return { range: format(days[0], "MMMM yyyy"), week };
 }
 
 export default function CalendarPage() {
@@ -199,8 +196,8 @@ export default function CalendarPage() {
         )}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 rounded-md border bg-card shadow-sm px-2 py-1.5">
-        <div className="flex items-center gap-0.5">
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-md border bg-card shadow-sm px-2 py-1.5">
+        <div className="flex items-center gap-0.5 justify-self-start">
           <Button
             variant="ghost"
             size="icon"
@@ -229,9 +226,18 @@ export default function CalendarPage() {
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
-        <span className="text-sm font-medium tabular-nums">{rangeLabel}</span>
+        <div className="flex flex-col items-center text-center leading-tight">
+          <span className="text-sm font-medium tabular-nums">
+            {rangeLabel.range}
+          </span>
+          {rangeLabel.week && (
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {rangeLabel.week}
+            </span>
+          )}
+        </div>
 
-        <div className="ml-auto inline-flex rounded-md border bg-card p-0.5 text-[11px]">
+        <div className="inline-flex justify-self-end rounded-md border bg-card p-0.5 text-[11px]">
           <button
             type="button"
             onClick={() => switchViewMode("week")}

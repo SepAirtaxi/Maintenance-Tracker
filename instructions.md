@@ -125,11 +125,13 @@ const firebaseConfig = {
 - Open-ended bookings (`to: null`) are left alone — they require manual clear.
 - Audit entry on auto-clear: `Aircraft left maintenance hangar (booked DD.MM.YYYY – DD.MM.YYYY)` (action: `delete`, entity: `booking`).
 
-### Audit log dialog — filter + search
+### Audit log dialog — filter + search + month grouping
 - The transaction log dialog has a search box (matches summary + initials) and two rows of multi-select chips: **Entity** (Aircraft / TTAF / Booking / Event / Defect) and **Action** (Create / Update / Delete).
 - Empty filter set = "all" for that axis. A `Clear` button appears when any filter is active. A live "X of Y entries" counter shows how much the filters narrowed the view.
 - Subscription limit is **500** entries (up from 200) so the filter has more to work with on aircraft with long histories.
-- The flat list remains the underlying view; the planned grouped-per-entity ("history") view would layer on top of the same data without removing this one.
+- Entries render under **collapsible month headers** (e.g. `May 2026 · 12 entries`) to keep long histories scannable. Current month + previous month are open by default; older months collapsed.
+- Pending entries (server timestamp not yet acknowledged from Firestore) bucket into a `Just now` group at the top so a write isn't invisible during the round-trip.
+- When any filter or search is active, every group containing matches **auto-expands** so the user doesn't have to click through closed months hunting for hits. Auto-expansion is computed on top of the user's manual open-set, so clearing the filters reverts to the prior collapsed state.
 
 ### Bookings — linked event + linked defects
 - A booking can link **one event** (`eventId`) and **any number of defects** (`defectIds: string[]`) on the same tail. Both are validated server-side (defect/event must belong to the booking's tail).
@@ -168,6 +170,7 @@ const firebaseConfig = {
 - `Defect.workOrderNumber: string | null`. Same input semantics as events: an inline-editable cell on the defect row plus a field on the create/edit dialog.
 - `WorkOrderCell` was made entity-agnostic (takes `value` + `onSave`) so events and defects share the same inline-edit UX.
 - Unlike events, **a defect's WO# does not change its status** — defects don't have planned/unplanned. The WO# is purely metadata for cross-referencing maintenance work.
+- The WO/REQ columns are narrow (72px) so the value reads compactly at rest, but that's too narrow to comfortably type a 4–5 digit number plus the inline save/cancel chevrons. While editing, `WorkOrderCell` renders the input + buttons in an **absolutely-positioned overlay** (`bg-card`, bordered, shadowed) that escapes the column width without disturbing neighbouring cells. The data-row column layout (`EVENTS_GRID_COLS`) and the matching header in `AircraftCard.tsx` both use `px-1` so header text and at-rest cell text share the same left edge.
 
 ### "Last updated:" prefix
 - Aircraft header timestamp and TTAF cell both display `Last updated: <date>` rather than `Updated <date>` / a bare date. Convention applies anywhere a "last updated" timestamp is shown to the user.
@@ -186,10 +189,11 @@ const firebaseConfig = {
 ### Sticky app header
 - The top app bar (`Layout.tsx`) is `sticky top-0 z-40`. The nav between Overview / Calendar / Settings stays reachable while scrolling long event lists.
 
-### Calendar — week numbers
+### Calendar — week numbers and toolbar label
 - ISO week numbers are surfaced in two places:
-  - The range label appends the week info: `5 – 11 May 2026 · W19` for week view, `May 2026 · W18–W22` for month view.
+  - The toolbar range label is rendered as **two stacked, centered lines**: a date range on top and a "Week" line below. Week view: `May 4 to May 10` / `Week 19` (year shown only on cross-year weeks). Month view: `May 2026` / `Week 18 - 22` (single-week months show `Week 18`).
   - In the day-header row of the grid, every Monday cell shows a small `Wxx` badge above the day. This works for both views — week view tags the single Monday, month view tags each one.
+- The toolbar uses a `grid-cols-[1fr_auto_1fr]` layout so the side regions (prev/today/next, Week/Month toggle) take equal width and the centred label sits in the true middle regardless of side content widths. Auto-margin centring (`mx-auto` + `ml-auto`) was tried first but produced an off-centre label because the auto-margins competed.
 - Implementation uses `date-fns` `getISOWeek`. Monday-anchoring already existed (see *week view starts on Monday* above), so week boundaries line up.
 
 ### Overview — booking pill opens the view dialog
