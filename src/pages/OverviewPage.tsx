@@ -3,8 +3,6 @@ import {
   ArrowDown,
   ArrowUp,
   CalendarClock,
-  ChevronDown,
-  Filter,
   ShieldOff,
   Upload,
 } from "lucide-react";
@@ -86,6 +84,55 @@ const FLEET_SEVERITY_RANK: Record<Severity, number> = {
   red: 3,
 };
 
+const PILL_TINT: Record<Severity, string> = {
+  red: "border-status-red/50 bg-rose-50 text-rose-900 hover:bg-rose-100",
+  yellow:
+    "border-status-yellow/60 bg-amber-50 text-amber-900 hover:bg-amber-100",
+  green:
+    "border-status-green/50 bg-emerald-50 text-emerald-900 hover:bg-emerald-100",
+  unknown:
+    "border-border bg-card text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
+};
+
+const PILL_TINT_ACTIVE: Record<Severity, string> = {
+  red: "border-status-red bg-rose-100 text-rose-950 ring-2 ring-status-red/40",
+  yellow:
+    "border-status-yellow bg-amber-100 text-amber-950 ring-2 ring-status-yellow/40",
+  green:
+    "border-status-green bg-emerald-100 text-emerald-950 ring-2 ring-status-green/40",
+  unknown: "border-primary bg-primary/10 text-foreground ring-2 ring-primary/30",
+};
+
+function TailPill({
+  tail,
+  severity,
+  active,
+  grounded = false,
+  onClick,
+}: {
+  tail: string;
+  severity: Severity;
+  active: boolean;
+  grounded?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={grounded ? `${tail} (grounded)` : tail}
+      className={cn(
+        "inline-flex items-center gap-0.5 rounded-md border px-1.5 py-0.5 font-mono text-xs transition-colors",
+        active ? PILL_TINT_ACTIVE[severity] : PILL_TINT[severity],
+        grounded && "opacity-60",
+      )}
+    >
+      {grounded && <ShieldOff className="h-3 w-3" />}
+      {tail}
+    </button>
+  );
+}
+
 type AircraftSummary = {
   aircraft: Aircraft;
   events: MaintenanceEvent[];
@@ -121,11 +168,12 @@ export default function OverviewPage() {
   const [sortKey, setSortKey] = useState<SortKey>("tail");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
 
-  // Filter is session-only; defaults to all aircraft included. We track
-  // *excluded* tails so newly-added aircraft are visible by default.
-  const [excludedTails, setExcludedTails] = useState<Set<string>>(new Set());
-  const [filterOpen, setFilterOpen] = useState(false);
-  const filterRef = useRef<HTMLDivElement>(null);
+  // Tracks which aircraft card is currently in the viewport "reading zone"
+  // (just below the sticky header + jump bar) so the matching pill can light
+  // up. Updated by the IntersectionObserver below.
+  const [activeTail, setActiveTail] = useState<string | null>(null);
+  const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const visibleTails = useRef<Set<string>>(new Set());
 
   const [eventFormOpen, setEventFormOpen] = useState(false);
   const [eventFormTail, setEventFormTail] = useState<string>("");
@@ -191,25 +239,6 @@ export default function OverviewPage() {
         ? allDefects.filter((d) => d.tailNumber === defectFormTail)
         : [],
     [defectFormTail, allDefects],
-  );
-
-  useEffect(() => {
-    if (!filterOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
-        setFilterOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [filterOpen]);
-
-  const fleetTails = useMemo(
-    () =>
-      (aircraft ?? [])
-        .map((a) => a.tailNumber)
-        .sort((a, b) => a.localeCompare(b)),
-    [aircraft],
   );
 
   const eventsById = useMemo(() => {
@@ -324,36 +353,67 @@ export default function OverviewPage() {
     const aw: AircraftSummary[] = [];
     const gr: AircraftSummary[] = [];
     for (const s of summaries) {
-      if (excludedTails.has(s.aircraft.tailNumber)) continue;
       (s.airworthy ? aw : gr).push(s);
     }
     aw.sort(sortFn);
     gr.sort(sortFn);
     return { airworthyList: aw, groundedList: gr };
-  }, [summaries, sortFn, excludedTails]);
+  }, [summaries, sortFn]);
 
-  const includedCount = fleetTails.length - excludedTails.size;
-  const allIncluded = excludedTails.size === 0;
-  const noneIncluded = includedCount === 0 && fleetTails.length > 0;
-  const filterLabel = allIncluded
-    ? "All aircraft"
-    : noneIncluded
-      ? "No aircraft"
-      : `${includedCount} of ${fleetTails.length}`;
+  // Pills are sorted alphabetically and stay in fixed positions regardless of
+  // the card sort order — that keeps muscle memory intact when jumping.
+  const { airworthyPills, groundedPills } = useMemo(() => {
+    const sorted = [...summaries].sort((a, b) =>
+      a.aircraft.tailNumber.localeCompare(b.aircraft.tailNumber),
+    );
+    return {
+      airworthyPills: sorted.filter((s) => s.airworthy),
+      groundedPills: sorted.filter((s) => !s.airworthy),
+    };
+  }, [summaries]);
 
-  const toggleTail = (tail: string) => {
-    setExcludedTails((prev) => {
-      const next = new Set(prev);
-      if (next.has(tail)) next.delete(tail);
-      else next.add(tail);
-      return next;
-    });
+  const jumpToTail = (tail: string) => {
+    const el = cardRefs.current.get(tail);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+    setActiveTail(tail);
   };
-  const soloTail = (tail: string) => {
-    setExcludedTails(new Set(fleetTails.filter((t) => t !== tail)));
-  };
-  const selectAllTails = () => setExcludedTails(new Set());
-  const deselectAllTails = () => setExcludedTails(new Set(fleetTails));
+
+  // Scrollspy: highlight the pill whose card sits in the top ~35% band of the
+  // viewport (just below the sticky header + jump bar). When several cards
+  // intersect at once, the topmost one wins so the active pill tracks the
+  // card you're currently reading.
+  useEffect(() => {
+    if (summaries.length === 0) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const tail = (entry.target as HTMLElement).dataset.tail;
+          if (!tail) continue;
+          if (entry.isIntersecting) visibleTails.current.add(tail);
+          else visibleTails.current.delete(tail);
+        }
+        let topTail: string | null = null;
+        let topPos = Number.POSITIVE_INFINITY;
+        for (const tail of visibleTails.current) {
+          const el = cardRefs.current.get(tail);
+          if (!el) continue;
+          const top = el.getBoundingClientRect().top;
+          if (top < topPos) {
+            topPos = top;
+            topTail = tail;
+          }
+        }
+        if (topTail) setActiveTail(topTail);
+      },
+      { rootMargin: "-100px 0px -65% 0px" },
+    );
+    for (const el of cardRefs.current.values()) observer.observe(el);
+    return () => {
+      observer.disconnect();
+      visibleTails.current.clear();
+    };
+  }, [summaries.length, airworthyList, groundedList]);
 
   const onSortClick = (key: SortKey) => {
     if (key === sortKey) {
@@ -410,9 +470,19 @@ export default function OverviewPage() {
     setBookingDialogOpen(true);
   };
 
+  const setCardRef = (tail: string) => (el: HTMLDivElement | null) => {
+    if (el) cardRefs.current.set(tail, el);
+    else cardRefs.current.delete(tail);
+  };
+
   const renderCard = (s: AircraftSummary) => (
-    <AircraftCard
+    <div
       key={s.aircraft.tailNumber}
+      ref={setCardRef(s.aircraft.tailNumber)}
+      data-tail={s.aircraft.tailNumber}
+      className="scroll-mt-24"
+    >
+    <AircraftCard
       aircraft={s.aircraft}
       events={s.events}
       defects={s.defects}
@@ -439,6 +509,7 @@ export default function OverviewPage() {
       onResolveDefect={setDefectResolveTarget}
       onEditNote={() => setNoteTarget(s.aircraft)}
     />
+    </div>
   );
 
   return (
@@ -497,84 +568,44 @@ export default function OverviewPage() {
           );
         })}
 
-        <span className="mx-1 h-4 w-px bg-border" aria-hidden="true" />
-
-        <div className="relative" ref={filterRef}>
-          <button
-            type="button"
-            onClick={() => setFilterOpen((v) => !v)}
-            disabled={fleetTails.length === 0}
-            className={cn(
-              "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
-              !allIncluded
-                ? "border-primary bg-primary/5 text-foreground"
-                : "border-border bg-card text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
-            )}
-            title="Filter by tail number"
-          >
-            <Filter className="h-3 w-3" />
-            <span>{filterLabel}</span>
-            <ChevronDown className="h-3 w-3" />
-          </button>
-          {filterOpen && (
-            <div className="absolute left-0 top-full z-20 mt-1 w-60 rounded-md border bg-card text-foreground shadow-lg">
-              <div className="flex items-center justify-between gap-2 border-b px-2 py-1.5">
-                <button
-                  type="button"
-                  onClick={selectAllTails}
-                  disabled={allIncluded}
-                  className="text-[11px] font-medium text-primary hover:underline disabled:cursor-not-allowed disabled:text-muted-foreground disabled:no-underline"
-                >
-                  Select all
-                </button>
-                <button
-                  type="button"
-                  onClick={deselectAllTails}
-                  disabled={noneIncluded || fleetTails.length === 0}
-                  className="text-[11px] font-medium text-primary hover:underline disabled:cursor-not-allowed disabled:text-muted-foreground disabled:no-underline"
-                >
-                  Unselect all
-                </button>
-              </div>
-              <div className="border-b px-2 py-1 text-[10px] text-muted-foreground">
-                Click a tail to show only it. Use the checkbox to add/remove.
-              </div>
-              <div className="max-h-64 overflow-y-auto py-1">
-                {fleetTails.map((tail) => {
-                  const included = !excludedTails.has(tail);
-                  return (
-                    <div
-                      key={tail}
-                      className="flex items-center gap-2 px-2 py-1 text-xs hover:bg-secondary/60"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={included}
-                        onChange={() => toggleTail(tail)}
-                        aria-label={`Toggle ${tail}`}
-                        className="h-3.5 w-3.5 rounded border-input shrink-0 cursor-pointer"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => soloTail(tail)}
-                        title={`Show only ${tail}`}
-                        className="flex-1 min-w-0 text-left font-mono truncate cursor-pointer hover:underline"
-                      >
-                        {tail}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-
         <span className="ml-auto text-xs text-muted-foreground">
           {airworthyList.length} airworthy
           {groundedList.length > 0 && ` · ${groundedList.length} grounded`}
         </span>
       </div>
+
+      {summaries.length > 0 && (
+        <div className="sticky top-14 z-30 flex flex-wrap items-center gap-1 rounded-md border bg-card/95 px-2 py-1.5 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
+          <span className="text-xs text-muted-foreground mr-1">Jump to:</span>
+          {airworthyPills.map((s) => (
+            <TailPill
+              key={s.aircraft.tailNumber}
+              tail={s.aircraft.tailNumber}
+              severity={s.worst}
+              active={s.aircraft.tailNumber === activeTail}
+              onClick={() => jumpToTail(s.aircraft.tailNumber)}
+            />
+          ))}
+          {groundedPills.length > 0 && (
+            <>
+              <span
+                className="mx-1 h-4 w-px bg-border"
+                aria-hidden="true"
+              />
+              {groundedPills.map((s) => (
+                <TailPill
+                  key={s.aircraft.tailNumber}
+                  tail={s.aircraft.tailNumber}
+                  severity={s.worst}
+                  grounded
+                  active={s.aircraft.tailNumber === activeTail}
+                  onClick={() => jumpToTail(s.aircraft.tailNumber)}
+                />
+              ))}
+            </>
+          )}
+        </div>
+      )}
 
       {aircraft === null && (
         <p className="text-sm text-muted-foreground">Loading fleet…</p>
@@ -589,21 +620,6 @@ export default function OverviewPage() {
       )}
       {aircraft && aircraft.length > 0 && (
         <>
-          {airworthyList.length === 0 && groundedList.length === 0 && (
-            <div className="rounded-md border border-dashed p-6 text-center">
-              <p className="text-sm text-muted-foreground">
-                No aircraft match the current filter.{" "}
-                <button
-                  type="button"
-                  onClick={selectAllTails}
-                  className="text-primary underline hover:no-underline"
-                >
-                  Select all
-                </button>
-                .
-              </p>
-            </div>
-          )}
           <div className="space-y-2">{airworthyList.map(renderCard)}</div>
 
           {groundedList.length > 0 && (
