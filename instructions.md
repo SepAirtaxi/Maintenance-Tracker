@@ -82,11 +82,12 @@ const firebaseConfig = {
 ### Events — close (resolution) flow
 - Events can be **closed**, in addition to edited/deleted. Closing prompts for a completion date and a work-order number, ties the event to that WO, and marks it as legacy. Mirrors the defect resolution model — same four fields on the event document (`resolvedDate`, `resolutionWorkOrder`, `resolvedAt`, `resolvedBy`).
 - The dialog **pre-fills the WO field** from the event's existing `workOrderNumber` when one is set (planned events close in one click + Enter); for unplanned events the WO field is empty and auto-focused.
+- **Administrative close (no WO)**: an explicit "Administrative close" checkbox in the dialog waives the WO requirement for events that aren't tracked in the work-order system (AMP / ARC renewals signed off by the technical director). Ticking it disables the WO input. The deliberate, visible toggle is the safeguard — leaving WO blank without it is still rejected. Admin closures store `resolutionWorkOrder: null` and **don't overwrite** `workOrderNumber`/`status` on the event, so the close can't forge a WO.
 - Closed events stay in Firestore but are filtered out of:
   - the active overview cards (per-aircraft event list);
   - the **Upcoming events** dialog;
   - the **CSV import dedup set** — so the next import re-creates a fresh occurrence of the same recurring item (e.g. the next 100-Hour after closing the previous one). This is the intended way to roll a recurring event forward.
-- Audit log entry uses the form `Event closed: "<warning>" (WO <num>, on <date>) at TTAF <ttaf>`.
+- Audit log entry uses the form `Event closed: "<warning>" (WO <num>, on <date>) at TTAF <ttaf>`. For administrative closes the WO part reads `administrative — no WO`.
 
 ### Event row layout
 - Six-column grid: **WO | Event | Status | Due at | Time left | Actions** (`EVENTS_GRID_COLS` in `EventRow.tsx`).
@@ -170,7 +171,7 @@ const firebaseConfig = {
 - `Defect.workOrderNumber: string | null`. Same input semantics as events: an inline-editable cell on the defect row plus a field on the create/edit dialog.
 - `WorkOrderCell` was made entity-agnostic (takes `value` + `onSave`) so events and defects share the same inline-edit UX.
 - Unlike events, **a defect's WO# does not change its status** — defects don't have planned/unplanned. The WO# is purely metadata for cross-referencing maintenance work.
-- The WO/REQ columns are narrow (72px) so the value reads compactly at rest, but that's too narrow to comfortably type a 4–5 digit number plus the inline save/cancel chevrons. While editing, `WorkOrderCell` renders the input + buttons in an **absolutely-positioned overlay** (`bg-card`, bordered, shadowed) that escapes the column width without disturbing neighbouring cells. The data-row column layout (`EVENTS_GRID_COLS`) and the matching header in `AircraftCard.tsx` both use `px-1` so header text and at-rest cell text share the same left edge.
+- The WO/REQ columns are narrow (72px) so the value reads compactly at rest, but that's too narrow to comfortably type a 4–5 digit number plus the inline save/cancel chevrons. While editing, `WorkOrderCell` renders the input + buttons in an **absolutely-positioned overlay** (`bg-card`, bordered, shadowed) that escapes the column width without disturbing neighbouring cells. The data-row column layout (`EVENTS_GRID_COLS`) and the matching header in `AircraftCard.tsx` both use `px-1` so header text and at-rest cell text share the same left edge. The **defects header** in `DefectsList.tsx` mirrors the same `px-1` on its WO/REQ spans so the defect column titles align exactly with the events column titles above them.
 
 ### "Last updated:" prefix
 - Aircraft header timestamp and TTAF cell both display `Last updated: <date>` rather than `Updated <date>` / a bare date. Convention applies anywhere a "last updated" timestamp is shown to the user.
@@ -193,7 +194,8 @@ const firebaseConfig = {
 - ISO week numbers are surfaced in two places:
   - The toolbar range label is rendered as **two stacked, centered lines**: a date range on top and a "Week" line below. Week view: `May 4 to May 10` / `Week 19` (year shown only on cross-year weeks). Month view: `May 2026` / `Week 18 - 22` (single-week months show `Week 18`).
   - In the day-header row of the grid, every Monday cell shows a small `Wxx` badge above the day. This works for both views — week view tags the single Monday, month view tags each one.
-- The toolbar uses a `grid-cols-[1fr_auto_1fr]` layout so the side regions (prev/today/next, Week/Month toggle) take equal width and the centred label sits in the true middle regardless of side content widths. Auto-margin centring (`mx-auto` + `ml-auto`) was tried first but produced an off-centre label because the auto-margins competed.
+- The toolbar uses a `grid-cols-[1fr_auto_1fr]` layout so the side regions (Today, Week/Month toggle) take equal width and the centred nav cluster sits in the true middle. Auto-margin centring (`mx-auto` + `ml-auto`) was tried first but produced an off-centre label because the auto-margins competed.
+- **Nav layout:** Today sits alone on the left. Prev/next are circular gradient buttons that **flank the date/week label** in the centre. The label has a fixed `w-64` width so the buttons stay in a constant horizontal position even when the range string changes length (e.g. cross-year weeks where both ends carry the year).
 - Implementation uses `date-fns` `getISOWeek`. Monday-anchoring already existed (see *week view starts on Monday* above), so week boundaries line up.
 
 ### Overview — booking pill opens the view dialog
@@ -206,6 +208,7 @@ const firebaseConfig = {
 - `unplanned` = no work-order number set.
 - `planned` = WO# set, no booking links this entity.
 - `booked` = WO# set **and** at least one booking links the entity (event via `eventId`, defect via `defectIds`). The booked-set is precomputed in `OverviewPage` via `buildBookedIdSets` (`src/lib/eventStatus.ts`) and passed down to the rows.
+- **Pill colour hierarchy** signals progress toward booked: *no action* = red (rose), *WO created* = yellow (amber), *WO + booked* = green (emerald). Same `PLAN_STATUS_CLASS` map is used in `EventRow.tsx` and `DefectsList.tsx`.
 - The Firestore `event.status` field is still written (`statusFromWo`) for historical/audit continuity but the overview rendering uses the derived status. Defects had no status badge before — they now show one symmetric to events.
 
 ### Requisition numbers

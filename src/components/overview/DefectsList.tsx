@@ -18,9 +18,9 @@ const PLAN_STATUS_LABEL: Record<PlanStatus, string> = {
 };
 
 const PLAN_STATUS_CLASS: Record<PlanStatus, string> = {
-  unplanned: "bg-amber-100/70 text-amber-800",
-  planned: "bg-emerald-100 text-emerald-700",
-  booked: "bg-blue-100 text-blue-800",
+  unplanned: "bg-rose-100 text-rose-800",
+  planned: "bg-amber-100/70 text-amber-800",
+  booked: "bg-emerald-100 text-emerald-700",
 };
 
 type Props = {
@@ -50,8 +50,8 @@ export default function DefectsList({
           DEFECTS_GRID_COLS,
         )}
       >
-        <span>WO</span>
-        <span>REQ</span>
+        <span className="px-1">WO</span>
+        <span className="px-1">REQ</span>
         <span>Defect ({defects.length})</span>
         <span>Status</span>
         <span>Reported</span>

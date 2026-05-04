@@ -104,7 +104,7 @@ export default function UpcomingEventsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl">
+      <DialogContent className="max-w-[min(96vw,1360px)] w-[min(96vw,1360px)]">
         <DialogHeader>
           <DialogTitle>Upcoming events</DialogTitle>
           <DialogDescription>
@@ -206,7 +206,7 @@ function Row({
     <div
       className="grid items-center gap-2 px-3 py-1 text-xs hover:bg-muted/30"
       style={{
-        gridTemplateColumns: "72px minmax(0,1fr) 88px auto",
+        gridTemplateColumns: "72px minmax(0,1fr) 96px 96px",
       }}
     >
       <span className="inline-flex items-center justify-center rounded bg-foreground text-background px-1.5 py-0.5 font-mono text-[11px] font-bold">
@@ -220,12 +220,12 @@ function Row({
           </span>
         )}
       </span>
-      <span className="font-mono tabular-nums text-[11px] text-muted-foreground justify-self-start">
+      <span className="font-mono tabular-nums text-[11px] text-muted-foreground justify-self-end">
         {primary}
       </span>
       <span
         className={cn(
-          "inline-flex items-center justify-center rounded border px-1.5 py-0.5 font-mono text-xs tabular-nums shadow-sm whitespace-nowrap",
+          "inline-flex w-full items-center justify-center rounded border px-1.5 py-0.5 font-mono text-xs tabular-nums shadow-sm whitespace-nowrap",
           severityPill[severity],
         )}
       >

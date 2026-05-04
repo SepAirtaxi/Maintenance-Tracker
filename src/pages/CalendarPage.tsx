@@ -197,16 +197,7 @@ export default function CalendarPage() {
       </div>
 
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-md border bg-card shadow-sm px-2 py-1.5">
-        <div className="flex items-center gap-0.5 justify-self-start">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={goPrev}
-            title={viewMode === "week" ? "Previous week" : "Previous month"}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
+        <div className="justify-self-start">
           <Button
             variant="outline"
             size="sm"
@@ -216,25 +207,34 @@ export default function CalendarPage() {
             <CalendarDays className="h-3.5 w-3.5" />
             Today
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
+        </div>
+        <div className="flex items-center gap-2 justify-self-center">
+          <button
+            type="button"
+            onClick={goPrev}
+            title={viewMode === "week" ? "Previous week" : "Previous month"}
+            className="group inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-gradient-to-b from-secondary to-muted text-foreground shadow-sm transition-all hover:from-primary hover:to-primary hover:text-primary-foreground hover:shadow-md hover:scale-105 active:scale-95"
+          >
+            <ChevronLeft className="h-5 w-5 transition-transform group-hover:-translate-x-0.5" />
+          </button>
+          <div className="flex w-64 flex-col items-center text-center leading-tight">
+            <span className="text-sm font-medium tabular-nums">
+              {rangeLabel.range}
+            </span>
+            {rangeLabel.week && (
+              <span className="text-xs text-muted-foreground tabular-nums">
+                {rangeLabel.week}
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
             onClick={goNext}
             title={viewMode === "week" ? "Next week" : "Next month"}
+            className="group inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-gradient-to-b from-secondary to-muted text-foreground shadow-sm transition-all hover:from-primary hover:to-primary hover:text-primary-foreground hover:shadow-md hover:scale-105 active:scale-95"
           >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-        <div className="flex flex-col items-center text-center leading-tight">
-          <span className="text-sm font-medium tabular-nums">
-            {rangeLabel.range}
-          </span>
-          {rangeLabel.week && (
-            <span className="text-xs text-muted-foreground tabular-nums">
-              {rangeLabel.week}
-            </span>
-          )}
+            <ChevronRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
+          </button>
         </div>
 
         <div className="inline-flex justify-self-end rounded-md border bg-card p-0.5 text-[11px]">

@@ -232,7 +232,10 @@ export async function updateEvent(
 
 export type ResolveEventInput = {
   resolvedDate: Date;
-  resolutionWorkOrder: string;
+  // null = administrative close (e.g. AMP/ARC renewals not tracked in the WO
+  // system). The dialog drives this via an explicit "administrative" toggle so
+  // a missing WO can never be a silent slip-through.
+  resolutionWorkOrder: string | null;
 };
 
 export async function resolveEvent(
@@ -246,33 +249,38 @@ export async function resolveEvent(
   ) {
     throw new Error("Resolution date is required.");
   }
-  const wo = input.resolutionWorkOrder.trim();
-  if (!wo) throw new Error("Work order number is required.");
+  const wo = input.resolutionWorkOrder?.trim() || null;
 
   const snap = await getDoc(eventDoc(id));
   if (!snap.exists()) throw new Error("Event not found.");
   const prev = docToEvent(id, snap.data());
   if (prev.resolvedAt) throw new Error("Event is already closed.");
 
-  await updateDoc(eventDoc(id), {
-    workOrderNumber: wo,
-    status: statusFromWo(wo),
+  const update: Record<string, unknown> = {
     resolvedDate: Timestamp.fromDate(input.resolvedDate),
     resolutionWorkOrder: wo,
     resolvedAt: serverTimestamp(),
     resolvedBy: byUid,
     updatedAt: serverTimestamp(),
-  });
+  };
+  // Only stamp the event's WO/status when a real WO is provided. An admin
+  // close mustn't forge a WO onto an event that legitimately has none.
+  if (wo) {
+    update.workOrderNumber = wo;
+    update.status = statusFromWo(wo);
+  }
+  await updateDoc(eventDoc(id), update);
 
   const ttafSuffix =
     prev.timerExpiryTimeMinutes != null
       ? ` at TTAF ${formatMinutesAsDuration(prev.timerExpiryTimeMinutes)}`
       : "";
+  const closeDetail = wo ? `WO ${wo}` : "administrative — no WO";
   logAudit(prev.tailNumber, {
     action: "update",
     entity: "event",
     entityId: id,
-    summary: `Event closed: "${prev.warning}" (WO ${wo}, on ${formatDate(
+    summary: `Event closed: "${prev.warning}" (${closeDetail}, on ${formatDate(
       Timestamp.fromDate(input.resolvedDate),
     )})${ttafSuffix}`,
   });

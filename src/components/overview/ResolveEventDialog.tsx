@@ -39,6 +39,7 @@ export default function ResolveEventDialog({ event, onClose }: Props) {
   const { user } = useAuth();
   const [resolvedDate, setResolvedDate] = useState(tsToInput(new Date()));
   const [workOrder, setWorkOrder] = useState("");
+  const [administrative, setAdministrative] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,6 +47,7 @@ export default function ResolveEventDialog({ event, onClose }: Props) {
     if (event) {
       setResolvedDate(tsToInput(new Date()));
       setWorkOrder(event.workOrderNumber ?? "");
+      setAdministrative(false);
       setError(null);
       setSaving(false);
     }
@@ -61,7 +63,7 @@ export default function ResolveEventDialog({ event, onClose }: Props) {
       setError("Resolution date is required.");
       return;
     }
-    if (!workOrder.trim()) {
+    if (!administrative && !workOrder.trim()) {
       setError("Work order number is required.");
       return;
     }
@@ -73,7 +75,10 @@ export default function ResolveEventDialog({ event, onClose }: Props) {
     try {
       await resolveEvent(
         event.id,
-        { resolvedDate: date, resolutionWorkOrder: workOrder.trim() },
+        {
+          resolvedDate: date,
+          resolutionWorkOrder: administrative ? null : workOrder.trim(),
+        },
         user.uid,
       );
       onClose();
@@ -122,15 +127,33 @@ export default function ResolveEventDialog({ event, onClose }: Props) {
                 <Label htmlFor="closeWO">Work order #</Label>
                 <Input
                   id="closeWO"
-                  value={workOrder}
+                  value={administrative ? "" : workOrder}
                   onChange={(e) => setWorkOrder(e.target.value)}
-                  required
-                  placeholder="e.g. 6600"
+                  required={!administrative}
+                  disabled={administrative}
+                  placeholder={administrative ? "—" : "e.g. 6600"}
                   className="font-mono"
                   autoFocus={!event.workOrderNumber}
                 />
               </div>
             </div>
+
+            <label className="flex items-start gap-2 cursor-pointer text-sm">
+              <input
+                type="checkbox"
+                checked={administrative}
+                onChange={(e) => setAdministrative(e.target.checked)}
+                className="mt-0.5 h-4 w-4 cursor-pointer accent-primary"
+              />
+              <span className="select-none">
+                <span className="font-medium">Administrative close</span>
+                <span className="block text-xs text-muted-foreground">
+                  Use only for events not tracked in the work-order system
+                  (e.g. AMP / ARC renewals signed off by the technical
+                  director). Skips the WO requirement.
+                </span>
+              </span>
+            </label>
 
             {error && (
               <p className="text-sm text-destructive" role="alert">
