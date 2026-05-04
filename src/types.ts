@@ -107,11 +107,14 @@ export type Defect = {
   // status, calendar bookings, or any computed state.
   requisitionNumber: string | null;
   // Resolution metadata. Resolved defects stay in Firestore as legacy; the
-  // overview filters them out. All four resolution fields are set together.
+  // overview filters them out. All resolution fields are set together.
+  // `resolutionKind` distinguishes a true fix from a "no fault found" closure;
+  // null while the defect is open.
   resolvedDate: Timestamp | null;
   resolutionWorkOrder: string | null;
   resolvedAt: Timestamp | null;
   resolvedBy: string | null;
+  resolutionKind: "fixed" | "nff" | null;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 };

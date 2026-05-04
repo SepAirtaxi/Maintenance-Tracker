@@ -281,10 +281,10 @@ export default function AircraftCard({
                 size="sm"
                 className="h-7 px-2 text-xs"
                 onClick={onOpenEditLog}
-                title="Show transaction log"
+                title="Show history"
               >
                 <History className="h-3 w-3" />
-                Log
+                History
               </Button>
             </div>
           </div>

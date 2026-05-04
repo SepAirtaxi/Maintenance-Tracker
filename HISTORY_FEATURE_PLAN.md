@@ -124,6 +124,64 @@ The dialog should remember which tab the user was on per session is NOT required
 
 ---
 
+## Stage 2.5 — Recurrence linkage at report time
+
+**Goal**: when reporting a new defect on a tail that has prior NFF closures, surface those prior closures so the reporter can (a) reuse the title verbatim to keep wording consistent, and (b) persist a link from the new defect to the prior one(s). The persistent link is what pays off later — it makes recurrences scannable in the History dialog instead of being a one-shot prompt at creation time.
+
+This stage is **purely additive** and depends only on Stage 1 (`resolutionKind`). Stage 2 adds the surface where the linkage shows up later (Defects tab), but Stage 2.5 does not depend on Stage 2 shipping first — they could in principle land in either order.
+
+### Type changes
+- `src/types.ts` — add to `Defect`:
+  ```ts
+  // IDs of prior defects on the same tail that this defect is reported as a
+  // recurrence of. Unidirectional (new → old). Empty array when none.
+  relatedDefectIds: string[];
+  ```
+  Empty array (`[]`) for defects with no recurrence link. Mirrors the booking→event/defect render-time-resolution pattern: store IDs, look up labels at render time, tolerate dangling refs.
+
+### Service changes
+- `src/services/defects.ts`:
+  - `DefectInput` gains `relatedDefectIds?: string[]` (optional at the API; defaults to `[]` when writing).
+  - `createDefect()` writes the array. Validation: each id must reference a defect on the same tail; silently drop ids that don't match (defensive — IDs can only come from the picker, but a Firestore race could leave one stale).
+  - `updateDefect()` accepts `relatedDefectIds` updates so the link can be edited after creation.
+  - `docToDefect()` defaults missing/undefined `relatedDefectIds` to `[]` (legacy compatibility — no migration script).
+  - Audit summary on create: append `(recurrence — linked to N prior)` when the array is non-empty. Leave "Defect reported: …" prefix alone.
+  - Audit summary on update: if `relatedDefectIds` changes, log `Defect "…" links updated: was N, now M`. Don't enumerate IDs in the summary; the History dialog renders titles from the live data.
+
+### UI changes
+- `src/components/overview/DefectFormDialog.tsx` (the create/edit dialog used by both "Report defect" and "Edit defect"):
+  - Compute `priorNffDefects` for the tail: defects on the same tail with `resolvedAt != null && resolutionKind === "nff"`. Sort newest `resolvedDate` first. Filter out the defect being edited (if any) so a defect can't link to itself.
+  - **Only render the panel when `priorNffDefects.length > 0`.** Empty list = no panel = no noise.
+  - Panel: collapsible, default *closed* if there are no current links, default *open* if the defect being edited already has links (so they're visible at a glance).
+  - Header: `Prior NFF closures on this tail (N)` with a chevron toggle.
+  - Each row shows: title, `Closed {date}`, `WO {resolutionWorkOrder}`. Match the amber tint used on the History → Defects tab for NFF rows so the visual language is consistent.
+  - Per-row controls:
+    1. **Use title** — button. Copies the prior defect's title verbatim into the form's title field. Does not auto-link; that's a separate decision.
+    2. **Link** — checkbox. Toggles inclusion in `relatedDefectIds`. Multiple links allowed.
+  - Below the form's title field, render a small inline indicator when ≥1 row is linked: e.g. `Linked to N prior NFF closure(s)`. Reinforces what's about to be saved without forcing the user to scroll back.
+
+- `src/components/overview/HistoryDialog.tsx` — Defects tab:
+  - Each defect row that has a non-empty `relatedDefectIds` renders an extra line: `Follows up on: "{title}" (NFF {date})` — one entry per link, comma-separated if multiple.
+  - Resolve titles by looking each id up in the per-tail defects already in scope. If a linked id no longer exists on this tail (deleted, or moved tails), skip it silently. If *all* links resolve to nothing, omit the line entirely.
+  - Keep this line subtle (small text, muted colour) — it's secondary metadata, not the headline.
+
+### What NOT to do (explicit non-goals)
+- **No fuzzy/auto-matching.** Don't suggest links by title similarity. The user explicitly ruled out automatic recurrence detection in the original plan; manual picker only.
+- **No bidirectional render in v1.** The prior NFF defect does not get a "later report" backlink in its row. Could be added later trivially (scan all defects on the tail for ones whose `relatedDefectIds` includes this one's id) but is not in scope here.
+- **No prior-fixed surfacing in v1.** Only NFF closures show in the picker. A "show prior fixed too" toggle is reasonable v2 polish — ship it later if needed.
+- **No cross-tail links.** Picker is scoped to the same tail. Cross-tail patterns are a different problem and not what the user asked for.
+
+### Acceptance for Stage 2.5
+- Reporting a defect on a tail with no prior NFFs: dialog looks unchanged.
+- Reporting a defect on a tail with prior NFFs: collapsible panel appears, lists those NFFs with Use-title and Link controls.
+- "Use title" copies the title into the form field (overwriting whatever was there — confirm acceptable; alternatively prompt only if the field already has content).
+- Saving with ≥1 link writes `relatedDefectIds` correctly. Audit summary reflects the linkage.
+- Editing an existing defect with links: panel opens with the linked rows already checked.
+- History → Defects tab: linked defects show the "Follows up on" line. Deleting a linked-to defect does not break the linking defect's row (silently omits the missing link).
+- No legacy data breaks: defects without the field read as `[]`.
+
+---
+
 ## Stage 3 — Events tab
 
 **Goal**: add closed-events history so CAMO lookups ("when did we last do X inspection?") work in one click.
@@ -167,6 +225,8 @@ After Stage 2/3 ship, consider a new `feedback_history_dialog.md` if the user gi
 2. Show user, confirm Fixed/NFF UX feels right.
 3. Stage 2 (rename + tabs + Defects tab).
 4. Show user, confirm visual treatment of NFF rows.
-5. Stage 3 (Events tab).
+5. Stage 2.5 (recurrence linkage at report time). Order is flexible — could also land after Stage 3 — but it's most useful immediately after Stage 2 because the History dialog is where the link surfaces for later reading.
+6. Show user, confirm the picker doesn't feel intrusive on tails with many prior NFFs.
+7. Stage 3 (Events tab).
 
 Each stage should be one commit (or one branch + PR if the user prefers — ask first).

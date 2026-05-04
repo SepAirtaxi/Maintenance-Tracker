@@ -1,0 +1,1 @@
+1: In the overview: the columns in the title row for WO/REQ under defects isn't aligned like the event WO/REQ above. Please align so the WO/REQ in events and defects are aligned exactly the same (see screenshot \sample\alignment.png for a visual example).

@@ -23,13 +23,14 @@ import DeleteDefectDialog from "@/components/overview/DeleteDefectDialog";
 import ResolveDefectDialog from "@/components/overview/ResolveDefectDialog";
 import ResolveEventDialog from "@/components/overview/ResolveEventDialog";
 import UpcomingEventsDialog from "@/components/overview/UpcomingEventsDialog";
-import AuditLogDialog from "@/components/overview/AuditLogDialog";
+import HistoryDialog from "@/components/overview/HistoryDialog";
 import { useAuth } from "@/context/AuthContext";
 import { subscribeAircraft } from "@/services/aircraft";
 import { subscribeEvents } from "@/services/events";
 import { subscribeDefects } from "@/services/defects";
 import { nextBookingForTail, subscribeBookings } from "@/services/bookings";
 import { subscribeLocations } from "@/services/locations";
+import { subscribeUsers } from "@/services/users";
 import {
   buildBookedIdSets,
   getEventSeverity,
@@ -42,6 +43,7 @@ import type {
   Defect,
   Location,
   MaintenanceEvent,
+  UserProfile,
 } from "@/types";
 
 const EVENT_SEVERITY_ORDER: Record<Severity, number> = {
@@ -114,6 +116,7 @@ export default function OverviewPage() {
   const [allDefects, setAllDefects] = useState<Defect[]>([]);
   const [allBookings, setAllBookings] = useState<Booking[]>([]);
   const [allLocations, setAllLocations] = useState<Location[]>([]);
+  const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
 
   const [sortKey, setSortKey] = useState<SortKey>("tail");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
@@ -150,7 +153,7 @@ export default function OverviewPage() {
   const [defectResolveTarget, setDefectResolveTarget] = useState<Defect | null>(
     null,
   );
-  const [auditLogTail, setAuditLogTail] = useState<string | null>(null);
+  const [historyTail, setHistoryTail] = useState<string | null>(null);
   const [upcomingOpen, setUpcomingOpen] = useState(false);
 
   useEffect(() => subscribeAircraft(setAircraft), []);
@@ -158,6 +161,21 @@ export default function OverviewPage() {
   useEffect(() => subscribeDefects(setAllDefects), []);
   useEffect(() => subscribeBookings(setAllBookings), []);
   useEffect(() => subscribeLocations(setAllLocations), []);
+  useEffect(() => subscribeUsers(setAllUsers), []);
+
+  const usersByUid = useMemo(() => {
+    const m = new Map<string, UserProfile>();
+    for (const u of allUsers) m.set(u.uid, u);
+    return m;
+  }, [allUsers]);
+
+  const historyDefects = useMemo(
+    () =>
+      historyTail
+        ? allDefects.filter((d) => d.tailNumber === historyTail)
+        : [],
+    [historyTail, allDefects],
+  );
 
   useEffect(() => {
     if (!filterOpen) return;
@@ -391,7 +409,7 @@ export default function OverviewPage() {
       bookedDefectIds={bookedIds.defectIds}
       locationsById={locationsById}
       readOnly={isViewer}
-      onOpenEditLog={() => setAuditLogTail(s.aircraft.tailNumber)}
+      onOpenEditLog={() => setHistoryTail(s.aircraft.tailNumber)}
       onUpdateTtaf={() => setTtafTarget(s.aircraft)}
       onAddBooking={() => openAddBooking(s.aircraft.tailNumber)}
       onViewBooking={setViewingBooking}
@@ -645,9 +663,11 @@ export default function OverviewPage() {
         defect={defectResolveTarget}
         onClose={() => setDefectResolveTarget(null)}
       />
-      <AuditLogDialog
-        tailNumber={auditLogTail}
-        onClose={() => setAuditLogTail(null)}
+      <HistoryDialog
+        tailNumber={historyTail}
+        defects={historyDefects}
+        usersByUid={usersByUid}
+        onClose={() => setHistoryTail(null)}
       />
       <UpcomingEventsDialog
         open={upcomingOpen}

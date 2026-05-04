@@ -39,7 +39,7 @@ export default function ResolveDefectDialog({ defect, onClose }: Props) {
   const { user } = useAuth();
   const [resolvedDate, setResolvedDate] = useState(tsToInput(new Date()));
   const [workOrder, setWorkOrder] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState<"fixed" | "nff" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -47,14 +47,13 @@ export default function ResolveDefectDialog({ defect, onClose }: Props) {
       setResolvedDate(tsToInput(new Date()));
       setWorkOrder(defect.workOrderNumber ?? "");
       setError(null);
-      setSaving(false);
+      setSaving(null);
     }
   }, [defect]);
 
   if (!defect) return null;
 
-  const onSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  const submit = async (kind: "fixed" | "nff") => {
     setError(null);
     const date = inputToDate(resolvedDate);
     if (!date) {
@@ -69,23 +68,36 @@ export default function ResolveDefectDialog({ defect, onClose }: Props) {
       setError("You must be signed in.");
       return;
     }
-    setSaving(true);
+    setSaving(kind);
     try {
       await resolveDefect(
         defect.id,
-        { resolvedDate: date, resolutionWorkOrder: workOrder.trim() },
+        {
+          resolvedDate: date,
+          resolutionWorkOrder: workOrder.trim(),
+          resolutionKind: kind,
+        },
         user.uid,
       );
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to resolve.");
     } finally {
-      setSaving(false);
+      setSaving(null);
     }
   };
 
+  const onSubmit = (e: FormEvent) => {
+    // Default form submission (e.g. Enter key) closes as Fixed.
+    e.preventDefault();
+    if (saving) return;
+    void submit("fixed");
+  };
+
+  const busy = saving !== null;
+
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
+    <Dialog open onOpenChange={(o) => !o && !busy && onClose()}>
       <DialogContent>
         <form onSubmit={onSubmit}>
           <DialogHeader>
@@ -93,9 +105,13 @@ export default function ResolveDefectDialog({ defect, onClose }: Props) {
             <DialogDescription>
               "{defect.title}" — reported {formatDate(defect.reportedDate)} at
               TTAF {formatMinutesAsDuration(defect.reportedTtafMinutes)}.
-              Resolution is logged; the defect is removed from the active
-              overview but kept as a legacy record.
             </DialogDescription>
+            <p className="text-sm text-muted-foreground pt-2">
+              Choose <strong>Mark as fixed</strong> if the fault was found and
+              corrected, or <strong>Close NFF</strong> if the defect is being
+              closed without a confirmed fix. Closed defects are removed from
+              the active overview but kept in history.
+            </p>
           </DialogHeader>
 
           <div className="py-4 space-y-4">
@@ -131,12 +147,25 @@ export default function ResolveDefectDialog({ defect, onClose }: Props) {
             )}
           </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={busy}
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={saving}>
-              {saving ? "Resolving…" : "Resolve defect"}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => submit("nff")}
+              disabled={busy}
+            >
+              {saving === "nff" ? "Closing…" : "Close NFF"}
+            </Button>
+            <Button type="submit" disabled={busy}>
+              {saving === "fixed" ? "Resolving…" : "Mark as fixed"}
             </Button>
           </DialogFooter>
         </form>

@@ -45,6 +45,16 @@ function validate(input: DefectInput) {
 }
 
 function docToDefect(id: string, data: Record<string, unknown>): Defect {
+  const resolvedAt = (data.resolvedAt as Timestamp | undefined) ?? null;
+  const storedKind = data.resolutionKind as
+    | "fixed"
+    | "nff"
+    | null
+    | undefined;
+  // Legacy default: any pre-existing resolved defect predates the field, so
+  // treat it as "fixed". Open defects stay null.
+  const resolutionKind: "fixed" | "nff" | null =
+    storedKind ?? (resolvedAt ? "fixed" : null);
   return {
     id,
     tailNumber: data.tailNumber as string,
@@ -56,8 +66,9 @@ function docToDefect(id: string, data: Record<string, unknown>): Defect {
     resolvedDate: (data.resolvedDate as Timestamp | undefined) ?? null,
     resolutionWorkOrder:
       (data.resolutionWorkOrder as string | undefined) ?? null,
-    resolvedAt: (data.resolvedAt as Timestamp | undefined) ?? null,
+    resolvedAt,
     resolvedBy: (data.resolvedBy as string | undefined) ?? null,
+    resolutionKind,
     createdAt: data.createdAt as Timestamp,
     updatedAt: data.updatedAt as Timestamp,
   };
@@ -88,6 +99,7 @@ export async function createDefect(input: DefectInput): Promise<string> {
     resolutionWorkOrder: null,
     resolvedAt: null,
     resolvedBy: null,
+    resolutionKind: null,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -168,6 +180,7 @@ export async function updateDefect(
 export type ResolveDefectInput = {
   resolvedDate: Date;
   resolutionWorkOrder: string;
+  resolutionKind: "fixed" | "nff";
 };
 
 export async function resolveDefect(
@@ -183,6 +196,9 @@ export async function resolveDefect(
   }
   const wo = input.resolutionWorkOrder.trim();
   if (!wo) throw new Error("Work order number is required.");
+  if (input.resolutionKind !== "fixed" && input.resolutionKind !== "nff") {
+    throw new Error("Resolution kind is required.");
+  }
 
   const snap = await getDoc(defectDoc(id));
   if (!snap.exists()) throw new Error("Defect not found.");
@@ -194,16 +210,20 @@ export async function resolveDefect(
     resolutionWorkOrder: wo,
     resolvedAt: serverTimestamp(),
     resolvedBy: byUid,
+    resolutionKind: input.resolutionKind,
     updatedAt: serverTimestamp(),
   });
 
+  const dateStr = formatDate(Timestamp.fromDate(input.resolvedDate));
+  const summary =
+    input.resolutionKind === "fixed"
+      ? `Defect resolved (fixed): "${prev.title}" (WO ${wo}, on ${dateStr})`
+      : `Defect closed NFF: "${prev.title}" (WO ${wo}, on ${dateStr})`;
   logAudit(prev.tailNumber, {
     action: "update",
     entity: "defect",
     entityId: id,
-    summary: `Defect resolved: "${prev.title}" (WO ${wo}, on ${formatDate(
-      Timestamp.fromDate(input.resolvedDate),
-    )})`,
+    summary,
   });
 }
 
