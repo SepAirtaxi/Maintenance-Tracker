@@ -21,11 +21,12 @@ import {
   type AuditEntity,
   type AuditLogEntry,
 } from "@/services/audit";
-import type { Defect, UserProfile } from "@/types";
+import type { Defect, MaintenanceEvent, UserProfile } from "@/types";
 
 type Props = {
   tailNumber: string | null;
   defects: Defect[];
+  events: MaintenanceEvent[];
   usersByUid: ReadonlyMap<string, UserProfile>;
   onClose: () => void;
 };
@@ -306,13 +307,172 @@ function DefectsTab({
   );
 }
 
+type EventGroupKey = "open" | "closed";
+type EventGroup = {
+  key: EventGroupKey;
+  label: string;
+  emptyCopy: string;
+  events: MaintenanceEvent[];
+};
+
+function groupEvents(events: MaintenanceEvent[]): EventGroup[] {
+  const open: MaintenanceEvent[] = [];
+  const closed: MaintenanceEvent[] = [];
+  for (const e of events) {
+    if (e.resolvedAt) closed.push(e);
+    else open.push(e);
+  }
+  // Open: soonest expiry first; events without an expiry date sink to the end.
+  open.sort((a, b) => {
+    const aDue = a.expiryDate?.toMillis() ?? Number.POSITIVE_INFINITY;
+    const bDue = b.expiryDate?.toMillis() ?? Number.POSITIVE_INFINITY;
+    return aDue - bDue;
+  });
+  closed.sort(
+    (a, b) =>
+      (b.resolvedDate?.toMillis() ?? 0) - (a.resolvedDate?.toMillis() ?? 0),
+  );
+  return [
+    {
+      key: "open",
+      label: "Open",
+      emptyCopy: "No open events.",
+      events: open,
+    },
+    {
+      key: "closed",
+      label: "Closed",
+      emptyCopy: "No closed events.",
+      events: closed,
+    },
+  ];
+}
+
+const eventRowStyle: Record<EventGroupKey, string> = {
+  open: "border-border bg-card",
+  closed: "border-emerald-200 bg-emerald-50/60",
+};
+
+function EventRow({
+  event,
+  group,
+  resolverInitials,
+}: {
+  event: MaintenanceEvent;
+  group: EventGroupKey;
+  resolverInitials: string | null;
+}) {
+  return (
+    <div
+      className={cn(
+        "rounded-md border px-2.5 py-1.5 text-xs",
+        eventRowStyle[group],
+      )}
+    >
+      <div className="text-sm font-medium text-foreground break-words">
+        {event.warning}
+      </div>
+      <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
+        {event.expiryDate && <span>Due {formatDate(event.expiryDate)}</span>}
+        {event.timerExpiryTimeMinutes != null && (
+          <span>
+            {event.expiryDate ? "· " : ""}TTAF expiry{" "}
+            <span className="font-mono">
+              {formatMinutesAsDuration(event.timerExpiryTimeMinutes)}
+            </span>
+          </span>
+        )}
+        {!event.expiryDate && event.timerExpiryTimeMinutes == null && (
+          <span className="italic">No expiry set</span>
+        )}
+        {event.workOrderNumber && (
+          <span>
+            · WO <span className="font-mono">{event.workOrderNumber}</span>
+          </span>
+        )}
+        {event.requisitionNumber && (
+          <span>
+            · REQ{" "}
+            <span className="font-mono">{event.requisitionNumber}</span>
+          </span>
+        )}
+      </div>
+      {event.resolvedAt && event.resolvedDate && (
+        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-emerald-900">
+          <span className="font-medium uppercase tracking-wider">Closed</span>
+          <span>· {formatDate(event.resolvedDate)}</span>
+          {event.resolutionWorkOrder && (
+            <span>
+              · WO{" "}
+              <span className="font-mono">{event.resolutionWorkOrder}</span>
+            </span>
+          )}
+          {resolverInitials && (
+            <span>
+              · by <span className="font-mono">{resolverInitials}</span>
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EventsTab({
+  events,
+  usersByUid,
+}: {
+  events: MaintenanceEvent[];
+  usersByUid: ReadonlyMap<string, UserProfile>;
+}) {
+  const groups = useMemo(() => groupEvents(events), [events]);
+  const initialsFor = (uid: string | null) =>
+    uid ? usersByUid.get(uid)?.initials ?? null : null;
+
+  return (
+    <div className="space-y-3 py-1">
+      {groups.map((g) => (
+        <div key={g.key} className="space-y-1.5">
+          <div className="flex items-baseline gap-2 px-0.5">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground">
+              {g.label}
+            </h3>
+            <span className="text-[11px] text-muted-foreground">
+              {g.events.length}
+            </span>
+          </div>
+          {g.events.length === 0 ? (
+            <p className="px-0.5 text-[11px] italic text-muted-foreground">
+              {g.emptyCopy}
+            </p>
+          ) : (
+            <div className="space-y-1.5">
+              {g.events.map((e) => (
+                <EventRow
+                  key={e.id}
+                  event={e}
+                  group={g.key}
+                  resolverInitials={initialsFor(e.resolvedBy)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function HistoryDialog({
   tailNumber,
   defects,
+  events,
   usersByUid,
   onClose,
 }: Props) {
-  const [tab, setTab] = useState<"activity" | "defects">("activity");
+  const [tab, setTab] = useState<"activity" | "defects" | "events">(
+    "activity",
+  );
   const [entries, setEntries] = useState<AuditLogEntry[] | null>(null);
   const [search, setSearch] = useState("");
   const [entityFilter, setEntityFilter] = useState<Set<AuditEntity>>(new Set());
@@ -406,6 +566,7 @@ export default function HistoryDialog({
   };
 
   const defectCount = defects.length;
+  const eventCount = events.length;
 
   return (
     <Dialog open={tailNumber !== null} onOpenChange={(o) => !o && onClose()}>
@@ -425,6 +586,14 @@ export default function HistoryDialog({
               {defectCount > 0 && (
                 <span className="ml-1.5 text-[10px] text-muted-foreground">
                   {defectCount}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="events">
+              Events
+              {eventCount > 0 && (
+                <span className="ml-1.5 text-[10px] text-muted-foreground">
+                  {eventCount}
                 </span>
               )}
             </TabsTrigger>
@@ -578,6 +747,10 @@ export default function HistoryDialog({
 
           <TabsContent value="defects">
             <DefectsTab defects={defects} usersByUid={usersByUid} />
+          </TabsContent>
+
+          <TabsContent value="events">
+            <EventsTab events={events} usersByUid={usersByUid} />
           </TabsContent>
         </Tabs>
 

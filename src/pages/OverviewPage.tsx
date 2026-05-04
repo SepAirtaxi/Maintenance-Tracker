@@ -177,6 +177,14 @@ export default function OverviewPage() {
     [historyTail, allDefects],
   );
 
+  const historyEvents = useMemo(
+    () =>
+      historyTail
+        ? allEvents.filter((e) => e.tailNumber === historyTail)
+        : [],
+    [historyTail, allEvents],
+  );
+
   const defectFormTailDefects = useMemo(
     () =>
       defectFormTail
@@ -675,6 +683,7 @@ export default function OverviewPage() {
       <HistoryDialog
         tailNumber={historyTail}
         defects={historyDefects}
+        events={historyEvents}
         usersByUid={usersByUid}
         onClose={() => setHistoryTail(null)}
       />
