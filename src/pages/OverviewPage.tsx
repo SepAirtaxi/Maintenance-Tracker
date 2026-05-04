@@ -177,6 +177,14 @@ export default function OverviewPage() {
     [historyTail, allDefects],
   );
 
+  const defectFormTailDefects = useMemo(
+    () =>
+      defectFormTail
+        ? allDefects.filter((d) => d.tailNumber === defectFormTail)
+        : [],
+    [defectFormTail, allDefects],
+  );
+
   useEffect(() => {
     if (!filterOpen) return;
     const handler = (e: MouseEvent) => {
@@ -654,6 +662,7 @@ export default function OverviewPage() {
         onOpenChange={setDefectFormOpen}
         tailNumber={defectFormTail}
         defect={defectFormTarget}
+        tailDefects={defectFormTailDefects}
       />
       <DeleteDefectDialog
         defect={defectDeleteTarget}

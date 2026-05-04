@@ -174,11 +174,16 @@ function DefectRow({
   defect,
   group,
   resolverInitials,
+  defectsById,
 }: {
   defect: Defect;
   group: DefectGroupKey;
   resolverInitials: string | null;
+  defectsById: ReadonlyMap<string, Defect>;
 }) {
+  const followsUp = defect.relatedDefectIds
+    .map((id) => defectsById.get(id))
+    .filter((d): d is Defect => Boolean(d));
   return (
     <div
       className={cn(
@@ -205,6 +210,18 @@ function DefectRow({
               </span>
             )}
           </div>
+          {followsUp.length > 0 && (
+            <div className="mt-0.5 text-[11px] text-muted-foreground">
+              Follows up on:{" "}
+              {followsUp.map((p, i) => (
+                <span key={p.id}>
+                  {i > 0 && ", "}
+                  &quot;{p.title}&quot;
+                  {p.resolvedDate && ` (NFF ${formatDate(p.resolvedDate)})`}
+                </span>
+              ))}
+            </div>
+          )}
           {defect.resolvedAt && defect.resolvedDate && (
             <div
               className={cn(
@@ -246,6 +263,11 @@ function DefectsTab({
   usersByUid: ReadonlyMap<string, UserProfile>;
 }) {
   const groups = useMemo(() => groupDefects(defects), [defects]);
+  const defectsById = useMemo(() => {
+    const m = new Map<string, Defect>();
+    for (const d of defects) m.set(d.id, d);
+    return m;
+  }, [defects]);
   const initialsFor = (uid: string | null) =>
     uid ? usersByUid.get(uid)?.initials ?? null : null;
 
@@ -273,6 +295,7 @@ function DefectsTab({
                   defect={d}
                   group={g.key}
                   resolverInitials={initialsFor(d.resolvedBy)}
+                  defectsById={defectsById}
                 />
               ))}
             </div>

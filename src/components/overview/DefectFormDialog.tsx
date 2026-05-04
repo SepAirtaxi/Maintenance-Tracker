@@ -1,4 +1,5 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +18,7 @@ import {
   parseDurationToMinutes,
   parseDecimalHoursToMinutes,
 } from "@/lib/time";
+import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Defect } from "@/types";
 
@@ -25,6 +27,7 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   tailNumber: string;
   defect: Defect | null; // null = create
+  tailDefects: Defect[];
 };
 
 function tsToInput(d: Date): string {
@@ -46,6 +49,7 @@ export default function DefectFormDialog({
   onOpenChange,
   tailNumber,
   defect,
+  tailDefects,
 }: Props) {
   const isEdit = defect !== null;
   const [title, setTitle] = useState("");
@@ -54,8 +58,26 @@ export default function DefectFormDialog({
   const [ttafMode, setTtafMode] = useState<"hhmm" | "decimal">("hhmm");
   const [workOrderNumber, setWorkOrderNumber] = useState("");
   const [requisitionNumber, setRequisitionNumber] = useState("");
+  const [linkedIds, setLinkedIds] = useState<Set<string>>(() => new Set());
+  const [recurrenceOpen, setRecurrenceOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const priorNffDefects = useMemo(() => {
+    const editId = defect?.id ?? null;
+    return tailDefects
+      .filter(
+        (d) =>
+          d.id !== editId &&
+          d.resolvedAt != null &&
+          d.resolutionKind === "nff",
+      )
+      .sort(
+        (a, b) =>
+          (b.resolvedDate?.toMillis() ?? 0) -
+          (a.resolvedDate?.toMillis() ?? 0),
+      );
+  }, [tailDefects, defect]);
 
   useEffect(() => {
     if (!open) return;
@@ -66,12 +88,17 @@ export default function DefectFormDialog({
       setReportedTtaf(formatMinutesAsDuration(defect.reportedTtafMinutes));
       setWorkOrderNumber(defect.workOrderNumber ?? "");
       setRequisitionNumber(defect.requisitionNumber ?? "");
+      const initialLinks = new Set(defect.relatedDefectIds);
+      setLinkedIds(initialLinks);
+      setRecurrenceOpen(initialLinks.size > 0);
     } else {
       setTitle("");
       setReportedDate(tsToInput(new Date()));
       setReportedTtaf("");
       setWorkOrderNumber("");
       setRequisitionNumber("");
+      setLinkedIds(new Set());
+      setRecurrenceOpen(false);
     }
     setError(null);
     setSaving(false);
@@ -117,6 +144,8 @@ export default function DefectFormDialog({
       return;
     }
 
+    const relatedDefectIds = Array.from(linkedIds);
+
     setSaving(true);
     try {
       if (isEdit) {
@@ -126,6 +155,7 @@ export default function DefectFormDialog({
           reportedTtafMinutes: minutes,
           workOrderNumber: workOrderNumber.trim() || null,
           requisitionNumber: requisitionNumber.trim() || null,
+          relatedDefectIds,
         });
       } else {
         await createDefect({
@@ -135,6 +165,7 @@ export default function DefectFormDialog({
           reportedTtafMinutes: minutes,
           workOrderNumber: workOrderNumber.trim() || null,
           requisitionNumber: requisitionNumber.trim() || null,
+          relatedDefectIds,
         });
       }
       onOpenChange(false);
@@ -143,6 +174,19 @@ export default function DefectFormDialog({
     } finally {
       setSaving(false);
     }
+  };
+
+  const toggleLink = (id: string) => {
+    setLinkedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const useTitleFrom = (sourceTitle: string) => {
+    setTitle(sourceTitle);
   };
 
   return (
@@ -169,6 +213,12 @@ export default function DefectFormDialog({
                 required
                 placeholder="Short description of the defect"
               />
+              {linkedIds.size > 0 && (
+                <p className="text-[11px] text-amber-900">
+                  Linked to {linkedIds.size} prior NFF closure
+                  {linkedIds.size === 1 ? "" : "s"}.
+                </p>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -223,6 +273,78 @@ export default function DefectFormDialog({
                 />
               </div>
             </div>
+
+            {priorNffDefects.length > 0 && (
+              <div className="rounded-md border border-amber-300 bg-amber-50/60">
+                <button
+                  type="button"
+                  onClick={() => setRecurrenceOpen((v) => !v)}
+                  className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs hover:bg-amber-100/60 transition-colors"
+                >
+                  {recurrenceOpen ? (
+                    <ChevronDown className="h-3.5 w-3.5 text-amber-900" />
+                  ) : (
+                    <ChevronRight className="h-3.5 w-3.5 text-amber-900" />
+                  )}
+                  <span className="font-semibold uppercase tracking-wider text-amber-900">
+                    Prior NFF closures on this tail ({priorNffDefects.length})
+                  </span>
+                  {linkedIds.size > 0 && (
+                    <span className="ml-auto text-[10px] text-amber-900">
+                      {linkedIds.size} linked
+                    </span>
+                  )}
+                </button>
+                {recurrenceOpen && (
+                  <div className="space-y-1 border-t border-amber-200 px-2 py-1.5">
+                    {priorNffDefects.map((p) => {
+                      const checked = linkedIds.has(p.id);
+                      return (
+                        <div
+                          key={p.id}
+                          className="flex items-start gap-2 rounded px-1 py-1"
+                        >
+                          <label className="mt-0.5 flex shrink-0 cursor-pointer items-center gap-1.5 text-[11px] text-amber-900">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleLink(p.id)}
+                              className="h-3.5 w-3.5 cursor-pointer accent-amber-600"
+                            />
+                            <span className="select-none">Link</span>
+                          </label>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs font-medium text-foreground break-words">
+                              {p.title}
+                            </div>
+                            <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-amber-900">
+                              {p.resolvedDate && (
+                                <span>Closed {formatDate(p.resolvedDate)}</span>
+                              )}
+                              {p.resolutionWorkOrder && (
+                                <span>
+                                  · WO{" "}
+                                  <span className="font-mono">
+                                    {p.resolutionWorkOrder}
+                                  </span>
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => useTitleFrom(p.title)}
+                            className="shrink-0 rounded border border-amber-300 bg-amber-100/60 px-1.5 py-0.5 text-[10px] font-medium text-amber-900 hover:bg-amber-200/70 transition-colors"
+                          >
+                            Use title
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">

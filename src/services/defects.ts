@@ -28,7 +28,28 @@ export type DefectInput = {
   reportedTtafMinutes: number;
   workOrderNumber: string | null;
   requisitionNumber: string | null;
+  relatedDefectIds?: string[];
 };
+
+// Verify each candidate id points to a defect on the given tail. Drops ids
+// that don't exist or live on a different tail (defensive — IDs only come
+// from the form picker, but stale state can still slip through). Dedupes.
+async function filterValidRelatedIds(
+  tailNumber: string,
+  ids: string[] | undefined,
+  excludeId?: string,
+): Promise<string[]> {
+  if (!ids || ids.length === 0) return [];
+  const unique = Array.from(new Set(ids)).filter((id) => id !== excludeId);
+  if (unique.length === 0) return [];
+  const snaps = await Promise.all(unique.map((id) => getDoc(defectDoc(id))));
+  return unique.filter((_id, i) => {
+    const s = snaps[i];
+    if (!s.exists()) return false;
+    const data = s.data() as Record<string, unknown>;
+    return (data.tailNumber as string) === tailNumber;
+  });
+}
 
 function validate(input: DefectInput) {
   if (!input.tailNumber.trim()) throw new Error("Tail number is required.");
@@ -69,6 +90,8 @@ function docToDefect(id: string, data: Record<string, unknown>): Defect {
     resolvedAt,
     resolvedBy: (data.resolvedBy as string | undefined) ?? null,
     resolutionKind,
+    relatedDefectIds:
+      (data.relatedDefectIds as string[] | undefined) ?? [],
     createdAt: data.createdAt as Timestamp,
     updatedAt: data.updatedAt as Timestamp,
   };
@@ -88,6 +111,7 @@ export async function createDefect(input: DefectInput): Promise<string> {
   const tail = normaliseTailNumber(input.tailNumber);
   const wo = input.workOrderNumber?.trim() || null;
   const req = input.requisitionNumber?.trim() || null;
+  const relatedIds = await filterValidRelatedIds(tail, input.relatedDefectIds);
   const ref = await addDoc(defectsCol(), {
     tailNumber: tail,
     title: input.title.trim(),
@@ -100,14 +124,19 @@ export async function createDefect(input: DefectInput): Promise<string> {
     resolvedAt: null,
     resolvedBy: null,
     resolutionKind: null,
+    relatedDefectIds: relatedIds,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
+  const recurrenceSuffix =
+    relatedIds.length > 0
+      ? ` (recurrence — linked to ${relatedIds.length} prior)`
+      : "";
   logAudit(tail, {
     action: "create",
     entity: "defect",
     entityId: ref.id,
-    summary: `Defect reported: ${input.title.trim()} (at TTAF ${formatMinutesAsDuration(input.reportedTtafMinutes)}, reported ${formatDate(Timestamp.fromDate(input.reportedDate))}${wo ? `, WO ${wo}` : ""})`,
+    summary: `Defect reported: ${input.title.trim()} (at TTAF ${formatMinutesAsDuration(input.reportedTtafMinutes)}, reported ${formatDate(Timestamp.fromDate(input.reportedDate))}${wo ? `, WO ${wo}` : ""})${recurrenceSuffix}`,
   });
   return ref.id;
 }
@@ -134,6 +163,15 @@ export async function updateDefect(
   }
   if (patch.requisitionNumber !== undefined) {
     update.requisitionNumber = patch.requisitionNumber?.trim() || null;
+  }
+  let nextRelatedIds: string[] | null = null;
+  if (patch.relatedDefectIds !== undefined && prev) {
+    nextRelatedIds = await filterValidRelatedIds(
+      prev.tailNumber,
+      patch.relatedDefectIds,
+      id,
+    );
+    update.relatedDefectIds = nextRelatedIds;
   }
   await updateDoc(defectDoc(id), update);
 
@@ -173,6 +211,21 @@ export async function updateDefect(
         entityId: id,
         summary: `Defect "${prev.title}" updated: ${changes.join("; ")}`,
       });
+    }
+    if (nextRelatedIds !== null) {
+      const prevSet = new Set(prev.relatedDefectIds);
+      const nextSet = new Set(nextRelatedIds);
+      const sameSet =
+        prevSet.size === nextSet.size &&
+        [...prevSet].every((x) => nextSet.has(x));
+      if (!sameSet) {
+        logAudit(prev.tailNumber, {
+          action: "update",
+          entity: "defect",
+          entityId: id,
+          summary: `Defect "${prev.title}" links updated: was ${prevSet.size}, now ${nextSet.size}`,
+        });
+      }
     }
   }
 }

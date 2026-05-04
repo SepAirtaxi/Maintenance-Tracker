@@ -115,6 +115,10 @@ export type Defect = {
   resolvedAt: Timestamp | null;
   resolvedBy: string | null;
   resolutionKind: "fixed" | "nff" | null;
+  // IDs of prior defects on the same tail that this defect is reported as a
+  // recurrence of. Unidirectional (new → old). Empty array when none. Titles
+  // are resolved at render time, dangling refs tolerated.
+  relatedDefectIds: string[];
   createdAt: Timestamp;
   updatedAt: Timestamp;
 };
