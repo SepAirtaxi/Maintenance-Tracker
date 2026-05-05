@@ -1,0 +1,2007 @@
+# Forecast event glossary — cluster review
+
+Auto-generated from `training_data/*.docx` by `extractor.py`.
+
+Scope: every model is its own bucket. **TB-9 / TB-10 / TB-20 are not merged. P.68 and P.68 Observer are not merged.**
+
+AD's cluster by (canonical AD number, engine side). Group qualifiers (`AIRFRAME GROUP`, `Engine`, side tags) are stripped from the AD No. before keying. Engine side is detected from the description; L/H and R/H stay as separate canonical events on multi-engine aircraft.
+
+Inspections / Components / Tasks cluster on a normalized name with Partenavia variant suffixes (P68B / P68C / P68B & C) stripped.
+
+**Walkthrough job:** confirm or correct each cluster's canonical name; flag clusters that should be split or merged. The structured edit happens in `event_dictionary.json` — this file is the human overview.
+
+## BN2B-26 Islander
+
+_Tails: OY-CAT_
+
+### Inspections (14 clusters)
+
+- **100 hrs Inspection**
+  - seen on 1 tail(s): OY-CAT
+- **100 Hrs lubrication**
+  - seen on 1 tail(s): OY-CAT
+- **1000 hrs Lubrication**
+  - seen on 1 tail(s): OY-CAT
+- **1000 Hrs/ annual insp**
+  - seen on 1 tail(s): OY-CAT
+- **50 hrs Inspection**
+  - seen on 1 tail(s): OY-CAT
+- **50 Hrs Inspection add taks for CAT practice**
+  - seen on 1 tail(s): OY-CAT
+- **50 Hrs Lubrication**
+  - seen on 1 tail(s): OY-CAT
+- **500 Hrs insp**
+  - seen on 1 tail(s): OY-CAT
+- **500 hrs Lubrication**
+  - seen on 1 tail(s): OY-CAT
+- **AMP review**
+  - seen on 1 tail(s): OY-CAT
+- **ARC Full documented review**
+  - seen on 1 tail(s): OY-CAT
+- **ARC reneval**
+  - seen on 1 tail(s): OY-CAT
+- **Certificate of Insurance**
+  - seen on 1 tail(s): OY-CAT
+- **Check for new dent and note it on "bulekort"**
+  - seen on 1 tail(s): OY-CAT
+
+### AD's (9 clusters)
+
+- **`SB 243 rev 2`** — Control coluum sliding tube inspection.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-CAT
+- **`SB 131 rev 2`** — Damage to tailplane skin & structure in lead edge.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-CAT
+- **`SB 103 rev 1`** — Engine tachometer calibration.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-CAT
+- **`SB 235 rev 1`** — Examine/repair of the nacelle box structure.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-CAT
+- **`LYC SB 388C` [L/H]** — Exhaust valve guide insp LH eng
+  - type(s): Recur
+  - seen on 1 tail(s): OY-CAT
+- **`SB 275 rev 3`** — Inspection of engine mount bracket.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-CAT
+- **`SB 363`** — INSPECTION OF THE RUDDER FINAL DRIVE ROD ASSEMBLY.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-CAT
+- **`G-2003-0012`** — Passenger seats inspection.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-CAT
+- **`SB 237 rev 1`** — Wing spar caps inspection.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-CAT
+
+### Components (14 clusters)
+
+- **Auxiliary or transfer fuel pumpe filter (L/H) / Cle**
+  - seen on 1 tail(s): OY-CAT
+- **Auxiliary or transfer fuel pumpe filter (R/H) / Cle**
+  - seen on 1 tail(s): OY-CAT
+- **CO-Detector (Cockpit) / Rep**
+  - seen on 1 tail(s): OY-CAT
+- **FIRST AID KIT NIVEAU 3 (AOC) / Rep**
+  - seen on 1 tail(s): OY-CAT
+- **Induction Air Filter L/H Engine / Rep**
+  - seen on 1 tail(s): OY-CAT
+- **Induction Air Filter R/H Engine / Rep**
+  - seen on 1 tail(s): OY-CAT
+- **Instrument filter / Rep**
+  - seen on 1 tail(s): OY-CAT
+- **Lifevest (Child) (#3) / Ins**
+  - seen on 1 tail(s): OY-CAT
+- **Magneto L/H on R/H Engine / Ove**
+  - seen on 1 tail(s): OY-CAT
+- **Propeller (L/H) / Ove**
+  - seen on 1 tail(s): OY-CAT
+- **Spark plugs L/H Engine / Rep**
+  - seen on 1 tail(s): OY-CAT
+- **Spark plugs R/H Engine / Rep**
+  - seen on 1 tail(s): OY-CAT
+- **Vacuum pump filter L/H Engine / Rep**
+  - seen on 1 tail(s): OY-CAT
+- **Vacuum pump filter R/H Engine / Rep**
+  - seen on 1 tail(s): OY-CAT
+
+### Tasks (33 clusters)
+
+- **500 hrs insp. LH eng/LH mag. (Ins)**
+  - task #: 1
+  - seen on 1 tail(s): OY-CAT
+- **500 hrs insp. LH eng/RH mag. (Ins)**
+  - task #: 2
+  - seen on 1 tail(s): OY-CAT
+- **500 hrs insp. RH eng/LH mag. (Ins)**
+  - task #: 3
+  - seen on 1 tail(s): OY-CAT
+- **500 hrs insp. RH eng/RH mag. on component: Magneto R/H on R/H Engine Make:Slick/Unison Part Number:6371 Serial Number:18060775 Tracking #:25402 (Ins)**
+  - task #: 4
+  - seen on 1 tail(s): OY-CAT
+- **Annual check of ELT. on component: ELT Make:KANNAD Model:406 AF - AMDT F Part Number:S1821502-02 Serial Number:L0495-0057 Tracking #:11857 (Tes)**
+  - task #: 17 Master
+  - seen on 1 tail(s): OY-CAT
+- **Annual inspection of First AID Kit, Lifevest. (Ins)**
+  - task #: 57 Master
+  - seen on 1 tail(s): OY-CAT
+- **Avionics check (Cal)**
+  - task #: 34 Master
+  - seen on 1 tail(s): OY-CAT
+- **Cabin Heater. 100 HOUR/ANNUAL OPERATIONAL CHECK ref. CMM P/N ES1035, subp. A.2 B) (Ins)**
+  - task #: 41 Master
+  - seen on 1 tail(s): OY-CAT
+- **Capacity test of Main battery. (Tes)**
+  - task #: 19 Master
+  - seen on 1 tail(s): OY-CAT
+- **De-ice boots: Add age 1 master on the boots for rubber preservative that protects against weathering, ozone and ultraviolet rays (Ser)**
+  - task #: 47 Master
+  - seen on 1 tail(s): OY-CAT
+- **De-ice boots: Add Icex II for reduce the wear and tear caused by harsh winters, ice and salt and ice adhesion inhibitor that enhances de-icer performance. This shall only be done at the de-ice season. (Ser)**
+  - task #: 48 Master
+  - seen on 1 tail(s): OY-CAT
+- **L/H Alternator 100 hrs inspection (Ins)**
+  - task #: 21 Master
+  - seen on 1 tail(s): OY-CAT
+- **L/H Alternator 500 hrs inspection (Ins)**
+  - task #: 23 Master
+  - seen on 1 tail(s): OY-CAT
+- **L/H Engine - Valve Inspection - Remove rocker box covers and check for freedom (Ins)**
+  - task #: 08 Master
+  - seen on 1 tail(s): OY-CAT
+- **L/H Landing LED Light (Ins)**
+  - task #: 54 Master
+  - seen on 1 tail(s): OY-CAT
+- **L/H Pneumatic pump vane inspection (Ins)**
+  - task #: 15 Master
+  - seen on 1 tail(s): OY-CAT
+- **L/H Vacuum line deice filter Cleaning (Cle)**
+  - task #: 36 Master
+  - seen on 1 tail(s): OY-CAT
+- **Overvolt relays - Check operation (removed) (Ins)**
+  - task #: 49 Master
+  - seen on 1 tail(s): OY-CAT
+- **Pitot static system - leak check (Tes)**
+  - task #: 13 Master
+  - seen on 1 tail(s): OY-CAT
+- **Propeller balance L/H (Cal)**
+  - task #: 32 Master
+  - seen on 1 tail(s): OY-CAT
+- **Propeller balance R/H (Cal)**
+  - task #: 33 Master
+  - seen on 1 tail(s): OY-CAT
+- **R/H Alternator 100 hrs inspection (Ins)**
+  - task #: 22 Master
+  - seen on 1 tail(s): OY-CAT
+- **R/H Alternator 500 hrs inspection (Ins)**
+  - task #: 24 Master
+  - seen on 1 tail(s): OY-CAT
+- **R/H Engine - Valve Inspection - Remove rocker box covers and check for freedom (Ins)**
+  - task #: 09 Master
+  - seen on 1 tail(s): OY-CAT
+- **R/H Landing LED light (Ins)**
+  - task #: 55 Master
+  - seen on 1 tail(s): OY-CAT
+- **R/H Pneumatic pump vane inspection (Ins)**
+  - task #: 16 Master
+  - seen on 1 tail(s): OY-CAT
+- **R/H Vacuum line deice filter Cleaning (Cle)**
+  - task #: 37 Master
+  - seen on 1 tail(s): OY-CAT
+- **Read out the heater hours meter and note the time on the work order (Ins)**
+  - task #: 35 Master
+  - seen on 1 tail(s): OY-CAT
+- **Reinspection of Horizontal stab. RH side, inner rib, due to CAT WO 4095, Item Tailplane item 1.2 have the corrosion been removed as far as possible. Please check the condition for this area. (Ins)**
+  - task #: 15
+  - seen on 1 tail(s): OY-CAT
+- **Seat belt in Cockpit and Cabin examine ref. to AMM MM/1 Chapter 25 page 28 (Ins)**
+  - task #: 46 Master
+  - seen on 1 tail(s): OY-CAT
+- **Standby Compass Calibration (Cal)**
+  - task #: 20 Master
+  - seen on 1 tail(s): OY-CAT
+- **Start Booster L/H Engine inspection (Ins)**
+  - task #: 30 Master
+  - seen on 1 tail(s): OY-CAT
+- **Start Booster R/H Engine Inspection (Ins)**
+  - task #: 31 Master
+  - seen on 1 tail(s): OY-CAT
+
+## C172M
+
+_Tails: OY-BUF_
+
+### Inspections (13 clusters)
+
+- **100 Hrs insp**
+  - seen on 1 tail(s): OY-BUF
+- **200 Hrs insp**
+  - seen on 1 tail(s): OY-BUF
+- **50 Hrs insp**
+  - seen on 1 tail(s): OY-BUF
+- **AMP review**
+  - seen on 1 tail(s): OY-BUF
+- **ARC renewal**
+  - seen on 1 tail(s): OY-BUF
+- **Check for new dent and note it on the "bulekort"**
+  - seen on 1 tail(s): OY-BUF
+- **Insurance Certificate**
+  - seen on 1 tail(s): OY-BUF
+- **SID operation 01**
+  - seen on 1 tail(s): OY-BUF
+- **SID operation 02**
+  - seen on 1 tail(s): OY-BUF
+- **SID operation 03**
+  - seen on 1 tail(s): OY-BUF
+- **SID operation 16**
+  - seen on 1 tail(s): OY-BUF
+- **SID operation 25**
+  - seen on 1 tail(s): OY-BUF
+- **SID operation 27**
+  - seen on 1 tail(s): OY-BUF
+
+### AD's (12 clusters)
+
+- **`AIR-21-16`** — bolts that attach the seat back to the seat base of the pilot and copilot seats.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-BUF
+- **`LYC SB 366C`** — Carburettor throttle body screw insp..
+  - type(s): Recur
+  - seen on 1 tail(s): OY-BUF
+- **`SEB 01-03 R1`** — Control yoke inspection.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-BUF
+- **`EAD 2006-0375`** — electrical switch insp. "carling" type.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-BUF
+- **`SEB 02-02`** — Flammable fluid lines insp.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-BUF
+- **`SEB 95-03 R1`** — Flap support inspection & roller washer install.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-BUF
+- **`SEB 99-18 R1`** — Fuel quantity indicating system insp.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-BUF
+- **`SEB 05-02`** — Fuselage skin & fuel step insp/modification.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-BUF
+- **`SEB 94-08`** — Horizontal stabilizer forward spar insp/mod.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-BUF
+- **`AD 2026-04-11`** — Inspect engine oil for bronze metal particulates.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-BUF
+- **`EASA SIB 2011-15R1`** — Mode S & C transponder system - ground testing.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-BUF
+- **`AD 2011-10-09`** — Seat track inspection ( superseeds 87-20-03R3).
+  - type(s): Recur
+  - seen on 1 tail(s): OY-BUF
+
+### Components (5 clusters)
+
+- **CO Detector / Rep**
+  - seen on 1 tail(s): OY-BUF
+- **Induction Air Filter / Rep**
+  - seen on 1 tail(s): OY-BUF
+- **Instrument filter / Rep**
+  - seen on 1 tail(s): OY-BUF
+- **Sparkplugs / Rep**
+  - seen on 1 tail(s): OY-BUF
+- **Vacuum pump /**
+  - seen on 1 tail(s): OY-BUF
+
+### Tasks (7 clusters)
+
+- **Annual inspection of ELT (Ins)**
+  - task #: Master 11
+  - seen on 1 tail(s): OY-BUF
+- **Check of emergency equipment FIRST AID KIT, Extinguishers, Life Jacket (Ins)**
+  - task #: Master 10
+  - seen on 1 tail(s): OY-BUF
+- **Engine - Valve Inspection - Remove rocker box covers and check for freedom (Ins)**
+  - task #: Master 12
+  - seen on 1 tail(s): OY-BUF
+- **Equipment Visual Inspection: A visual inspection of the equipment installed by this STC must be performed. (Ins)**
+  - task #: Master 13
+  - seen on 1 tail(s): OY-BUF
+- **LH magneto. 500 hrs insp. on component: Magneto (L/H) Make:SLICK/CHAMPION Model: Part Number:4371 Serial Number:J-08027 Tracking #:19494 (Ins)**
+  - task #: Master 01
+  - seen on 1 tail(s): OY-BUF
+- **Perform vacuum pump vane wear inspection. on component: Vacuum pump Part Number:7.7511B-1 Serial Number: Tracking #:6910 (Ins)**
+  - task #: 5
+  - seen on 1 tail(s): OY-BUF
+- **RH magneto. 500 hrs insp. on component: Magneto (R/H) Make:Slick/Champion Model: Part Number:4370 Serial Number:J-07470 Tracking #:19495 (Ins)**
+  - task #: Master 03
+  - seen on 1 tail(s): OY-BUF
+
+## P.68
+
+_Tails: OY-CAC, OY-CDC, OY-LKI, OY-OCM_
+
+### Inspections (22 clusters)
+
+- **100 hrs Inspection**
+  - seen on 4 tail(s): OY-CAC, OY-CDC, OY-LKI, OY-OCM
+- **100 hrs Lubrication**
+  - raw variants:
+    - `100 hrs Lubrication P68B`
+    - `100 hrs Lubrication P68C`
+  - seen on 4 tail(s): OY-CAC, OY-CDC, OY-LKI, OY-OCM
+- **100 Hrs MT propeller insp**
+  - seen on 1 tail(s): OY-OCM
+- **1000 hrs Lubrication**
+  - raw variants:
+    - `1000 hrs Lubrication P68B`
+    - `1000 hrs Lubrication P68C`
+  - seen on 2 tail(s): OY-CAC, OY-CDC
+- **200 hrs inspection**
+  - seen on 4 tail(s): OY-CAC, OY-CDC, OY-LKI, OY-OCM
+- **200 hrs Lubrication**
+  - raw variants:
+    - `200 Hrs Lubrication P68C`
+    - `200 hrs Lubrication P68B`
+  - seen on 4 tail(s): OY-CAC, OY-CDC, OY-LKI, OY-OCM
+- **50 hrs Inspection**
+  - seen on 4 tail(s): OY-CAC, OY-CDC, OY-LKI, OY-OCM
+- **500 hrs Lubrication**
+  - raw variants:
+    - `500 Hrs Lubrication P68C`
+    - `500 hrs Lubrication P68B`
+  - seen on 4 tail(s): OY-CAC, OY-CDC, OY-LKI, OY-OCM
+- **AMP review**
+  - seen on 4 tail(s): OY-CAC, OY-CDC, OY-LKI, OY-OCM
+- **ARC Reneval**
+  - seen on 4 tail(s): OY-CAC, OY-CDC, OY-LKI, OY-OCM
+- **CAT practice**
+  - seen on 2 tail(s): OY-CAC, OY-CDC
+- **Check for new dent and note it on the "bulekort"**
+  - seen on 4 tail(s): OY-CAC, OY-CDC, OY-LKI, OY-OCM
+- **Cylinder pressure test**
+  - seen on 4 tail(s): OY-CAC, OY-CDC, OY-LKI, OY-OCM
+- **Insurance Certificate**
+  - seen on 4 tail(s): OY-CAC, OY-CDC, OY-LKI, OY-OCM
+- **SPL A insp**
+  - seen on 1 tail(s): OY-CAC
+- **SPL B insp**
+  - seen on 4 tail(s): OY-CAC, OY-CDC, OY-LKI, OY-OCM
+- **SPL C insp**
+  - seen on 3 tail(s): OY-CAC, OY-LKI, OY-OCM
+- **SPL D insp**
+  - seen on 2 tail(s): OY-CAC, OY-LKI
+- **SPL E insp**
+  - seen on 1 tail(s): OY-CAC
+- **SPL F insp**
+  - seen on 4 tail(s): OY-CAC, OY-CDC, OY-LKI, OY-OCM
+- **SPL G insp (Eng mount bolts insp.)**
+  - seen on 2 tail(s): OY-CAC, OY-OCM
+- **SPL H insp**
+  - seen on 4 tail(s): OY-CAC, OY-CDC, OY-LKI, OY-OCM
+
+### AD's (30 clusters)
+
+- **`FAA AD 2024-21-02`** — Connecting Rod Assy Inspection.
+  - type(s): Recur
+  - seen on 3 tail(s): OY-CAC, OY-CDC, OY-OCM
+- **`RAI AD 95-076`** — Control wheel rod universal joint.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-CAC
+- **`SB 74`** — ELECTRICAL SYSTEM.
+  - type(s): Recur
+  - seen on 4 tail(s): OY-CAC, OY-CDC, OY-LKI, OY-OCM
+- **`RAI PDA 92-155`** — Elevator torque tube horn attachment.
+  - type(s): Recur
+  - seen on 3 tail(s): OY-CAC, OY-LKI, OY-OCM
+- **`SB 70 REV 2`** — ENG MOUNT/WING ATTACHMENT, section 3 inspection.
+  - type(s): Recur
+  - seen on 4 tail(s): OY-CAC, OY-CDC, OY-LKI, OY-OCM
+- **`RAI PDA 90-262`** — Engine controls.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-CAC
+- **`SB 88`** — ENGINE OIL COOLER SYSTEM HOSES.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-CAC
+- **`RAI AD 1991-125`** — Exhaust muffler inspection
+  - raw AD No. variants:
+    - `RAI AD 1991-125 Engine`
+    - `SB 83 Engine`
+  - raw description variants:
+    - `EXHAUST MUFFLER ASSY.`
+    - `Exhaust muffler insp (SB 83).`
+  - type(s): Recur
+  - seen on 4 tail(s): OY-CAC, OY-CDC, OY-LKI, OY-OCM
+- **`Lyc SB 388 C` [L/H]** — Exhaust valve and guide inspection L/H
+  - type(s): Recur
+  - seen on 1 tail(s): OY-CAC
+- **`Lyc SB 388 C` [R/H]** — Exhaust valve and guide inspection R/H
+  - raw AD No. variants:
+    - `Lyc SB 388 C`
+    - `Lyc SB 388 C Engine`
+  - raw description variants:
+    - `Exhaust valve and guide inspection R/H. Engine (R/H) RL-17527-51A`
+    - `Exhaust valve and guide inspection R/H. Engine R/H L-7782-51A`
+  - type(s): Recur
+  - seen on 2 tail(s): OY-CAC, OY-CDC
+- **`SB 67 REV 1`** — FIBRE GLASS LEADING EDGE.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-CDC
+- **`RAI PDA 96-337`** — Flight control cables inspection.
+  - raw AD No. variants:
+    - `RAI PDA 96-337 AIRFRAME GROUP`
+    - `SB 75 REV 3 AIRFRAME GROUP`
+  - raw description variants:
+    - `FLIGHT CONTROL CABLES - 100 hrs insp.`
+    - `FLIGHT CONTROL CABLES - 400 hrs insp.`
+    - `Flight Control cables (SB75 R3) 100hrs insp.`
+    - `Flight Control cables - 100hrs insp (SB 75 R3).`
+    - `Flight control cables - 400 hr insp (SB 75 R3).`
+  - type(s): Recur
+  - seen on 4 tail(s): OY-CAC, OY-CDC, OY-LKI, OY-OCM
+- **`RAI PDA 94-026`** — Flight control shelves inspection
+  - raw AD No. variants:
+    - `RAI PDA 94-026`
+    - `RAI PDA 94-026 AIRFRAME GROUP`
+    - `SB 91 AIRFRAME GROUP`
+  - raw description variants:
+    - `FLIGHT CONTROL SHELVES INSPECTION.`
+    - `Flight control shelves (SB 91).`
+  - type(s): Recur
+  - seen on 4 tail(s): OY-CAC, OY-CDC, OY-LKI, OY-OCM
+- **`FAA AD 2022-03-15`** — Fuel Quantity Indicator, Garmin G3X (SA01899WI), GI 275 (SA02658SE).
+  - type(s): Once
+  - seen on 1 tail(s): OY-CAC
+- **`RAI AD 2002-415`** — Fuel selector control system operational check
+  - raw AD No. variants:
+    - `RAI AD 2002-415 AIRFRAME GROUP`
+    - `SB 113 AIRFRAME GROUP`
+  - raw description variants:
+    - `FUEL SELECTOR CONTROL RIGGING (RAI AD 2002-415).`
+    - `Fuel tank selector insp (SB 113).`
+  - type(s): Recur
+  - seen on 4 tail(s): OY-CAC, OY-CDC, OY-LKI, OY-OCM
+- **`RAI 96-032`** — Wing box area inspection
+  - raw AD No. variants:
+    - `RAI 96-032`
+    - `SB 93 AIRFRAME GROUP`
+  - raw description variants:
+    - `INSPECTION OF WING BOX AREA (RAI 96-032).`
+    - `Insp of Wing box area (SB 93).`
+  - type(s): Recur
+  - seen on 3 tail(s): OY-CAC, OY-LKI, OY-OCM
+- **`LYC SB 650`** — Intake Pipe and Flange Inspection.
+  - type(s): Recur
+  - seen on 4 tail(s): OY-CAC, OY-CDC, OY-LKI, OY-OCM
+- **`AD 2015-19-07` [L/H]** — Lycoming Engines fuel injected reciprocating engine models
+  - raw description variants:
+    - `Lycoming Engines fuel injected reciprocating engine models, L/H Engine. Engine (L/H)`
+    - `Lycoming Engines fuel injected reciprocating engine models, L/H Engine. Engine (L/H) L-19727-51A`
+    - `Lycoming Engines fuel injected reciprocating engine models, L/H Engine. Engine (L/H) L-21968-51A`
+    - `Lycoming Engines fuel injected reciprocating engine models, L/H Engine. Engine (L/H) L-24276-51A`
+  - type(s): Recur
+  - seen on 4 tail(s): OY-CAC, OY-CDC, OY-LKI, OY-OCM
+- **`AD 2015-19-07` [R/H]** — Lycoming Engines fuel injected reciprocating engine models
+  - raw description variants:
+    - `Lycoming Engines fuel injected reciprocating engine models, R/H Engine. Engine (R/H) L-19728-51A`
+    - `Lycoming Engines fuel injected reciprocating engine models, R/H Engine. Engine (R/H) L-24278-51A`
+    - `Lycoming Engines fuel injected reciprocating engine models, R/H Engine. Engine (R/H) L-7782-51A`
+    - `Lycoming Engines fuel injected reciprocating engine models, R/H Engine. Engine (R/H) RL-17527-51A`
+  - type(s): Recur
+  - seen on 4 tail(s): OY-CAC, OY-CDC, OY-LKI, OY-OCM
+- **`FAA AD 2022-16-03`** — Magnetor, overheating, S-1200 series magneto having a S/N between F21EA057 and F21KA009R.
+  - type(s): Once
+  - seen on 1 tail(s): OY-CAC
+- **`SB1-24A`** — Mandatory inspection of Slick by Champion magnetos.
+  - type(s): Once
+  - seen on 1 tail(s): OY-CAC
+- **`SAIB-2022-23`** — OH done by Stockton Propeller.
+  - type(s): Once
+  - seen on 1 tail(s): OY-CAC
+- **`SAIB-2023-04`** — OH done by Trinity Specialized Service.
+  - type(s): Once
+  - seen on 1 tail(s): OY-CAC
+- **`SL-23`** — RUDDER HINGES, reinspection ref. to EAD 2021-0267, (PAD 21-158).
+  - type(s): Once
+  - seen on 1 tail(s): OY-CAC
+- **`EAD 2021-0267 (PAD 21-158)`** — RUDDER HINGES.
+  - type(s): Recur
+  - seen on 4 tail(s): OY-CAC, OY-CDC, OY-LKI, OY-OCM
+- **`SB 87 REV 1`** — STABILATOR TORQUE TUBE.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-CDC
+- **`LYC SB 658`** — Starter Inspection, Hartzell Engine Tech SB 211. .
+  - type(s): Once
+  - seen on 1 tail(s): OY-CAC
+- **`EASA SIB 2011-15R2`** — Transponder Mode C and S verification.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-CAC
+- **`RAI PDA 85-135`** — Wing leading edge.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-CAC
+- **`RAI PDA 85-135, IT-1987-36`** — Wing leading edge.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-OCM
+
+### Components (81 clusters)
+
+- **Air intake filter (L/H) / Rep**
+  - seen on 2 tail(s): OY-LKI, OY-OCM
+- **Air intake filter (R/H) / Rep**
+  - seen on 2 tail(s): OY-LKI, OY-OCM
+- **Air intake filter LH eng (L/H) / Rep**
+  - seen on 2 tail(s): OY-CAC, OY-CDC
+- **Air intake filter RH eng (R/H) / Rep**
+  - seen on 2 tail(s): OY-CAC, OY-CDC
+- **Annunciator MD-41 (Cockpit) / On << Not Installed >>**
+  - seen on 1 tail(s): OY-CAC
+- **Antenna ADF / On << Not Installed >>**
+  - seen on 3 tail(s): OY-CDC, OY-LKI, OY-OCM
+- **Antenna COM / On << Not Installed >>**
+  - seen on 1 tail(s): OY-CAC
+- **Antenna COM1 / On << Not Installed >>**
+  - seen on 3 tail(s): OY-CDC, OY-LKI, OY-OCM
+- **Antenna COM2 / On << Not Installed >>**
+  - seen on 3 tail(s): OY-CDC, OY-LKI, OY-OCM
+- **Antenna DME / On << Not Installed >>**
+  - seen on 3 tail(s): OY-CDC, OY-LKI, OY-OCM
+- **Antenna Marker Beacon / On << Not Installed >>**
+  - seen on 3 tail(s): OY-CDC, OY-LKI, OY-OCM
+- **Antenna Transponder / On << Not Installed >>**
+  - seen on 3 tail(s): OY-CDC, OY-LKI, OY-OCM
+- **Antenna UHF / On << Not Installed >>**
+  - seen on 3 tail(s): OY-CDC, OY-LKI, OY-OCM
+- **Carbon Monxide Gas detector (CO) (Cockpit) / Rep**
+  - seen on 4 tail(s): OY-CAC, OY-CDC, OY-LKI, OY-OCM
+- **Central instrument air filter (L/H) / Rep**
+  - seen on 1 tail(s): OY-CDC
+- **Central instrument air filter (R/H) / Rep**
+  - seen on 1 tail(s): OY-CDC
+- **Charger USB (Cockpit) / On << Not Installed >>**
+  - seen on 1 tail(s): OY-CAC
+- **COM/ NAV/GPS no. 1 (Cockpit) / On << Not Installed >>**
+  - seen on 1 tail(s): OY-CAC
+- **COM/ NAV/GPS no. 2 (Cockpit) / On << Not Installed >>**
+  - seen on 1 tail(s): OY-CAC
+- **De-ice sytem / On << Not Installed >>**
+  - seen on 4 tail(s): OY-CAC, OY-CDC, OY-LKI, OY-OCM
+- **ELT / << Not Installed >>**
+  - seen on 1 tail(s): OY-CAC
+- **ELT battery / Rep**
+  - seen on 2 tail(s): OY-CAC, OY-CDC
+- **Engine (L/H) / Ove**
+  - seen on 2 tail(s): OY-CAC, OY-OCM
+- **Engine (R/H) / Ove**
+  - seen on 3 tail(s): OY-CAC, OY-CDC, OY-OCM
+- **Engine flexible hoses LH engine (L/H) / Ove**
+  - seen on 1 tail(s): OY-CAC
+- **Engine flexible hoses RH (R/H) / Ove**
+  - seen on 2 tail(s): OY-CAC, OY-CDC
+- **Engine Fuel Injector (L/H) / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-CAC
+- **Engine Fuel Injector (R/H) / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-CAC
+- **Engine Fuel Pump (L/H) / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-CAC
+- **Engine Fuel Pump (R/H) / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-CAC
+- **Engine Spark plugs (L/H) / Rep**
+  - seen on 1 tail(s): OY-LKI
+- **Engine Spark plugs (L/H) / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-CAC
+- **Engine Spark plugs (R/H) / Rep**
+  - seen on 1 tail(s): OY-LKI
+- **Engine Spark plugs (R/H) / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-CAC
+- **Engine tubular mount (L/H) / Ove**
+  - seen on 2 tail(s): OY-CAC, OY-OCM
+- **Engine tubular mount (R/H) / Ove**
+  - seen on 3 tail(s): OY-CAC, OY-CDC, OY-OCM
+- **FIRST AID KIT NIVEAU 2 (AOC & DIN 13157) / Rep**
+  - seen on 1 tail(s): OY-CAC
+- **FIRST AID KIT NIVEAU 3 (AOC) / Rep**
+  - seen on 4 tail(s): OY-CAC, OY-CDC, OY-LKI, OY-OCM
+- **Fuel Injector (L/H) / Ove**
+  - seen on 1 tail(s): OY-OCM
+- **Fuel Injector (R/H) / Ove**
+  - seen on 1 tail(s): OY-OCM
+- **Fuel Pump (L/H) (L/H) / Ove**
+  - seen on 1 tail(s): OY-OCM
+- **Fuel Pump (R/H) (R/H) / Ove**
+  - seen on 1 tail(s): OY-OCM
+- **Garmin 430 (Cockpit) / << Not Installed >>**
+  - seen on 1 tail(s): OY-CAC
+- **HSI (Cockpit) / << Not Installed >>**
+  - seen on 1 tail(s): OY-CAC
+- **Infant Lifevest # 2 (Cabin) / Ins**
+  - seen on 1 tail(s): OY-LKI
+- **Infant Lifevest # 3 (Cabin) / ins**
+  - seen on 1 tail(s): OY-LKI
+- **Injector (L/H) / Ove**
+  - seen on 1 tail(s): OY-CAC
+- **Instrument air filter / Rep**
+  - seen on 1 tail(s): OY-LKI
+- **Instrument airfilter (For A/P attitude ind) / Rep**
+  - seen on 1 tail(s): OY-OCM
+- **Instrument airfilter / Rep**
+  - seen on 2 tail(s): OY-CAC, OY-OCM
+- **Lifevest (cabin) / Ins**
+  - seen on 1 tail(s): OY-CDC
+- **Magneto LH pos (R/H) / Rep**
+  - seen on 2 tail(s): OY-CDC, OY-OCM
+- **Nav, Strob and landing Light system / On << Not Installed >>**
+  - seen on 4 tail(s): OY-CAC, OY-CDC, OY-LKI, OY-OCM
+- **Portable Fire Extinguisher / Rep**
+  - seen on 1 tail(s): OY-CAC
+- **PROP DE-ICE TIMER / Rep << Not Installed >>**
+  - seen on 3 tail(s): OY-CDC, OY-LKI, OY-OCM
+- **PROP DEICE BRUSH BLOCK (L/H) / Rep << Not Installed >>**
+  - seen on 4 tail(s): OY-CAC, OY-CDC, OY-LKI, OY-OCM
+- **PROP DEICE BRUSH BLOCK (R/H) / Rep << Not Installed >>**
+  - seen on 3 tail(s): OY-CDC, OY-LKI, OY-OCM
+- **Prop governor (R/H) / Ove << Not Installed >>**
+  - seen on 1 tail(s): OY-CAC
+- **Prop governor LH eng (L/H) / Ove**
+  - seen on 1 tail(s): OY-CAC
+- **Prop governor LH eng 1 (L/H) / Ove**
+  - seen on 1 tail(s): OY-CDC
+- **Propeller (L/H) / Ove**
+  - seen on 2 tail(s): OY-CAC, OY-CDC
+- **Rudder / << Not Installed >>**
+  - seen on 2 tail(s): OY-LKI, OY-OCM
+- **Rudder trim actuator (Tail) / Rep << Not Installed >>**
+  - seen on 2 tail(s): OY-LKI, OY-OCM
+- **Safety belt, Co-pilot / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-CAC
+- **Safety belt, Pack 1 LH / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-CAC
+- **Safety belt, Pack 1 RH / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-CAC
+- **Safety belt, Pack 2 LH / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-CAC
+- **Safety belt, Pack 2 RH / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-CAC
+- **Safety belt, Pilot / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-CAC
+- **Safety belt: / << Not Installed >>**
+  - seen on 1 tail(s): OY-CAC
+- **Spark plugs (R/H) / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-CAC
+- **Sparkplugs LH (L/H) / Rep**
+  - seen on 1 tail(s): OY-CAC
+- **Sparkplugs LH eng (L/H) / Rep**
+  - seen on 1 tail(s): OY-CDC
+- **Sparkplugs RH eng (R/H) / Rep**
+  - seen on 1 tail(s): OY-CDC
+- **Stabilator trim actuator / Rep << Not Installed >>**
+  - seen on 3 tail(s): OY-CDC, OY-LKI, OY-OCM
+- **Stall detector / On << Not Installed >>**
+  - seen on 1 tail(s): OY-CAC
+- **Start Booster (L/H) / Ins**
+  - seen on 2 tail(s): OY-LKI, OY-OCM
+- **Start Booster (R/H) / Ins**
+  - seen on 2 tail(s): OY-LKI, OY-OCM
+- **Strobe light box / On << Not Installed >>**
+  - seen on 4 tail(s): OY-CAC, OY-CDC, OY-LKI, OY-OCM
+- **Torque tube / ins**
+  - seen on 2 tail(s): OY-CAC, OY-LKI
+- **Vacuum pump LH eng (L/H) / Rep**
+  - seen on 1 tail(s): OY-CAC
+
+### Tasks (47 clusters)
+
+- **500 hrs insp. LH ENG LH mag. on component: Magneto LH pos (L/H) Make:Slick/Champion Model: Part Number:4372 Serial Number:12010208 Tracking #:5760 (Ins)**
+  - task #: 1
+  - seen on 1 tail(s): OY-CAC
+- **500 hrs insp. LH ENG RH mag. on component: Magneto RH pos (L/H) Make:Slick/Champion Model: Part Number:4370 Serial Number:11090795 Tracking #:2964 (Ins)**
+  - task #: 2
+  - seen on 1 tail(s): OY-CAC
+- **500 hrs insp. LH engine LH mag. on component: Magneto LH pos (L/H) Make:SLICK/CHAMPION Model: Part Number:4373 Serial Number:14071403 Tracking #:7157 (Ins)**
+  - task #: 1
+  - seen on 1 tail(s): OY-CDC
+- **500 hrs insp. LH engine RH mag. on component: Magneto RH pos (L/H) Make:Slick/Champion Model: Part Number:4370 Serial Number:L-01417 Tracking #:21754 (Ins)**
+  - task #: 2
+  - seen on 1 tail(s): OY-CDC
+- **500 hrs insp. LH/LH mag. on component: Magneto RH pos (L/H) Make:Slick/Champion Model: Part Number:4370 Serial Number:H-X090105 Tracking #:23707 (Ins)**
+  - task #: 1
+  - seen on 1 tail(s): OY-LKI
+- **500 hrs insp. LH/RH mag. on component: Magneto LH pos (L/H) Make:Slick/Champion Model: Part Number:4372 Serial Number:K-08106 Tracking #:23708 (Ins)**
+  - task #: 2
+  - seen on 1 tail(s): OY-LKI
+- **500 hrs insp. RH eng/LH mag. (Ins)**
+  - task #: 3
+  - seen on 1 tail(s): OY-CAC
+- **500 hrs insp. RH eng/RH mag. (Ins)**
+  - task #: 4
+  - seen on 1 tail(s): OY-CAC
+- **500 hrs insp. RH engine LH mag. on component: Magneto LH pos (R/H) Make:Slick/Champion Model: Part Number:4372 Serial Number:15020412 Tracking #:8063 (Ins)**
+  - task #: 3
+  - seen on 1 tail(s): OY-CDC
+- **500 hrs insp. RH engine RH mag. on component: Magneto RH pos (R/H) Make:Slick/Champion Model: Part Number:4370 Serial Number:F-01232 Tracking #:11489 (Ins)**
+  - task #: 4
+  - seen on 1 tail(s): OY-CDC
+- **500 hrs insp. RH/LH mag. on component: Magneto LH pos (R/H) Make:Slick/Champion Model: Part Number:4372 Serial Number:H-X080348 Tracking #:23709 (Ins)**
+  - task #: 3
+  - seen on 1 tail(s): OY-LKI
+- **500 hrs insp. RH/RH mag. on component: Magneto RH pos (R/H) Make:Slick/Champion Model: Part Number:4370 Serial Number:16090390 Tracking #:11211 (Ins)**
+  - task #: 4
+  - seen on 1 tail(s): OY-LKI
+- **Annual check of Garmin GNS 530W ref. to Gama Aviation ICA doc. DQ-14-263 last rev. (Issue 2) (Ins)**
+  - task #: 20 STC
+  - seen on 1 tail(s): OY-OCM
+- **Annual inspection of ELT (Ins)**
+  - task #: MASTER-16
+  - seen on 4 tail(s): OY-CAC, OY-CDC, OY-LKI, OY-OCM
+- **Antenna GA35 inspection ref. to Doc. ICA-GA35-01 ref. to item 4 & 5 (Ins)**
+  - task #: MASTER-19
+  - seen on 2 tail(s): OY-CAC, OY-CDC
+- **Antenna inspection. (Ins)**
+  - task #: 21 STC
+  - seen on 1 tail(s): OY-OCM
+- **Check of emergency equipment FIRST AID KIT, Extinguishers, Life Jacket (Ins)**
+  - task #: MASTER-13
+  - seen on 4 tail(s): OY-CAC, OY-CDC, OY-LKI, OY-OCM
+- **De-ice boots: Add age 1 master (Ser)**
+  - task #: MASTER-25
+  - seen on 4 tail(s): OY-CAC, OY-CDC, OY-LKI, OY-OCM
+- **De-ice boots: Add Icex II (Ser)**
+  - task #: MASTER-26
+  - seen on 4 tail(s): OY-CAC, OY-CDC, OY-LKI, OY-OCM
+- **GNS430W ICA inspection ref. to. ICA-1259 but only Doc. ICA-GNS430W-01 item 4 & 5 (Ins)**
+  - task #: MASTER-20
+  - seen on 2 tail(s): OY-CAC, OY-CDC
+- **L/H Engine - Engine internal corrosion inspection, TBO extension. (Ins)**
+  - task #: MASTER-29
+  - seen on 2 tail(s): OY-CAC, OY-OCM
+- **L/H Engine, Additional task (Inspection) on the engine when it is extended.(Inspection) (Ins)**
+  - task #: MASTER-27
+  - seen on 1 tail(s): OY-OCM
+- **L/H R1224 Voltage Regulator, PMA-part, 100 hrs / Annual insp. Ref. to CMM P/N: 12-1001 (Ins)**
+  - task #: MASTER-21
+  - seen on 1 tail(s): OY-CAC
+- **LH Engine - Valve inspection ref. to AMM SPL A (Ins)**
+  - task #: MASTER-09
+  - seen on 4 tail(s): OY-CAC, OY-CDC, OY-LKI, OY-OCM
+- **LH engine/LH magneto - perform 500 hrs insp on component: Magneto LH pos (L/H) Make:Slick/Champion Model: Part Number:4372 Serial Number:12020086 Tracking #:3329 (Ins)**
+  - task #: 6
+  - seen on 1 tail(s): OY-OCM
+- **LH engine/RH magneto - perform 500 hrs insp on component: Magneto RH pos (R/H) Make:Slick/Champion Model: Part Number:4370 Serial Number:13010143 Tracking #:5417 (Ins)**
+  - task #: 8
+  - seen on 1 tail(s): OY-OCM
+- **LH vacuum pump - Vane wear insp on component: Vacuum pump (L/H) Make:RAPCO Model:Wear port equipped Part Number:RAP441CC-7 Serial Number:C5060 Tracking #:16865 (Ins)**
+  - task #: 15
+  - seen on 1 tail(s): OY-OCM
+- **MD-41 Annunciator ICA inspection ref. to ICA-MD41-( )-01 Item 4 & 5. The unit itself is on-condition (Ins)**
+  - task #: MASTER-18
+  - seen on 2 tail(s): OY-CAC, OY-CDC
+- **Perform Propeller Balancing Acc Propeller Owners Manual 115N (Cal)**
+  - task #: MASTER-15
+  - seen on 1 tail(s): OY-OCM
+- **Perform vane wear insp - LH vacuum pump on component: Vacuum pump LH eng (L/H) Make:RAPCO Model:Wear port equipped Part Number:RAP441CC-7 Serial Number:C4680 Tracking #:13547 (Ins)**
+  - task #: 12
+  - seen on 1 tail(s): OY-CAC
+- **Perform vane wear insp - RH vacuum pump on component: Vacuum pump (R/H) Make: Model: Part Number:RAP441CC-23 Serial Number:C4308 Tracking #:10359 (Ins)**
+  - task #: 11
+  - seen on 1 tail(s): OY-CAC
+- **Perform wear inspection on LH Vacuum pump (Ins)**
+  - task #: 15
+  - seen on 1 tail(s): OY-CDC
+- **Perform wear inspection on RH vacuum pump on component: Vacuum pump (R/H) Part Number:RAP441CC-23 Serial Number:C5428 Tracking #:19080 (Ins)**
+  - task #: 16
+  - seen on 1 tail(s): OY-CDC
+- **R/H Engine - Engine internal corrosion inspection, TBO extension. (Ins)**
+  - task #: MASTER-30
+  - seen on 2 tail(s): OY-CAC, OY-OCM
+- **R/H Engine, Additional task (Inspection) on the engine when it is extended.(Inspection) (Ins)**
+  - task #: MASTER-28
+  - seen on 1 tail(s): OY-OCM
+- **R/H R1224 Voltage Regulator, PMA-part, 100 hrs / Annual insp. Ref. to CMM P/N: 12-1001 (Ins)**
+  - task #: MASTER-22
+  - seen on 1 tail(s): OY-CAC
+- **RH Engine - Valve inspection ref. to AMM SPL A (Ins)**
+  - task #: MASTER-10
+  - seen on 4 tail(s): OY-CAC, OY-CDC, OY-LKI, OY-OCM
+- **RH engine/LH magneto - perform 500 hrs insp on component: Magneto LH pos (R/H) Make:Slick/Champion Model: Part Number:4372 Serial Number:11082201 Tracking #:3118 (Ins)**
+  - task #: 10
+  - seen on 1 tail(s): OY-OCM
+- **RH engine/RH magneto - perform 500 hrs insp on component: Magneto RH pos (L/H) Make:Slick/Champion Part Number:4370 Serial Number:13010144 Tracking #:5420 (Ins)**
+  - task #: 12
+  - seen on 1 tail(s): OY-OCM
+- **RH vacuum pump - Vane wear insp on component: Vacuum pump (R/H) Part Number:RAP441CC-23 Serial Number:C4752 Tracking #:14524 (Ins)**
+  - task #: 14
+  - seen on 1 tail(s): OY-OCM
+- **Seat belt and shoulder harness check of contions (Ins)**
+  - task #: MASTER-24
+  - seen on 4 tail(s): OY-CAC, OY-CDC, OY-LKI, OY-OCM
+- **Stabilator Special inspection - Perform special insp on stabilator structure. on component: Stabilator structure Make:Partenavia / Vulcan Air Model: Part Number: (Ins)**
+  - task #: 10
+  - seen on 1 tail(s): OY-CAC
+- **Stand by Compass calibration (Cal)**
+  - task #: MASTER-23
+  - seen on 4 tail(s): OY-CAC, OY-CDC, OY-LKI, OY-OCM
+- **Vacuum pump LH, vane wear inspection. on component: Vacuum pump LH eng (L/H) Part Number:RAP441CC-23 Serial Number:C5614 Tracking #:21370 (Ins)**
+  - task #: 11
+  - seen on 1 tail(s): OY-LKI
+- **Vacuum pump RH, vane wear inspection. on component: Vacuum pump RH eng (R/H) Part Number:RAP441CC-23 Serial Number:C5549 Tracking #:19393 (ins)**
+  - task #: 12
+  - seen on 1 tail(s): OY-LKI
+- **Weighing - perform weighing of aircraft (Cal)**
+  - task #: MASTER-14
+  - seen on 2 tail(s): OY-CAC, OY-CDC
+- **Wing Special inspection - Perform special insp on wing structure. on component: Wing structure, Airworthiness limitation Make:Partenavia/vulcan Air Serial Number:211 (Ins)**
+  - task #: 12
+  - seen on 1 tail(s): OY-CDC
+
+## P.68 Observer
+
+_Tails: OY-SUR_
+
+### Inspections (14 clusters)
+
+- **100 hrs Inspection**
+  - seen on 1 tail(s): OY-SUR
+- **100 hrs Lubrication**
+  - seen on 1 tail(s): OY-SUR
+- **200 hrs Inspection**
+  - seen on 1 tail(s): OY-SUR
+- **200 hrs Lubrication**
+  - seen on 1 tail(s): OY-SUR
+- **50 hrs Inspection**
+  - seen on 1 tail(s): OY-SUR
+- **500 hrs Lubrication**
+  - seen on 1 tail(s): OY-SUR
+- **AMP review**
+  - seen on 1 tail(s): OY-SUR
+- **ARC Reneval**
+  - seen on 1 tail(s): OY-SUR
+- **Check for new dent and note it on the "bulekort"**
+  - seen on 1 tail(s): OY-SUR
+- **Cylinder pressure test**
+  - seen on 1 tail(s): OY-SUR
+- **Insurance Certificate**
+  - seen on 1 tail(s): OY-SUR
+- **SPL A Insp**
+  - seen on 1 tail(s): OY-SUR
+- **SPL B Insp**
+  - seen on 1 tail(s): OY-SUR
+- **SPL F Insp**
+  - seen on 1 tail(s): OY-SUR
+
+### AD's (12 clusters)
+
+- **`SB 70 REV. 2 WING GROUP`** — ENGINE MOUNT/WING ATTACHMENT BRACKET P/N?s 68-1.2025(B)-1/-2 68-1.2027-1.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-SUR
+- **`SB 75 REV. 3`** — FLIGHT CONTROL CABLES inspection.
+  - raw description variants:
+    - `FLIGHT CONTROL CABLES 100 HRS INSP.`
+    - `FLIGHT CONTROL CABLES 200 HRS INSP.`
+    - `FLIGHT CONTROL CABLES 400 HRS INSP.`
+  - type(s): Recur
+  - seen on 1 tail(s): OY-SUR
+- **`AD 2015-19-07` [L/H]** — FUEL INJECTED RECIPROCATING LYCOMING ENGINES L/H.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-SUR
+- **`AD 2015-19-07` [R/H]** — FUEL INJECTED RECIPROCATING LYCOMING ENGINES R/H.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-SUR
+- **`SB 113`** — FUEL SYSTEM.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-SUR
+- **`SB 93`** — INSPECTION OF THE INTERNAL AREA OF THE WING BOX BETWEEN RIBS No. 6 AND 8 (ENGINE NACELLE AREA).
+  - type(s): Recur
+  - seen on 1 tail(s): OY-SUR
+- **`LYC SB 650`** — Intake Pipe and Flange Inspection.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-SUR
+- **`SB 83`** — MUFFLER ASSEMBLY LH AND RH P/N 6.1033-3/-4.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-SUR
+- **`US-2026-0-11`** — Perform a visual inspection of the engine oil filter, oil pressure screen, and oil.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-SUR
+- **`EAD 2021-0267 (PAD 21-158)`** — Rudder Hinges.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-SUR
+- **`SB 91`** — STABIL.T.TUBE ATT.SHELVES (5.3017-1/2) FLAP HINGE SHELVES (1.3041-3/4; 1.3049-2) AIL. HINGE SHELVES (1.3045-2; 1.3047-1/2).
+  - type(s): Recur
+  - seen on 1 tail(s): OY-SUR
+- **`SB 87 REV. 1`** — STABILATOR TORQUE TUBE & HORN INSPECTION.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-SUR
+
+### Components (50 clusters)
+
+- **CO Detector (Cockpit) / Rep**
+  - seen on 1 tail(s): OY-SUR
+- **Engine (L/H) / Ove**
+  - seen on 1 tail(s): OY-SUR
+- **Engine (R/H) / Ove**
+  - seen on 1 tail(s): OY-SUR
+- **Engine Air intake filter (L/H) / Rep**
+  - seen on 1 tail(s): OY-SUR
+- **Engine Air intake filter (R/H) / Rep**
+  - seen on 1 tail(s): OY-SUR
+- **Engine Alternator (R/H) / Ove**
+  - seen on 1 tail(s): OY-SUR
+- **Engine Flexible Hoses (L/H) / Rep**
+  - seen on 1 tail(s): OY-SUR
+- **Engine Flexible Hoses (R/H) / Rep**
+  - seen on 1 tail(s): OY-SUR
+- **Engine Fuel Injector (L/H) / Ove << Not Installed >>**
+  - seen on 1 tail(s): OY-SUR
+- **Engine Fuel Injector (R/H) / Ove << Not Installed >>**
+  - seen on 1 tail(s): OY-SUR
+- **Engine Fuel Pump (L/H) / Ove << Not Installed >>**
+  - seen on 1 tail(s): OY-SUR
+- **Engine Fuel Pump (R/H) / Ove << Not Installed >>**
+  - seen on 1 tail(s): OY-SUR
+- **Engine Magneto L/H (L/H) / Ove << Not Installed >>**
+  - seen on 1 tail(s): OY-SUR
+- **Engine Magneto R/H (L/H) / Ove << Not Installed >>**
+  - seen on 1 tail(s): OY-SUR
+- **Engine Mounts (Rubber) (L/H) / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-SUR
+- **Engine Mounts (Rubber) (R/H) / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-SUR
+- **Engine Oil Cooler (L/H) / Cle**
+  - seen on 1 tail(s): OY-SUR
+- **Engine Oil Cooler (R/H) / Cle**
+  - seen on 1 tail(s): OY-SUR
+- **Engine Prop Governor (L/H) / Ove << Not Installed >>**
+  - seen on 1 tail(s): OY-SUR
+- **Engine Prop Governor (R/H) / Ove << Not Installed >>**
+  - seen on 1 tail(s): OY-SUR
+- **Engine Spark plugs (L/H) / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-SUR
+- **Engine Spark plugs (R/H) / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-SUR
+- **Engine Starter (R/H) / Ove**
+  - seen on 1 tail(s): OY-SUR
+- **Engine Tubular Mount (L/H) / Ove << Not Installed >>**
+  - seen on 1 tail(s): OY-SUR
+- **Engine Tubular Mount (R/H) / Ove << Not Installed >>**
+  - seen on 1 tail(s): OY-SUR
+- **Engine Vacuum pump (L/H) / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-SUR
+- **Engine Vacuum pump (R/H) / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-SUR
+- **FIRST AID KIT NIVEAU 3 (AOC) / Rep**
+  - seen on 1 tail(s): OY-SUR
+- **Instrument filter / Rep**
+  - seen on 1 tail(s): OY-SUR
+- **L/H Oil / Fuel lines #1 / Rep**
+  - seen on 1 tail(s): OY-SUR
+- **L/H Oil / Fuel lines #2 / Rep**
+  - seen on 1 tail(s): OY-SUR
+- **L/H Oil / Fuel lines #3 / Rep**
+  - seen on 1 tail(s): OY-SUR
+- **L/H Oil / Fuel lines #4 / Rep**
+  - seen on 1 tail(s): OY-SUR
+- **L/H Oil / Fuel lines #5 / Rep**
+  - seen on 1 tail(s): OY-SUR
+- **L/H Oil / Fuel lines #6 / Rep**
+  - seen on 1 tail(s): OY-SUR
+- **L/H Oil / Fuel lines #7 / Rep**
+  - seen on 1 tail(s): OY-SUR
+- **L/H Oil / Fuel lines #8 / Rep**
+  - seen on 1 tail(s): OY-SUR
+- **Lifevest - Adult / Ins**
+  - seen on 1 tail(s): OY-SUR
+- **Lifevest - Infant / Ins**
+  - seen on 1 tail(s): OY-SUR
+- **Portable Fire Extinguisher / Rep**
+  - seen on 1 tail(s): OY-SUR
+- **Propeller (L/H) / Ove**
+  - seen on 1 tail(s): OY-SUR
+- **Propeller (R/H) / Ove**
+  - seen on 1 tail(s): OY-SUR
+- **R/H Oil / Fuel lines #1 / Rep**
+  - seen on 1 tail(s): OY-SUR
+- **R/H Oil / Fuel lines #2 / Rep**
+  - seen on 1 tail(s): OY-SUR
+- **R/H Oil / Fuel lines #3 / Rep**
+  - seen on 1 tail(s): OY-SUR
+- **R/H Oil / Fuel lines #4 / Rep**
+  - seen on 1 tail(s): OY-SUR
+- **R/H Oil / Fuel lines #5 / Rep**
+  - seen on 1 tail(s): OY-SUR
+- **R/H Oil / Fuel lines #6 / Rep**
+  - seen on 1 tail(s): OY-SUR
+- **R/H Oil / Fuel lines #7 / Rep**
+  - seen on 1 tail(s): OY-SUR
+- **R/H Oil / Fuel lines #8 / Rep**
+  - seen on 1 tail(s): OY-SUR
+
+### Tasks (18 clusters)
+
+- **Aircraft Battery, Capacity check. (Tes)**
+  - task #: MASTER-01
+  - seen on 1 tail(s): OY-SUR
+- **Aircraft weighing - perform weighing and aircraft CG computations (Cal)**
+  - task #: MASTER-03
+  - seen on 1 tail(s): OY-SUR
+- **Annual check of ELT (Tes)**
+  - task #: MASTER-21
+  - seen on 1 tail(s): OY-SUR
+- **Check of emergency equipment FIRST AID KIT, Extinguishers, Life Jacket (Ins)**
+  - task #: MASTER-02
+  - seen on 1 tail(s): OY-SUR
+- **Compass Swing (Cal)**
+  - task #: MASTER-18
+  - seen on 1 tail(s): OY-SUR
+- **L/H Engine, Additional Task on the engine when it is extended (Ins)**
+  - task #: MASTER-27
+  - seen on 1 tail(s): OY-SUR
+- **L/H Engine/L/H Magneto - Perform 500 HRS Inspection. (Ins)**
+  - task #: MASTER-08
+  - seen on 1 tail(s): OY-SUR
+- **L/H Engine/R/H Magneto - Perform 500 HRS Inspection. (Ins)**
+  - task #: MASTER-10
+  - seen on 1 tail(s): OY-SUR
+- **L/H R1224 Regulator, 100 Hrs / Annual insp. ref. to CMM P/N 12-1001 (Ins)**
+  - task #: MASTER-22
+  - seen on 1 tail(s): OY-SUR
+- **L/H Vacuum pump - Vane wear inspection (Ins)**
+  - task #: MASTER-17
+  - seen on 1 tail(s): OY-SUR
+- **R/H Engine, Additional Task on the engine when it is extended (Ins)**
+  - task #: MASTER-28
+  - seen on 1 tail(s): OY-SUR
+- **R/H Engine/L/H Magneto - Perform 500 HRS Inspection. (Ins)**
+  - task #: MASTER-12
+  - seen on 1 tail(s): OY-SUR
+- **R/H Engine/R/H Magneto - Perform 500 HRS Inspection. (Ins)**
+  - task #: MASTER-14
+  - seen on 1 tail(s): OY-SUR
+- **R/H R1224 Regulator, 100 Hrs / Annual insp. ref. to CMM P/N 12-1001 (Ins)**
+  - task #: MASTER-23
+  - seen on 1 tail(s): OY-SUR
+- **R/H Vacuum pump - Vane wear inspection (Ins)**
+  - task #: MASTER-16
+  - seen on 1 tail(s): OY-SUR
+- **RUDDER - Check hinges, torque tube, stop blocks for looseness, security and safety; check travel. Check in accordance with SL 23. (Ins)**
+  - task #: MASTER-04
+  - seen on 1 tail(s): OY-SUR
+- **Seat belt in Cockpit and Cabin Annual inspe. (Ins)**
+  - task #: MASTER-24
+  - seen on 1 tail(s): OY-SUR
+- **Stabilator Special inspection - Perform special insp on stabilator structure. (Ins)**
+  - task #: MASTER-19
+  - seen on 1 tail(s): OY-SUR
+
+## R44
+
+_Tails: OY-HHG_
+
+### Inspections (6 clusters)
+
+- **100 Hrs/Annual inspection**
+  - seen on 1 tail(s): OY-HHG
+- **50 Hrs inspection**
+  - seen on 1 tail(s): OY-HHG
+- **AMP review**
+  - seen on 1 tail(s): OY-HHG
+- **ARC reneval**
+  - seen on 1 tail(s): OY-HHG
+- **Check for new dent and note it on the "Bulekort"**
+  - seen on 1 tail(s): OY-HHG
+- **Insurance, 3 part**
+  - seen on 1 tail(s): OY-HHG
+
+### AD's (9 clusters)
+
+- **`SL 45`** — Deleted Safety Wire, Maintenance personnel.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-HHG
+- **`SL-81`** — ELT Security.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-HHG
+- **`EAD 2005-0023 R3`** — Exhaust valve guide clearence.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-HHG
+- **`LYC SB 650`** — Intake Pipe and Flange Inspection.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-HHG
+- **`AD 2015-19-07`** — Lycoming Engines fuel injected reciprocating engine models.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-HHG
+- **`SL 70`** — Main rotor blade tip maintenance.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-HHG
+- **`SL-79`** — Main Rotor Blade Unpainted Leading Edge Care.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-HHG
+- **`Lyc. SB 301`** — SERVICE LIMITATIONS FOR VALVES.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-HHG
+- **`SL-82A`** — Tail Rotor Blade Condition and Care.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-HHG
+
+### Components (7 clusters)
+
+- **First Aid Kit Niveau 3 (AOC) / Rep**
+  - seen on 1 tail(s): OY-HHG
+- **Hydraulic Filter / Rep**
+  - seen on 1 tail(s): OY-HHG
+- **Induction airfilter / Rep**
+  - seen on 1 tail(s): OY-HHG
+- **Lifevest 1 / Rep**
+  - seen on 1 tail(s): OY-HHG
+- **Lifevest 2 / Rep**
+  - seen on 1 tail(s): OY-HHG
+- **Lifevest 3 / Rep**
+  - seen on 1 tail(s): OY-HHG
+- **Lifevest 4 / Rep**
+  - seen on 1 tail(s): OY-HHG
+
+### Tasks (14 clusters)
+
+- **Annual check of ELT. (Ins)**
+  - task #: Master 11
+  - seen on 1 tail(s): OY-HHG
+- **Check of emergency equipment FIRST AID KIT, Extinguishers, Life Jacket (Ins)**
+  - task #: Master 12
+  - seen on 1 tail(s): OY-HHG
+- **Drain and flush main rotor gearbox. (Lub)**
+  - task #: Master 08
+  - seen on 1 tail(s): OY-HHG
+- **Drain and flush tail rotor gearbox. (Lub)**
+  - task #: Master 09
+  - seen on 1 tail(s): OY-HHG
+- **Float inspection LH (Ins)**
+  - task #: Master 01
+  - seen on 1 tail(s): OY-HHG
+- **Float inspection RH. (Ins)**
+  - task #: Master 02
+  - seen on 1 tail(s): OY-HHG
+- **LH Magneto 500 hrs insp (Ins)**
+  - task #: Master 04
+  - seen on 1 tail(s): OY-HHG
+- **Lubricate C181-3 bearing. (Lub)**
+  - task #: Master 03
+  - seen on 1 tail(s): OY-HHG
+- **Magnetic Compass Compensation (Cal)**
+  - task #: Master 17
+  - seen on 1 tail(s): OY-HHG
+- **Night VFR life saver battery (Emergency), CAP test of Battery P/N 9015607 (Tes)**
+  - task #: Master 18
+  - seen on 1 tail(s): OY-HHG
+- **Perform cleaning of gearbox chip detector per § 1.115 (Cle)**
+  - task #: Master 14
+  - seen on 1 tail(s): OY-HHG
+- **RH Magneto 500 hrs insp. (Ins)**
+  - task #: Master 05
+  - seen on 1 tail(s): OY-HHG
+- **Storage max 120 days if kept dry/clear of direct sun. See AMP or CAT CAME sec. 1.16.3 (run engine at least 1 hrs (in flight) within 120 days to avoid this task (Tes)**
+  - task #: Master 13
+  - seen on 1 tail(s): OY-HHG
+- **Valve Inspection - Remove rocker box covers and check for freedom of valve rockers (Ins)**
+  - task #: Master 19
+  - seen on 1 tail(s): OY-HHG
+
+## TB-10
+
+_Tails: OY-CAH, OY-CDR_
+
+### Inspections (11 clusters)
+
+- **100 Hour Inspection**
+  - seen on 2 tail(s): OY-CAH, OY-CDR
+- **2000 hrs / Major inspection**
+  - raw variants:
+    - `2000 hrs / Major Inspection`
+    - `2000 hrs / Major inspection`
+  - seen on 2 tail(s): OY-CAH, OY-CDR
+- **50 Hour Inspection - CAT Practice**
+  - seen on 2 tail(s): OY-CAH, OY-CDR
+- **50 hrs Inspection**
+  - seen on 2 tail(s): OY-CAH, OY-CDR
+- **AMP review**
+  - seen on 2 tail(s): OY-CAH, OY-CDR
+- **Annual Inspection**
+  - seen on 2 tail(s): OY-CAH, OY-CDR
+- **ARC reneval**
+  - seen on 1 tail(s): OY-CDR
+- **ARC renewal**
+  - seen on 1 tail(s): OY-CAH
+- **Check for new dents and note it on the "Bulekort"**
+  - seen on 2 tail(s): OY-CAH, OY-CDR
+- **Cylinder pressure test**
+  - seen on 2 tail(s): OY-CAH, OY-CDR
+- **Insurance Certificate**
+  - seen on 2 tail(s): OY-CAH, OY-CDR
+
+### AD's (9 clusters)
+
+- **`SB 10-058-52 rev 2`** — Cabin access door hooks.
+  - type(s): Recur
+  - seen on 2 tail(s): OY-CAH, OY-CDR
+- **`Lyc SB 366`** — Carburetor Throttle Body Screw Inspection
+  - raw description variants:
+    - `Carburetor Throttle Body Screw Inspection. Carburettor G-55-11749`
+    - `Carburetor Throttle Body Screw Inspection. Engine L-31417-36A`
+  - type(s): Recur
+  - seen on 2 tail(s): OY-CAH, OY-CDR
+- **`LYC SB 388C`** — Exhaust valve guide insp (EAD 2005-0023 rev 3)
+  - type(s): Recur
+  - seen on 1 tail(s): OY-CDR
+- **`SB 10-142-25`** — Front seat backs.
+  - type(s): Recur
+  - seen on 2 tail(s): OY-CAH, OY-CDR
+- **`F-2003-368 rev 2`** — Gimbal joint aileron/elevator control - inspection.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-CDR
+- **`TCM SB 645`** — Impulse coupling inspection.
+  - type(s): Recur
+  - seen on 2 tail(s): OY-CAH, OY-CDR
+- **`FAA 2026-04-11`** — perform a visual inspection of the engine oil filter, oil pressure screen, and oilsuction screen (depending on the engine configuration) for bronze metal particulates.
+  - type(s): Recur
+  - seen on 2 tail(s): OY-CAH, OY-CDR
+- **`SB 10-114-55`** — Rudder bearing 12 mnd insp (CDN 2001-002 (A)).
+  - type(s): Recur
+  - seen on 2 tail(s): OY-CAH, OY-CDR
+- **`CDN 89-097 (A) rev 1`** — Safety belt.
+  - type(s): Recur
+  - seen on 2 tail(s): OY-CAH, OY-CDR
+
+### Components (19 clusters)
+
+- **Carburetor / Rep**
+  - seen on 1 tail(s): OY-CAH
+- **Engine / Ove**
+  - seen on 1 tail(s): OY-CAH
+- **Engine mount vibration isolator / Rep**
+  - seen on 1 tail(s): OY-CAH
+- **FIRST AID KIT NIVEAU 2 (AOC & DIN 13157) / Rep**
+  - seen on 1 tail(s): OY-CAH
+- **FIRST AID KIT NIVEAU 3 (AOC) / Rep**
+  - seen on 2 tail(s): OY-CAH, OY-CDR
+- **Flexible Hoses in engine compartment, Oil & Fuel / Rep**
+  - seen on 1 tail(s): OY-CAH
+- **Fuel pump, mechanic / Ove**
+  - seen on 1 tail(s): OY-CAH
+- **Fuel selector filter / Rep**
+  - seen on 1 tail(s): OY-CDR
+- **Gyro central airfilter / Rep**
+  - seen on 1 tail(s): OY-CDR
+- **Induction Air Filter / Rep**
+  - seen on 2 tail(s): OY-CAH, OY-CDR
+- **Inlet pressure filter / Rep**
+  - seen on 2 tail(s): OY-CAH, OY-CDR
+- **Instr. CO detector / Rep**
+  - seen on 2 tail(s): OY-CAH, OY-CDR
+- **Instrument air filter / Rep**
+  - seen on 1 tail(s): OY-CAH
+- **Radiator Oil / Cle**
+  - seen on 1 tail(s): OY-CAH
+- **Sparkplugs / Rep**
+  - seen on 2 tail(s): OY-CAH, OY-CDR
+- **Starter / Ove**
+  - seen on 1 tail(s): OY-CDR
+- **Vacuum pump / Ove**
+  - seen on 1 tail(s): OY-CAH
+- **Vacuum reg filter / Rep**
+  - seen on 1 tail(s): OY-CDR
+- **Vacuum relief filter / Rep**
+  - seen on 1 tail(s): OY-CAH
+
+### Tasks (30 clusters)
+
+- **Aileron Control Gimbal Joint repetitive inspection iaw. SB 10-130 due to deferred defect "light play found in center gimbal" (Ins)**
+  - task #: 12
+  - seen on 1 tail(s): OY-CDR
+- **Annuel check of ELT (Ins)**
+  - task #: 14 Master
+  - seen on 2 tail(s): OY-CAH, OY-CDR
+- **Avionics check (Cal)**
+  - task #: 18 Master
+  - seen on 2 tail(s): OY-CAH, OY-CDR
+- **Check of emergency equipment FIRST AID KIT, Extinguishers, Life Jacket (Ins)**
+  - task #: 12 Master
+  - seen on 2 tail(s): OY-CAH, OY-CDR
+- **Cleaning of Fuel Selector Filter iaw. AMM 28-20-02 (Cle)**
+  - task #: 11 Master
+  - seen on 1 tail(s): OY-CDR
+- **Cockpit Mounted Fire Extinguisher - Weigh bottle. Bottle must be reserviced by quali?ed individual if the weight of the extinguishing agent is not within the values listed on the servicing placard of the bottle. on component: Fire extinguisher Part Number:A376T Serial Number:I-78525695 Tracking #:26335 (Ins)**
+  - task #: 14
+  - seen on 1 tail(s): OY-CDR
+- **Cockpit Mounted Fire Extinguishers - Inspect for proper operating pressure, condition, security of installation, and servicing date. Gross weight of the extinguisher (including nozzle) is 1.02 kg +/- .11kg on component: Fire extinguisher Part Number:A376T Serial Number:I-78525695 Tracking #:26335 (Ins)**
+  - task #: 13
+  - seen on 1 tail(s): OY-CDR
+- **DEFERRED DEFECT inspection every 100 hrs. Perform inspection of Elevator aft trim drum. The trim drum is reported worn but with in limit. New part ordered. Long delevery time. IPC 27-30-03 ITEM 10... PN TB10 2709600000 (Ins)**
+  - task #: 32 - CAMO
+  - seen on 1 tail(s): OY-CAH
+- **DEFERRED DEFECT inspection every 100 hrs. Rudder lower bearing reported worn. But with in limit Perform inspection for continius operartion . IPC 55-30-00 FIG 1 ITEM 067 PN 7747750006 (100.00H)**
+  - task #: 33 - CAMO
+  - seen on 1 tail(s): OY-CAH
+- **Dual magneto: perform 500 hrs insp IAW TCM SB 643 on component: Magneto DUAL Make:TCM Model:D4LN-3000 Part Number:10-682555-11 Serial Number:3558 Tracking #:3660 (Ins)**
+  - task #: 3
+  - seen on 1 tail(s): OY-CAH
+- **Engine mount inspection at engine remove. (Ins)**
+  - task #: 30 Master
+  - seen on 1 tail(s): OY-CAH
+- **GI 275 ADI backup battery check (Ins)**
+  - task #: 23 Master
+  - seen on 1 tail(s): OY-CDR
+- **GI 275 System Visual Inspection (Ins)**
+  - task #: 25 Master
+  - seen on 1 tail(s): OY-CDR
+- **GI 275, AHRS Magnetic Field Model Update (Ins)**
+  - task #: 27 Master
+  - seen on 1 tail(s): OY-CDR
+- **GPS no.1 Antenna Garmin Ga-35. Conduct a visual inspection on the antenna and its mounting. (Ins)**
+  - task #: 17 Master
+  - seen on 2 tail(s): OY-CAH, OY-CDR
+- **GTN, Inspection of switches, wiring and harnesses. (Ins)**
+  - task #: 20 Master
+  - seen on 2 tail(s): OY-CAH, OY-CDR
+- **GTX 33/330 and 3X5, visual inspection of the equipment installed (Ins)**
+  - task #: 21 Master
+  - seen on 2 tail(s): OY-CAH, OY-CDR
+- **Inspect A/P servo actuator for setting and corrosion. (ins)**
+  - task #: 04 Master
+  - seen on 2 tail(s): OY-CAH, OY-CDR
+- **Perform 500 hrs insp on magneto IAW TCM SB 643C on component: Magneto DUAL Make:TCM Model:D4LN-3000 Part Number:10-682555-11 Serial Number:348 Tracking #:5719 (Ins)**
+  - task #: 2
+  - seen on 1 tail(s): OY-CDR
+- **Propeller dynamic balacing (Cal)**
+  - task #: 16 Master
+  - seen on 2 tail(s): OY-CAH, OY-CDR
+- **Vacuum pump - vane wear insp on component: Vacuum pump Make:Rapco Model:Wear insp port. Part Number:RAP215CC Serial Number:A77902 Tracking #:20404 (Ins)**
+  - task #: 11
+  - seen on 1 tail(s): OY-CDR
+- **Vacuum pump vane wear inspection. on component: Vacuum pump Make:Rapco Model:Wear insp port. Part Number:RAP215CC Serial Number:A69188 Tracking #:14520 (Ins)**
+  - task #: 2
+  - seen on 1 tail(s): OY-CAH
+- **Valve Inspection - Remove rocker box covers ref. to Special Service Publication No. SSP1776 (Ins)**
+  - task #: 31 Master
+  - seen on 2 tail(s): OY-CAH, OY-CDR
+- **Visual inspect the wing structure for corrosion (Ins)**
+  - task #: 08 Master
+  - seen on 1 tail(s): OY-CAH
+- **Visually inspect A/P servo actuator supports, levers and attachments (ins)**
+  - task #: 05 Master
+  - seen on 2 tail(s): OY-CAH, OY-CDR
+- **Visually inspect flap actuator attachment for cracks. (ins)**
+  - task #: 03 Master
+  - seen on 2 tail(s): OY-CAH, OY-CDR
+- **Visually inspect flap control linkage. (ins)**
+  - task #: 07 Master
+  - seen on 2 tail(s): OY-CAH, OY-CDR
+- **Visually inspect flight control supports at specific frames. (ins)**
+  - task #: 06 Master
+  - seen on 2 tail(s): OY-CAH, OY-CDR
+- **Weighing and Balance of aircraft. (Cal)**
+  - task #: 13 Master
+  - seen on 1 tail(s): OY-CAH
+- **Whelen Landing and Taxi Light Inspection IAW. STC Manual Form No. 14793D - Perform function check. Check that all LEDs are illuminated - Inspect lens form abrasion, crazing or cracking. - Check mounting connections and wire integrity. (Ins)**
+  - task #: 12
+  - seen on 1 tail(s): OY-CAH
+
+## TB-20
+
+_Tails: OY-CDB, OY-CDT_
+
+### Inspections (11 clusters)
+
+- **100 Hrs insp**
+  - seen on 2 tail(s): OY-CDB, OY-CDT
+- **50 Hrs insp**
+  - seen on 2 tail(s): OY-CDB, OY-CDT
+- **50 Hrs Inspection add taks for CAT practice**
+  - seen on 2 tail(s): OY-CDB, OY-CDT
+- **AMP review**
+  - seen on 2 tail(s): OY-CDB, OY-CDT
+- **Annual inspection**
+  - seen on 1 tail(s): OY-CDT
+- **ARC full review**
+  - seen on 2 tail(s): OY-CDB, OY-CDT
+- **ARC renewal**
+  - seen on 2 tail(s): OY-CDB, OY-CDT
+- **Check for new dent and note it on the "Bulekort"**
+  - seen on 2 tail(s): OY-CDB, OY-CDT
+- **Cylinder pressure test**
+  - seen on 2 tail(s): OY-CDB, OY-CDT
+- **Documentation of work pack:**
+  - seen on 1 tail(s): OY-CDB
+- **Insurance Certificate**
+  - seen on 2 tail(s): OY-CDB, OY-CDT
+
+### AD's (32 clusters)
+
+- **`EASA SIB 2011-15R2`** — 24 mth Mode C & S Transponder verification.
+  - type(s): Recur
+  - seen on 2 tail(s): OY-CDB, OY-CDT
+- **`EAD 2013-0020R4`** — ? Safety Belts / Torso Restraint Systems ? Inspection / Replacement.
+  - type(s): Once
+  - seen on 1 tail(s): OY-CDB
+- **`FAA AD 2020-19-06`** — A-20028 IDLER GOVERNOR GEAR BEARING INSPECTION INSTRUCTIONS.
+  - type(s): Once
+  - seen on 1 tail(s): OY-CDB
+- **`SB 10-049-53`** — Attachment of console side on frame 0.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-CDB
+- **`EASA AD 2019-0235`** — C406 and G406 emergency locator transmitters.
+  - type(s): Once
+  - seen on 1 tail(s): OY-CDB
+- **`SB 10-058-52 rev 2`** — Cabin access door hooks.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-CDT
+- **`FAA AD 2024-21-02`** — Connecting Rod Assy Inspection.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-CDB
+- **`FAA AD 2017-16-11`** — Engine, Connecting Rods with Non-Conforming Small End Bushings.
+  - type(s): Once
+  - seen on 1 tail(s): OY-CDB
+- **`LYC SB 388 c`** — Exhaust valve guide insp
+  - raw AD No. variants:
+    - `LYC SB 388 c`
+    - `LYC SB 388 c Engine`
+  - raw description variants:
+    - `Exhaust valve guide insp. Engine L-27880-48A`
+    - `Exhaust valve guide insp. Engine RL-6146-48A`
+  - type(s): Recur
+  - seen on 2 tail(s): OY-CDB, OY-CDT
+- **`AD 2011-26-04`** — External fuel injector lines insp, Supersedes by AD
+  - type(s): Once
+  - seen on 1 tail(s): OY-CDB
+- **`SB 10-142-25`** — Front seat backs.
+  - raw AD No. variants:
+    - `SB 10-142-25`
+    - `SB 10-142-25 AIRFRAME GROUP`
+  - type(s): Recur
+  - seen on 2 tail(s): OY-CDB, OY-CDT
+- **`FAA AD 2022-03-15`** — Fuel Quantity Indicator, Garmin G3X (SA01899WI), GI 275 (SA02658SE).
+  - type(s): Once
+  - seen on 1 tail(s): OY-CDB
+- **`SIB 2009-14`** — Garmin Global Positioning System (GPS) Navigation Units (400W / 500W series and GNS 480) - Upgrade to main unit software and GPS software.
+  - type(s): Once
+  - seen on 1 tail(s): OY-CDB
+- **`F-2003-368 rev 2`** — Gimbal joint aileron/elevator control - inspection.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-CDB
+- **`SB 10-152`** — Horizontal stabilizer internal structure - Insp.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-CDB
+- **`TCM SB 645`** — Impulse coupling inspection.
+  - type(s): Recur
+  - seen on 2 tail(s): OY-CDB, OY-CDT
+- **`AD 2005-12-06`** — Impulse coupling inspection. Magneto DUAL
+  - type(s): Recur
+  - seen on 1 tail(s): OY-CDB
+- **`SAIB-2022-23`** — Incomplete Inspections during Overhaul by Stockton Propeller, Inc. (SPI).
+  - type(s): Once
+  - seen on 1 tail(s): OY-CDB
+- **`LYC SB 650`** — Intake Pipe and Flange Inspection.
+  - type(s): Recur
+  - seen on 2 tail(s): OY-CDB, OY-CDT
+- **`AD 2025-0160`** — Lower Rudder Hinge Fitting insp IAW. SB 10-114-55.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-CDT
+- **`AD 2015-19-07`** — Lycoming Engines fuel injected reciprocating engine models.
+  - raw description variants:
+    - `Lycoming Engines fuel injected reciprocating engine models.`
+    - `Lycoming Engines fuel injected reciprocating engine models. Engine L-27880-48A`
+  - type(s): Recur
+  - seen on 2 tail(s): OY-CDB, OY-CDT
+- **`SB 10-157 LANDING GEAR GROUP`** — Main Landing Gear Locking, Missing green light..
+  - type(s): Once
+  - seen on 1 tail(s): OY-CDB
+- **`SB 2-19A`** — Mandatory inspection of impulse coupled Slick by Champion magnetos SB 2-19A.
+  - type(s): Once
+  - seen on 1 tail(s): OY-CDB
+- **`SB1-24A`** — Mandatory inspection of Slick by Champion magnetos.
+  - type(s): Once
+  - seen on 1 tail(s): OY-CDB
+- **`AD 2024-0111`** — Non Comformance of Maintenance of Engines.
+  - type(s): Once
+  - seen on 1 tail(s): OY-CDB
+- **`SAIB-2023-04`** — Propeller Assembly by Trinity Specialized Services, LLC.
+  - type(s): Once
+  - seen on 1 tail(s): OY-CDB
+- **`SB 10-153`** — REINFORCED SPINNER, only up to S/N: 1160.
+  - type(s): Once
+  - seen on 1 tail(s): OY-CDB
+- **`SB 10-114-55`** — Rudder bearing 12 mnd insp (CDN 2001-002 (A)).
+  - type(s): Recur
+  - seen on 1 tail(s): OY-CDB
+- **`CDN 89-097 (A) rev 1`** — Safety belt.
+  - raw AD No. variants:
+    - `CDN 89-097 (A) rev 1`
+    - `CDN 89-097 (A) rev 1 AIRFRAME GROUP`
+  - type(s): Recur
+  - seen on 2 tail(s): OY-CDB, OY-CDT
+- **`EAD 2015-0130`** — Stabilizers ? Horizontal Stabilizer Spar ? Inspection.
+  - type(s): Once
+  - seen on 1 tail(s): OY-CDB
+- **`PAD 15-068`** — Stabilizers ? Horizontal Stabilizer Spar ? Inspection.
+  - type(s): Once
+  - seen on 1 tail(s): OY-CDB
+- **`LYC SB 658`** — Starter Inspection, Hartzell Engine Tech (HET) Service Bulletin No.211.
+  - type(s): Once
+  - seen on 1 tail(s): OY-CDB
+
+### Components (85 clusters)
+
+- **ADF / On << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **ADF Indicator / On << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Air regulation in fuselage, Hoses / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Air regulation in power plant, Hoses / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Alternator / Ove**
+  - seen on 1 tail(s): OY-CDB
+- **Alternator driving belt / On << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Alternator ventilation, Hoses / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Antenna / << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Audio Panel / On << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Brake unit supply, Teflon, Hoses / On << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **CO Detector / Rep**
+  - seen on 2 tail(s): OY-CDB, OY-CDT
+- **COM/NAV/GPS no. 1 / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **COM/NAV/GPS no. 2, Encode / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Directional gyro / On << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **DME / On << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **ELT / On << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **ELT Battery / Rep**
+  - seen on 1 tail(s): OY-CDB
+- **Emergency Equipment / << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Engine / Ove << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Engine group /**
+  - seen on 1 tail(s): OY-CDB
+- **Engine mount vibration isolator / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Engine pump ventilation, Hoses / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Fire Extinguisher (Cabin) / Ins << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **FIRST AID KIT NIVEAU 1 (AOC) / Rep**
+  - seen on 1 tail(s): OY-CDB
+- **FIRST AID KIT NIVEAU 2 (AOC & DIN 13157) / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **FIRST AID KIT NIVEAU 3 (AOC) / Rep**
+  - seen on 1 tail(s): OY-CDT
+- **FIRST AID KIT NIVEAU 3 (AOC) / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Flow Divider / Ove << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Fuel Hoses / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Fuel Hoses, Teflon / On << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Fuel Injector / Ove << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Fuel Pump / Ove << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Fuel selector -- Booster pump, Hoses / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Fuel selector -- Filter / drain, Hoses / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Fuel selector filter / Rep**
+  - seen on 1 tail(s): OY-CDT
+- **Fuselage / << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **GPS antenna / On << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Induction Air Filter / Rep**
+  - seen on 2 tail(s): OY-CDB, OY-CDT
+- **Instrument Air filter / Rep**
+  - seen on 1 tail(s): OY-CDT
+- **Instrument airfilter / Rep**
+  - seen on 1 tail(s): OY-CDB
+- **Instrumenter / << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Intercom / On << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Landing gear / << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Landing gear ermergency valve / Ser << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **landing gear leg, Brake, Teflon, Hoses / On << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Lifevest (#1) / Ove << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Lifevest (#2) / Ove << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Lifevest (#3) / Ove << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Lifevest (#4) / Ove << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Lifevest (#5) / Ove << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Main wheel Brake Assy (L/H) / On << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Main wheel Brake Assy (R/H) / On << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Main wheel Rim Assy (L/H) / On << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Main wheel Rim Assy (R/H) / On << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Main wheel tire (L/H) / On << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Main wheel tire (R/H) / On << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Mainfold pressure line filter / Rep**
+  - seen on 1 tail(s): OY-CDT
+- **Mainfold pressure line filter / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **MLG actuating cylinder, Teflon, Hoses / On << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **NAV #1 Indicator / On << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **NAV #2 Indicator / On << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **NLG actuating cylinder, Teflon, Hoses / On << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **NLG compensating actuator (#1) / Rep**
+  - seen on 2 tail(s): OY-CDB, OY-CDT
+- **NLG compensating actuator (#2) / Rep**
+  - seen on 2 tail(s): OY-CDB, OY-CDT
+- **Nose wheel Rim Assy (Nose) / On << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Nose wheel tire (Nose) / On << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Oil breather, Hoses / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Oil transmitter supply (Hose) / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Oil transmitter supply, Teflon, (Hose) / On << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Pressure Switch / On << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Prop Governor / Ove**
+  - seen on 2 tail(s): OY-CDB, OY-CDT
+- **Propeller / Ove**
+  - seen on 1 tail(s): OY-CDB
+- **Seat belt, Co-Pilot / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Seat belt, Passenger #1 / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Seat belt, Passenger #2 / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Seat belt, Passenger #3 / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Seat belt, Pilot / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Sparkplugs / Rep**
+  - seen on 1 tail(s): OY-CDT
+- **Sparkplugs / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Starter / Ove << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **USB charger / On << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Vacuum inline filter / Rep**
+  - seen on 1 tail(s): OY-CDT
+- **Vacuum inline filter / Rep << Not Installed >>**
+  - seen on 1 tail(s): OY-CDB
+- **Vacuum pump /**
+  - seen on 1 tail(s): OY-CDB
+- **Vacuum relief filter / Rep**
+  - seen on 2 tail(s): OY-CDB, OY-CDT
+
+### Tasks (38 clusters)
+
+- **Access door steel latches (Ins)**
+  - task #: 24 Master
+  - seen on 1 tail(s): OY-CDB
+- **Airfoil de-icing system tank, if installed. (Ins)**
+  - task #: 25 Master
+  - seen on 1 tail(s): OY-CDB
+- **Annuel check of ELT (Ins)**
+  - task #: 19 Master
+  - seen on 2 tail(s): OY-CDB, OY-CDT
+- **Antenna GA-35, Garmin Manual no. 190-00673-01 Rev F, section 2.5 Visual inspection on the antenna and its mounting. (Ins)**
+  - task #: 39 Master
+  - seen on 2 tail(s): OY-CDB, OY-CDT
+- **Autopilot servo-actuators inspection. (Ins)**
+  - task #: 04 Master
+  - seen on 1 tail(s): OY-CDB
+- **Avionics check (Cal)**
+  - task #: 22 Master
+  - seen on 2 tail(s): OY-CDB, OY-CDT
+- **Brake hydraulic fluid (Ser)**
+  - task #: 27 Master
+  - seen on 2 tail(s): OY-CDB, OY-CDT
+- **Check of emergency equipment FIRST AID KIT, Extinguishers, Life Jacket (Ins)**
+  - task #: 18 Master
+  - seen on 2 tail(s): OY-CDB, OY-CDT
+- **Cleaning of Fuel Selector Filter iaw. AMM 28-20-02 (Cle)**
+  - task #: 17 Master
+  - seen on 2 tail(s): OY-CDB, OY-CDT
+- **Compass compensation (Cal)**
+  - task #: 28 Master
+  - seen on 1 tail(s): OY-CDB
+- **De-ice boots, Add age 1 master (Ser)**
+  - task #: 34 Master
+  - seen on 1 tail(s): OY-CDB
+- **De-ice boots, Add Icex II (Ser)**
+  - task #: 35 Master
+  - seen on 1 tail(s): OY-CDB
+- **Dual magneto 500 hrs insp. (Ins)**
+  - task #: 02 Master
+  - seen on 1 tail(s): OY-CDT
+- **Dual magneto: perform 500 hrs insp IAW TCM SB 643 on component: Magneto DUAL Make:KELLY Part Number:10-682560-11 Serial Number:L-02272 Tracking #:21825 (Ins)**
+  - task #: 2
+  - seen on 1 tail(s): OY-CDB
+- **Engine - Valve Inspection - Remove rocker box covers and check for freedom (Ins)**
+  - task #: 33 Master
+  - seen on 2 tail(s): OY-CDB, OY-CDT
+- **Engine internal corrosion inspection. BL 1.1. on component: Engine Make:Lycoming Model:IO-540-C4D5D (Ins)**
+  - task #: 1
+  - seen on 1 tail(s): OY-CDB
+- **Engine mount perform a fluorescent penetrant inspection when the engine is remove. (Ins)**
+  - task #: 31 Master
+  - seen on 2 tail(s): OY-CDB, OY-CDT
+- **Flap control bellcrank, LH. remove, clean, inspect, lubricate (Ins)**
+  - task #: 07 Master
+  - seen on 1 tail(s): OY-CDB
+- **Flap control bellcrank, RH. remove, clean, inspect, lubricate (Ins)**
+  - task #: 08 Master
+  - seen on 1 tail(s): OY-CDB
+- **Inspect autopilot supports, levers and attachments. (Ins)**
+  - task #: 05 Master
+  - seen on 1 tail(s): OY-CDB
+- **Inspect Prestolite Hyd generator brushes. (Ins)**
+  - task #: 06 Master
+  - seen on 1 tail(s): OY-CDB
+- **Landing gear hydraulic fluid. (Ser)**
+  - task #: 23 Master
+  - seen on 1 tail(s): OY-CDB
+- **Perform an electrical bonding check of the GTN 650 installation per Section 4.5.1. (Ins)**
+  - task #: 36 Master
+  - seen on 1 tail(s): OY-CDB
+- **Perform corrosion insp on spar flange/wing skin junction from wing root to rib N4 (Ins)**
+  - task #: 15 Master
+  - seen on 1 tail(s): OY-CDB
+- **Perform corrosion insp on spar flange/wing skin junction from wing root to rib N4. Only for S / N 1649 -- 1656, 1658 -- 1664, 1666 -- 9999 (Ins)**
+  - task #: 30 Master
+  - seen on 1 tail(s): OY-CDB
+- **Perform Vacuum pump vane wear inspection. on component: Vacuum pump Make:Rapco Model:Wear insp port. Part Number:RAP215CC Serial Number:A77907 Tracking #:20406 (Ins)**
+  - task #: 03 Master
+  - seen on 1 tail(s): OY-CDT
+- **Perform visual inspection for corrosion on LH + RH wing structure (Ins)**
+  - task #: 14 Master
+  - seen on 1 tail(s): OY-CDB
+- **Perform Weight and Balance of the aircraft (Cal)**
+  - task #: 20 Master
+  - seen on 1 tail(s): OY-CDB
+- **Pitot/static system 2 year check performed iaw. FAA 91.411 Part 43 App. E and in connection with EASA SIB 2011-15 last rev. (Cal)**
+  - task #: 16 Master
+  - seen on 2 tail(s): OY-CDB, OY-CDT
+- **Propeller dynamic balancing (Cal)**
+  - task #: 21 Master
+  - seen on 2 tail(s): OY-CDB, OY-CDT
+- **The GTN 650 main power input has a TVS located at the LRU, for IFR non-metallic aircraft only. TVS1 and TVS2 must be checked or replaced in accordance with Section 4.6. (Ins)**
+  - task #: 37 Master
+  - seen on 1 tail(s): OY-CDB
+- **The GTN unit switches, and wiring harnesses should be inspected to ensure continued integrity of the installation. These items must be inspected in accordance with Section 4.4. (Ins)**
+  - task #: 38 Master
+  - seen on 1 tail(s): OY-CDB
+- **Thoroughly examine the spar flanges/skin junction from root to N4 rib (Ins)**
+  - task #: 32 Master
+  - seen on 1 tail(s): OY-CDB
+- **Vacuum pump vane wear inspection. on component: Vacuum pump Make:Rapco Part Number:RA 215 CC (Ins)**
+  - task #: 3
+  - seen on 1 tail(s): OY-CDB
+- **Visually inspect flap actuator. (Ins)**
+  - task #: 10 Master
+  - seen on 2 tail(s): OY-CDB, OY-CDT
+- **Visually inspect flight control supports at frame C0. (Ins)**
+  - task #: 12 Master
+  - seen on 2 tail(s): OY-CDB, OY-CDT
+- **Visually inspect landing gear hyd sys tubes for leaks and wear. (ins)**
+  - task #: 11 Master
+  - seen on 2 tail(s): OY-CDB, OY-CDT
+- **Visualy inspect flap control linkage. (Ins)**
+  - task #: 09 Master
+  - seen on 1 tail(s): OY-CDB
+
+## TB-9
+
+_Tails: OY-CDJ, OY-CDL, OY-CDP, OY-CDU_
+
+### Inspections (10 clusters)
+
+- **100 Hrs Inspection TB9 AMM (P / N Z00. 18010309E0R19)**
+  - seen on 4 tail(s): OY-CDJ, OY-CDL, OY-CDP, OY-CDU
+- **50 hrs inspection add tasks for CAT practice**
+  - seen on 4 tail(s): OY-CDJ, OY-CDL, OY-CDP, OY-CDU
+- **50 Hrs Inspection TB9 AMM (P / N Z00. 18010309E0R19)**
+  - seen on 4 tail(s): OY-CDJ, OY-CDL, OY-CDP, OY-CDU
+- **AMP review**
+  - seen on 4 tail(s): OY-CDJ, OY-CDL, OY-CDP, OY-CDU
+- **Annual inspection (AI) TB9 AMM (P / N Z00. 18010309E0R19)**
+  - seen on 4 tail(s): OY-CDJ, OY-CDL, OY-CDP, OY-CDU
+- **ARC Full documented review**
+  - seen on 2 tail(s): OY-CDJ, OY-CDU
+- **ARC review extension**
+  - seen on 4 tail(s): OY-CDJ, OY-CDL, OY-CDP, OY-CDU
+- **Check for new dent and note it on the "Bulekort"**
+  - seen on 4 tail(s): OY-CDJ, OY-CDL, OY-CDP, OY-CDU
+- **Cylinder pressure test**
+  - seen on 4 tail(s): OY-CDJ, OY-CDL, OY-CDP, OY-CDU
+- **Insurance Certificate**
+  - seen on 4 tail(s): OY-CDJ, OY-CDL, OY-CDP, OY-CDU
+
+### AD's (12 clusters)
+
+- **`SB 10-058 R2`** — Cabin access doors hooks.
+  - type(s): Recur
+  - seen on 3 tail(s): OY-CDJ, OY-CDP, OY-CDU
+- **`SB 10-058R1`** — Cabin access doors hooks.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-CDL
+- **`LYC SB 366 C`** — Carburator Throttle Body Screw Inspection
+  - raw description variants:
+    - `Carburator Throttle Body Screw Inspection . Carburetor 75007602`
+    - `Carburator Throttle Body Screw Inspection . Carburetor BL73808`
+    - `Carburator Throttle Body Screw Inspection . Engine L-11182-39A`
+  - type(s): Recur
+  - seen on 3 tail(s): OY-CDJ, OY-CDP, OY-CDU
+- **`FAA AD 2024-21-02`** — Connecting Rod Assy Inspection.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-CDU
+- **`SB 630 (Lyc.)`** — Connecting Rod Bushing Inspection After Cylinder Removal.
+  - type(s): Once
+  - seen on 1 tail(s): OY-CDP
+- **`LYC 388 C`** — Exhaust Valve and Guide Condition.
+  - type(s): Recur
+  - seen on 1 tail(s): OY-CDU
+- **`AD 2025-0160`** — Lower Rudder Hinge Fitting Inspection IAW SB 10-114-55.
+  - type(s): Recur
+  - seen on 3 tail(s): OY-CDJ, OY-CDL, OY-CDU
+- **`SB2-19A` [L/H]** — Mandatory inspection of impulse coupled Slick by Champion magnetos SB 2-19. Magneto (L/H)
+  - type(s): Recur
+  - seen on 1 tail(s): OY-CDJ
+- **`SIB 2011-15R3`** — Mode S and Mode C Transponder Systems: Ground Testing
+  - raw description variants:
+    - `Mode S and Mode C Transponder Systems: Ground Testing.`
+    - `Mode S and Mode C Transponder Systems: Ground Testing. Transponder 43813`
+  - type(s): Recur
+  - seen on 2 tail(s): OY-CDJ, OY-CDL
+- **`SB 10-142`** — Pilot + Co Pilot seat back insp.
+  - raw AD No. variants:
+    - `SB 10-142`
+    - `SB 10-142 AIRFRAME GROUP`
+  - type(s): Recur
+  - seen on 4 tail(s): OY-CDJ, OY-CDL, OY-CDP, OY-CDU
+- **`SB 10-114`** — Rudder Bearing (former AD ref: french AD 2001-002).
+  - type(s): Recur
+  - seen on 1 tail(s): OY-CDP
+- **`SB 10-044 rev 1`** — Safety belts - old AD ref: french CDN 89-097 rev 1.
+  - type(s): Recur
+  - seen on 3 tail(s): OY-CDL, OY-CDP, OY-CDU
+
+### Components (21 clusters)
+
+- **Carburetor / Ove**
+  - seen on 1 tail(s): OY-CDJ
+- **Engine / Ove**
+  - seen on 3 tail(s): OY-CDJ, OY-CDP, OY-CDU
+- **Engine Air regulation in power plant / Rep**
+  - seen on 1 tail(s): OY-CDL
+- **Engine mount / Ret**
+  - seen on 1 tail(s): OY-CDJ
+- **Engine mount vibration isolator / Rep**
+  - seen on 3 tail(s): OY-CDJ, OY-CDL, OY-CDU
+- **Engine mount vibration isolator / Rep << Not Installed >>**
+  - seen on 2 tail(s): OY-CDL, OY-CDP
+- **FIRST AID KIT NIVEAU 2 (AOC & DIN 13157) / Rep**
+  - seen on 1 tail(s): OY-CDJ
+- **Flexible Hoses in engine compartment, Oil & Fuel / Rep**
+  - seen on 1 tail(s): OY-CDL
+- **Fuel pump / Rep**
+  - seen on 3 tail(s): OY-CDJ, OY-CDP, OY-CDU
+- **Fuel selector filter / Rep**
+  - seen on 4 tail(s): OY-CDJ, OY-CDL, OY-CDP, OY-CDU
+- **Induction Air Filter / Rep**
+  - seen on 4 tail(s): OY-CDJ, OY-CDL, OY-CDP, OY-CDU
+- **Instr. CO detector (Cockpit) / Rep**
+  - seen on 4 tail(s): OY-CDJ, OY-CDL, OY-CDP, OY-CDU
+- **Instrument filter (Cockpit) / Rep**
+  - seen on 4 tail(s): OY-CDJ, OY-CDL, OY-CDP, OY-CDU
+- **Magneto (R/H) / Ove**
+  - seen on 1 tail(s): OY-CDL
+- **NLG mount / Ret**
+  - seen on 1 tail(s): OY-CDJ
+- **Portable fire extinguisher (Cockpit) / Rep**
+  - seen on 1 tail(s): OY-CDP
+- **Propeller / Ove**
+  - seen on 1 tail(s): OY-CDJ
+- **Radiator Oil / Cle**
+  - seen on 2 tail(s): OY-CDJ, OY-CDP
+- **Spark plugs / Rep**
+  - seen on 4 tail(s): OY-CDJ, OY-CDL, OY-CDP, OY-CDU
+- **Vacuum inline filter / Rep**
+  - seen on 1 tail(s): OY-CDP
+- **Vacuum relief filter / Rep**
+  - seen on 4 tail(s): OY-CDJ, OY-CDL, OY-CDP, OY-CDU
+
+### Tasks (23 clusters)
+
+- **Annuel check of ELT (Ins)**
+  - task #: 15 Master
+  - seen on 4 tail(s): OY-CDJ, OY-CDL, OY-CDP, OY-CDU
+- **Avionics check (Cal)**
+  - task #: 18 Master
+  - seen on 4 tail(s): OY-CDJ, OY-CDL, OY-CDP, OY-CDU
+- **Check of emergency equipment FIRST AID KIT, Extinguishers, Life Jacket (Ins)**
+  - task #: 12 Master
+  - seen on 4 tail(s): OY-CDJ, OY-CDL, OY-CDP, OY-CDU
+- **Cleaning of filter in fuel selector (Cle)**
+  - task #: 11 Master
+  - seen on 4 tail(s): OY-CDJ, OY-CDL, OY-CDP, OY-CDU
+- **Compass compensation - refer to 34--23--00 (Cal)**
+  - task #: 21 Master
+  - seen on 1 tail(s): OY-CDP
+- **Engine Mount, Inspection / Check at engine removal ref. AMM 71-20-00 (Ins)**
+  - task #: 13 Master
+  - seen on 1 tail(s): OY-CDJ
+- **Inspection of the GPS antenna (Ins)**
+  - task #: 20 Master
+  - seen on 2 tail(s): OY-CDL, OY-CDP
+- **LH magneto - 500 hrs insp. (Ins)**
+  - task #: 03 Master
+  - seen on 1 tail(s): OY-CDU
+- **LH magneto - 500 hrs insp. on component: Magneto (L/H) Make:SLICK/CHAMPION Model: Part Number:4373 Serial Number:15030846 Tracking #:14868 (Ins)**
+  - task #: 03 Master
+  - seen on 1 tail(s): OY-CDL
+- **LH magneto - 500 hrs insp. on component: Magneto (L/H) Make:SLICK/CHAMPION Part Number:4373 Serial Number:08062761 Tracking #:4380 (Ins)**
+  - task #: 03 Master
+  - seen on 1 tail(s): OY-CDJ
+- **LH magneto - 500 hrs insp. on component: Magneto (L/H) Make:SLICK/CHAMPION Part Number:4373 Serial Number:17050647 Tracking #:11779 (Ins)**
+  - task #: 03 Master
+  - seen on 1 tail(s): OY-CDP
+- **Perform visual inspection of flap actuator, support and attach fittings (Ins)**
+  - task #: 06 Master
+  - seen on 4 tail(s): OY-CDJ, OY-CDL, OY-CDP, OY-CDU
+- **Perform visual inspection of flap linkage (Ins)**
+  - task #: 07 Master
+  - seen on 2 tail(s): OY-CDP, OY-CDU
+- **Perform visual inspection of wing structure for corrosion (Ins)**
+  - task #: 08 Master
+  - seen on 1 tail(s): OY-CDL
+- **Pitot static Test, Static pressure system, ref. FAR 91.411 (Ins)**
+  - task #: 14 Master
+  - seen on 2 tail(s): OY-CDJ, OY-CDL
+- **Propeller balanced (Cal)**
+  - task #: 17 Master
+  - seen on 4 tail(s): OY-CDJ, OY-CDL, OY-CDP, OY-CDU
+- **RH magneto - 500 hrs insp. (Ins)**
+  - task #: 05 Master
+  - seen on 1 tail(s): OY-CDU
+- **RH magneto - 500 hrs insp. on component: Magneto (R/H) Make:SLICK Model:66GP-0SANN Part Number:66GP-0SANN Serial Number:21061045 Tracking #:18900 (Ins)**
+  - task #: 05 Master
+  - seen on 1 tail(s): OY-CDJ
+- **RH magneto - 500 hrs insp. on component: Magneto (R/H) Make:Slick/Champion Model: Part Number:4370 Serial Number:12020707 Tracking #:3877 (Ins)**
+  - task #: 05 Master
+  - seen on 1 tail(s): OY-CDL
+- **RH magneto - 500 hrs insp. on component: Magneto (R/H) Make:Slick/Champion Part Number:4370 Serial Number:13100327 Tracking #:7056 (Ins)**
+  - task #: 05 Master
+  - seen on 1 tail(s): OY-CDP
+- **Spinner, Propeller, Inspection iaw. Duc Helices Propellers manual for TB (Ins)**
+  - task #: 19 Master
+  - seen on 3 tail(s): OY-CDL, OY-CDP, OY-CDU
+- **Vacuum pump vane wear inspection. (Ins)**
+  - task #: 22 Master
+  - seen on 4 tail(s): OY-CDJ, OY-CDL, OY-CDP, OY-CDU
+- **Valve Inspection - Remove rocker box covers and check for freedom of valve rockers ref. to Special Service Publication No. SSP1776. (Ins)**
+  - task #: 23 Master
+  - seen on 4 tail(s): OY-CDJ, OY-CDL, OY-CDP, OY-CDU
