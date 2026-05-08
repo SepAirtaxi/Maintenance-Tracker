@@ -5,6 +5,7 @@ import Layout from "@/components/Layout";
 import OverviewPage from "@/pages/OverviewPage";
 import CalendarPage from "@/pages/CalendarPage";
 import SettingsPage from "@/pages/SettingsPage";
+import ForecastPage from "@/pages/ForecastPage";
 import LoginPage from "@/pages/LoginPage";
 import ProfilePage from "@/pages/ProfilePage";
 
@@ -22,6 +23,14 @@ export default function App() {
         >
           <Route path="/" element={<OverviewPage />} />
           <Route path="/calendar" element={<CalendarPage />} />
+          <Route
+            path="/forecast"
+            element={
+              <ProtectedRoute membersOnly>
+                <ForecastPage />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/settings"
             element={

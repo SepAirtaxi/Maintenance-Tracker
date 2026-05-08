@@ -125,21 +125,62 @@ forecast_project/
 - [x] Training data extracted by user (12M / 500H .docx per tail)
 - [x] Glossary extractor written (`extractor.py`)
 - [x] **Interactive consolidation session with user** — completed; 718 canonical clusters across 8 models, 0 needs_review
-- [ ] Module skeleton in Maintenance Tracker
-- [ ] Parser
-- [ ] Display logic + UI
+- [x] Module skeleton in Maintenance Tracker (route `/forecast`, nav entry, file picker, members-only)
+- [x] Parser (docx → header → 4 section tables → dictionary lookup → typed rows)
+- [x] First end-to-end UI render (grouped table; no severity tinting yet)
+- [ ] Visual sanity check by SEP in browser (pending — server was up at `localhost:5173/forecast` but session ended before review)
+- [ ] Calculation rules: effective due (limit × tolerance), 50 HR piggyback / Cat-practice auto-include, out-of-phase delta, bundling-aligned flag
+- [ ] Severity tinting + display-window control (default 3M/100H, expandable)
 - [ ] Real-data validation pass with user
 
 ## Where to pick up next session
 
-The glossary phase is complete. Next concrete step: **build the runtime parser** that consumes a single uploaded `.docx` ForecastList and produces the cheat-sheet rows.
+The runtime parser and the first-cut UI are done. The CAMO upload → cheat-sheet pipeline works end-to-end against every training tail. **Next concrete step: SEP eyeballs the page in a browser to confirm the layout is sensible, then build the calculation rules (task 8) and severity tinting (task 9).**
 
-### What exists now
+### What exists now (runtime side)
 
-- `forecast_project/extractor.py` — glossary builder. Re-runnable; rebuilds `event_dictionary.json` and `cluster_review.md` from `training_data/*.docx`. Owns all canonicalization rules (model scoping, AD-merge map, title overrides, part-identifier stripping, interval collapse).
-- `forecast_project/event_dictionary.json` — the canonical mapping. **This is the file the runtime parser will consume.** 8 models × 4 sections (Inspections / AD's / Components / Tasks) = 718 entries. Each entry has the canonical form plus the raw variants it accepts.
-- `forecast_project/cluster_review.md` — human-readable view of the same data; useful for spot-checking but not consumed at runtime.
-- `forecast_project/training_data/` — full docx training set + reference SBs (SB75 REV3.pdf, SB113Eng.pdf) read during consolidation.
+Files added under `src/forecast/`:
+
+- `docx.ts` — JSZip + native DOMParser primitive. Returns `{ tables, pageHeaderText }` matching python-docx output (gridSpan-duplicated cells, multi-paragraph cells joined with `\n`, nested tables exposed flat).
+- `text.ts` — normalization helpers mirroring `extractor.py` (normalize, stripModelVariant, parseAdNumber, detectEngineSide, Danish-month date parsing, stacked-cell hour/month/date parser, tolerance extractor).
+- `parseHeader.ts` — extracts tail (from "Projection List | <TAIL>" cell), forecast end date + end TTAF (from "Aircraft Time" subtable), export date (page header).
+- `parseSection.ts` — per-section row parsers (Components 9-col / Tasks 10-col / AD's 8-col / Inspections 7-col). Skips the merged section header + column header rows; dedupes adjacent identical cells.
+- `dictionary.ts` — loads `forecast_project/event_dictionary.json` (relative import; Vite handles JSON), builds keyed indexes per (model, section). For ADs: indexes both canonical_number and every raw_number after running them through parseAdNumber (so dictionary entries like "SB 93 AIRFRAME GROUP" match runtime's cleaned "SB 93").
+- `parseForecast.ts` — orchestrator. Two-phase API: `parseForecastUnresolved(input)` returns header + raw rows so the page can read the tail, look up the aircraft model, then `resolveRows(rawRows, model)` joins the dictionary. `parseForecast(input, { model })` is the single-shot wrapper.
+- `types.ts` — `ForecastSection`, `ForecastRow`, `ForecastHeader`, `ForecastParse`.
+
+UI:
+
+- `src/pages/ForecastPage.tsx` — file picker, parsing/error states, header summary card (tail / model / forecast end), 4 grouped sections in display order (Inspections / AD's / Components / Tasks). Each row: canonical name (raw + "needs review" badge if unmapped), engine-side / AD-type chips, due (date · TTAF), tolerance, remaining (H · M), binding axis (H/M).
+- `src/App.tsx` — `/forecast` route, members-only (matches Settings).
+- `src/components/Layout.tsx` — Forecast nav entry (Telescope icon, viewerVisible: false).
+
+Deps:
+
+- `jszip` (runtime, ~100KB) — docx unzip.
+- `@xmldom/xmldom`, `tsx` (devDeps) — let smoke tests run under Node.
+
+### Verification done
+
+All 11 training docs run through `parseForecast` with **0 needs-review across 590 events** (every row resolves to a canonical name). Smoke scripts kept in `forecast_project/` for re-runs:
+
+- `smoke_docx.ts` — primitive only.
+- `smoke_parsers.ts` — primitive + header + sections.
+- `smoke_full.ts` — full pipeline (takes `<docx-path> <model>` as args).
+
+Run any of them with: `npx tsx /c/sepic/Maintenance\ Tracker/forecast_project/smoke_full.ts /c/sepic/Maintenance\ Tracker/forecast_project/training_data/OY-CAH.docx TB-10`
+
+Two parser bugs were caught and fixed during validation:
+1. **Tolerance line bleeding into AD No. cell** — `Tolerance ±0%` was leaking into `adNumberRaw` when the cell stacked it as a second paragraph. Fixed in `parseSection.rowForAds` (extractTolerance applied to both AD No. and Description cells).
+2. **Dictionary AD index keyed on un-cleaned raw_numbers** — dictionary stored e.g. `"SB 93 AIRFRAME GROUP"` but runtime cleaned to `"SB 93"`. Fixed by also running `parseAdNumber` over each raw_number when building the index.
+
+### Decisions locked in this session (don't re-ask)
+
+- **Never drop events.** Unmapped raw names render with their raw name + a "needs review" badge — every event must surface, since the goal is overview, not data cleaning.
+- **Turboprops out of scope.** OY-CVW (King Air 350), OY-GSA (PC-12), OY-GSB (PC-12/47), OY-TWM (PC-12/47E) are not managed in this app and are not in the dictionary. If someone uploads one anyway, the page renders an amber notice and falls through with raw names — does not crash.
+- **Members-only route.** Forecast is a CAMO tool; viewers don't see it.
+- **JSZip + native DOMParser**, not mammoth. Schema is fixed and we want cell-positioning preserved.
+- **No persistence.** Forecast results live in component state only — CAMO remains source of truth, per master plan.
 
 ### Decisions locked in during consolidation (don't re-ask)
 
@@ -150,22 +191,21 @@ The glossary phase is complete. Next concrete step: **build the runtime parser**
 - **Part S/Ns and trailing engine/carb identifiers are noise** — stripped from canonical titles.
 - **Manual canonical-title overrides** for 4 P.68 clusters (in `CANONICAL_TITLE_OVERRIDES` in `extractor.py`).
 
-### Next-session task: runtime parser
+### Next-session task: SEP eyeballs the page, then calc rules + severity tinting
 
-The parser lives in the Maintenance Tracker app (TS, in `src/`). It needs to:
-
-1. Accept a single `.docx` upload (the live 3M/100H forecast).
-2. Parse the same 4 section tables (Components, Tasks, AD's, Inspections) — same column schemas as the training data.
-3. Pull header bounds: forecast date, forecast TTAF, tail number.
-4. For each row, look up `event_dictionary.json` to get the canonical name (and AD canonical number/title/side for AD rows).
-5. Surface unmapped raw names as "needs review" rather than silently dropping (per `Open items` in this plan).
-6. Pull current TTAF from Maintenance Tracker (Settings > Aircraft).
-7. Emit structured per-event rows ready for the UI: name (canonical), due (date+TTAF), tolerance, remaining, binding axis, AD type.
-
-The Python extractor's parsing logic in `extractor.py` (`section_data_rows`, `cluster_key_and_payload`) is a good reference for column ordering / table structure — port the schema knowledge to TS.
+1. **Visual sanity check first.** Run `npm run dev`, open `http://localhost:5173/forecast`, upload a training docx (e.g. `forecast_project/training_data/OY-CAH.docx`). Confirm the layout is legible and the data looks right at a glance. Adjust column widths / spacing if needed before stacking calc rules on top.
+2. **Calculation rules** (task 8 in tracker):
+   - Effective due = stated due extended by `limit × tolerance%`. Distinguish "hard due in window" from "in tolerance".
+   - 50 HR piggyback: if any inspection ≥ 100 HR is in window, auto-include the 50 HR.
+   - Cat practice ("50 hour inspection cat practice"): always included if any inspection is in window.
+   - Out of phase: life-limited item whose remaining hours are less than the gap to the next scheduled WO. Show delta visibly ("governor: 10 H left; next 100 HR: 45 H out — 35 H sacrifice if consolidated").
+   - Bundling alignment: when a Component / Task / AD shares due time + last-performed with a scheduled inspection, **flag** for bundling. Do not auto-bundle — human decides.
+3. **Severity tinting + display window** (task 9):
+   - Tints per master plan (hard-due / in-tolerance / bundling-aligned / out-of-phase). Match Maintenance Tracker's existing severity palette.
+   - Display window control: default 3M/100H, expandable. Slider vs presets — settle once first prototype is on screen.
+4. **Real-data validation pass with user** — confirm against a fresh CAMO export.
 
 ### Open items still to settle
 
-- **"Needs review" affordance at runtime.** When the parser sees a raw name not in the dictionary, do we block, warn, or silently include with raw name? Decide before the parser ships.
-- **Unmapped tails.** OY-GSA / OY-GSB / OY-TWM / OY-CVW are in the fleet but not in the training set (different category). The runtime needs to either reject their uploads gracefully or be extended to cover them. Decide before public release.
 - **Display window UI control** — slider vs preset toggles. Defer until first prototype is on screen.
+- **Current TTAF from Settings > Aircraft.** The aircraft record is fetched (so `aircraft.totalTimeMinutes` is available), but the page doesn't yet use it for remaining-hours calculations — the doc's own `Rem.` column is rendered as-is. The PLAN says the runtime parser should pull current TTAF from Maintenance Tracker; revisit when implementing calc rules to decide whether we trust the doc's remaining or recompute against fresh TTAF.

@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { CalendarDays, Eye, LayoutGrid, LogOut, Settings } from "lucide-react";
+import { CalendarDays, Eye, LayoutGrid, LogOut, Settings, Telescope } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import logoUrl from "@/img/logo.png";
@@ -8,6 +8,7 @@ import logoUrl from "@/img/logo.png";
 const navItems = [
   { to: "/", label: "Overview", icon: LayoutGrid, end: true, viewerVisible: true },
   { to: "/calendar", label: "Calendar", icon: CalendarDays, end: false, viewerVisible: true },
+  { to: "/forecast", label: "Forecast", icon: Telescope, end: false, viewerVisible: false },
   { to: "/settings", label: "Settings", icon: Settings, end: false, viewerVisible: false },
 ];
 

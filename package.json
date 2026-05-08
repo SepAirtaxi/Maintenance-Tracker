@@ -18,6 +18,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "firebase": "^10.14.1",
+    "jszip": "^3.10.1",
     "lucide-react": "^0.460.0",
     "papaparse": "^5.5.3",
     "react": "^18.3.1",
@@ -31,9 +32,11 @@
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.3",
+    "@xmldom/xmldom": "^0.9.10",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.14",
+    "tsx": "^4.21.0",
     "typescript": "^5.6.3",
     "vite": "^5.4.10"
   }
