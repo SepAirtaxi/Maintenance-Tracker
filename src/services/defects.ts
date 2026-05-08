@@ -95,6 +95,9 @@ function docToDefect(id: string, data: Record<string, unknown>): Defect {
     deferredAt: (data.deferredAt as Timestamp | undefined) ?? null,
     deferralReason: (data.deferralReason as string | undefined) ?? null,
     deferredBy: (data.deferredBy as string | undefined) ?? null,
+    estimated: (data.estimated as boolean | undefined) ?? false,
+    estimatedManHours:
+      (data.estimatedManHours as number | null | undefined) ?? null,
     createdAt: data.createdAt as Timestamp,
     updatedAt: data.updatedAt as Timestamp,
   };
@@ -131,6 +134,8 @@ export async function createDefect(input: DefectInput): Promise<string> {
     deferredAt: null,
     deferralReason: null,
     deferredBy: null,
+    estimated: false,
+    estimatedManHours: null,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -335,6 +340,86 @@ export async function undeferDefect(id: string): Promise<void> {
     entity: "defect",
     entityId: id,
     summary: `Defect deferral lifted: "${prev.title}"`,
+  });
+}
+
+export type EstimatePatch = {
+  estimated: boolean;
+  estimatedManHours: number | null;
+};
+
+function describeEstimateChange(
+  prevEstimated: boolean,
+  prevHours: number | null,
+  nextEstimated: boolean,
+  nextHours: number | null,
+): string | null {
+  const parts: string[] = [];
+  if (prevEstimated !== nextEstimated) {
+    parts.push(`estimated ${prevEstimated ? "yes" : "no"} → ${nextEstimated ? "yes" : "no"}`);
+  }
+  if ((prevHours ?? null) !== (nextHours ?? null)) {
+    parts.push(`man hours ${prevHours == null ? "—" : `${prevHours} MH`} → ${nextHours == null ? "—" : `${nextHours} MH`}`);
+  }
+  return parts.length > 0 ? parts.join("; ") : null;
+}
+
+export async function setDefectEstimate(
+  id: string,
+  patch: EstimatePatch,
+): Promise<void> {
+  const nextEstimated = patch.estimated;
+  let nextHours: number | null = nextEstimated ? patch.estimatedManHours : null;
+  if (nextHours != null) {
+    if (!Number.isFinite(nextHours) || nextHours <= 0) {
+      throw new Error("Man hours must be a positive number.");
+    }
+  }
+
+  const snap = await getDoc(defectDoc(id));
+  if (!snap.exists()) throw new Error("Defect not found.");
+  const prev = docToDefect(id, snap.data());
+  if (prev.resolvedAt) throw new Error("Cannot estimate a resolved defect.");
+
+  await updateDoc(defectDoc(id), {
+    estimated: nextEstimated,
+    estimatedManHours: nextHours,
+    updatedAt: serverTimestamp(),
+  });
+
+  const change = describeEstimateChange(
+    prev.estimated,
+    prev.estimatedManHours,
+    nextEstimated,
+    nextHours,
+  );
+  if (change) {
+    logAudit(prev.tailNumber, {
+      action: "update",
+      entity: "defect",
+      entityId: id,
+      summary: `Defect estimate updated: "${prev.title}" — ${change}`,
+    });
+  }
+}
+
+export async function clearDefectEstimate(id: string): Promise<void> {
+  const snap = await getDoc(defectDoc(id));
+  if (!snap.exists()) throw new Error("Defect not found.");
+  const prev = docToDefect(id, snap.data());
+  if (!prev.estimated && prev.estimatedManHours == null) return;
+
+  await updateDoc(defectDoc(id), {
+    estimated: false,
+    estimatedManHours: null,
+    updatedAt: serverTimestamp(),
+  });
+
+  logAudit(prev.tailNumber, {
+    action: "update",
+    entity: "defect",
+    entityId: id,
+    summary: `Defect estimate cleared: "${prev.title}"`,
   });
 }
 

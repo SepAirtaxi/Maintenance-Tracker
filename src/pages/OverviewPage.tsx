@@ -22,6 +22,9 @@ import ResolveDefectDialog from "@/components/overview/ResolveDefectDialog";
 import DeferDefectDialog from "@/components/overview/DeferDefectDialog";
 import ResolveEventDialog from "@/components/overview/ResolveEventDialog";
 import ExtendEventDialog from "@/components/overview/ExtendEventDialog";
+import EstimateDialog, {
+  type EstimateTarget,
+} from "@/components/overview/EstimateDialog";
 import UpcomingEventsDialog from "@/components/overview/UpcomingEventsDialog";
 import HistoryDialog from "@/components/overview/HistoryDialog";
 import { useAuth } from "@/context/AuthContext";
@@ -188,6 +191,8 @@ export default function OverviewPage() {
     useState<MaintenanceEvent | null>(null);
   const [extendEventTarget, setExtendEventTarget] =
     useState<MaintenanceEvent | null>(null);
+  const [estimateTarget, setEstimateTarget] =
+    useState<EstimateTarget | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [ttafTarget, setTtafTarget] = useState<Aircraft | null>(null);
   const [bookingDialogOpen, setBookingDialogOpen] = useState(false);
@@ -511,11 +516,17 @@ export default function OverviewPage() {
       onDeleteEvent={setDeleteTarget}
       onResolveEvent={setResolveEventTarget}
       onExtendEvent={setExtendEventTarget}
+      onEstimateEvent={(event) =>
+        setEstimateTarget({ kind: "event", event })
+      }
       onAddDefect={() => openAddDefect(s.aircraft.tailNumber)}
       onEditDefect={openEditDefect}
       onDeleteDefect={setDefectDeleteTarget}
       onResolveDefect={setDefectResolveTarget}
       onDeferDefect={setDefectDeferTarget}
+      onEstimateDefect={(defect) =>
+        setEstimateTarget({ kind: "defect", defect })
+      }
       onEditNote={() => setNoteTarget(s.aircraft)}
     />
     </div>
@@ -663,6 +674,10 @@ export default function OverviewPage() {
       <ExtendEventDialog
         event={extendEventTarget}
         onClose={() => setExtendEventTarget(null)}
+      />
+      <EstimateDialog
+        target={estimateTarget}
+        onClose={() => setEstimateTarget(null)}
       />
       <ImportDialog open={importOpen} onOpenChange={setImportOpen} />
       <TtafDialog

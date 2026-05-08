@@ -61,11 +61,13 @@ type Props = {
   onDeleteEvent: (event: MaintenanceEvent) => void;
   onResolveEvent: (event: MaintenanceEvent) => void;
   onExtendEvent: (event: MaintenanceEvent) => void;
+  onEstimateEvent: (event: MaintenanceEvent) => void;
   onAddDefect: () => void;
   onEditDefect: (defect: Defect) => void;
   onDeleteDefect: (defect: Defect) => void;
   onResolveDefect: (defect: Defect) => void;
   onDeferDefect: (defect: Defect) => void;
+  onEstimateDefect: (defect: Defect) => void;
   onEditNote: () => void;
 };
 
@@ -105,11 +107,13 @@ export default function AircraftCard({
   onDeleteEvent,
   onResolveEvent,
   onExtendEvent,
+  onEstimateEvent,
   onAddDefect,
   onEditDefect,
   onDeleteDefect,
   onResolveDefect,
   onDeferDefect,
+  onEstimateDefect,
   onEditNote,
 }: Props) {
   const [togglingAirworthy, setTogglingAirworthy] = useState(false);
@@ -525,6 +529,7 @@ export default function AircraftCard({
             <span className="self-end pb-0.5 px-1">REQ</span>
             <span className="self-end pb-0.5">Event</span>
             <span className="self-end pb-0.5">Status</span>
+            <span className="self-end pb-0.5">Estimate</span>
             <div className="rounded-md border border-border overflow-hidden">
               <div className="bg-muted/70 text-center text-[9px] font-bold tracking-wider py-0 border-b border-border text-foreground/80">
                 Due at
@@ -558,6 +563,7 @@ export default function AircraftCard({
               onDelete={() => onDeleteEvent(event)}
               onResolve={() => onResolveEvent(event)}
               onExtend={() => onExtendEvent(event)}
+              onEstimate={() => onEstimateEvent(event)}
             />
           ))}
         </div>
@@ -571,6 +577,7 @@ export default function AircraftCard({
         onDelete={onDeleteDefect}
         onResolve={onResolveDefect}
         onDefer={onDeferDefect}
+        onEstimate={onEstimateDefect}
       />
     </section>
   );

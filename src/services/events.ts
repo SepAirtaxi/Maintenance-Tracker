@@ -59,6 +59,9 @@ function docToEvent(
     source: (data.source as "import" | "manual") ?? "manual",
     extensionMinutes:
       (data.extensionMinutes as number | undefined) ?? null,
+    estimated: (data.estimated as boolean | undefined) ?? false,
+    estimatedManHours:
+      (data.estimatedManHours as number | null | undefined) ?? null,
     resolvedDate: (data.resolvedDate as Timestamp | undefined) ?? null,
     resolutionWorkOrder:
       (data.resolutionWorkOrder as string | undefined) ?? null,
@@ -118,6 +121,8 @@ export async function createEvent(
     status: statusFromWo(wo),
     source: opts.source,
     extensionMinutes: null,
+    estimated: false,
+    estimatedManHours: null,
     resolvedDate: null,
     resolutionWorkOrder: null,
     resolvedAt: null,
@@ -354,6 +359,88 @@ export async function clearEventExtension(id: string): Promise<void> {
     entity: "event",
     entityId: id,
     summary: `Event extension removed: "${prev.warning}" — was +${prevHours}h`,
+  });
+}
+
+export type EstimatePatch = {
+  estimated: boolean;
+  estimatedManHours: number | null;
+};
+
+function describeEstimateChange(
+  prevEstimated: boolean,
+  prevHours: number | null,
+  nextEstimated: boolean,
+  nextHours: number | null,
+): string | null {
+  const parts: string[] = [];
+  if (prevEstimated !== nextEstimated) {
+    parts.push(`estimated ${prevEstimated ? "yes" : "no"} → ${nextEstimated ? "yes" : "no"}`);
+  }
+  if ((prevHours ?? null) !== (nextHours ?? null)) {
+    parts.push(`man hours ${prevHours == null ? "—" : `${prevHours} MH`} → ${nextHours == null ? "—" : `${nextHours} MH`}`);
+  }
+  return parts.length > 0 ? parts.join("; ") : null;
+}
+
+export async function setEventEstimate(
+  id: string,
+  patch: EstimatePatch,
+): Promise<void> {
+  // When `estimated` flips back to false the hours should not linger — keeps
+  // the data model consistent and matches the dialog's UX.
+  const nextEstimated = patch.estimated;
+  let nextHours: number | null = nextEstimated ? patch.estimatedManHours : null;
+  if (nextHours != null) {
+    if (!Number.isFinite(nextHours) || nextHours <= 0) {
+      throw new Error("Man hours must be a positive number.");
+    }
+  }
+
+  const snap = await getDoc(eventDoc(id));
+  if (!snap.exists()) throw new Error("Event not found.");
+  const prev = docToEvent(id, snap.data());
+  if (prev.resolvedAt) throw new Error("Cannot estimate a closed event.");
+
+  await updateDoc(eventDoc(id), {
+    estimated: nextEstimated,
+    estimatedManHours: nextHours,
+    updatedAt: serverTimestamp(),
+  });
+
+  const change = describeEstimateChange(
+    prev.estimated,
+    prev.estimatedManHours,
+    nextEstimated,
+    nextHours,
+  );
+  if (change) {
+    logAudit(prev.tailNumber, {
+      action: "update",
+      entity: "event",
+      entityId: id,
+      summary: `Event estimate updated: "${prev.warning}" — ${change}`,
+    });
+  }
+}
+
+export async function clearEventEstimate(id: string): Promise<void> {
+  const snap = await getDoc(eventDoc(id));
+  if (!snap.exists()) throw new Error("Event not found.");
+  const prev = docToEvent(id, snap.data());
+  if (!prev.estimated && prev.estimatedManHours == null) return;
+
+  await updateDoc(eventDoc(id), {
+    estimated: false,
+    estimatedManHours: null,
+    updatedAt: serverTimestamp(),
+  });
+
+  logAudit(prev.tailNumber, {
+    action: "update",
+    entity: "event",
+    entityId: id,
+    summary: `Event estimate cleared: "${prev.warning}"`,
   });
 }
 

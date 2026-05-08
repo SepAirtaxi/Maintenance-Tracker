@@ -12,6 +12,7 @@ import {
   type PlanStatus,
 } from "@/lib/eventStatus";
 import WorkOrderCell from "@/components/overview/WorkOrderCell";
+import EstimatePill from "@/components/overview/EstimatePill";
 import { EVENTS_GRID_COLS } from "@/components/overview/EventRow";
 import { updateDefect } from "@/services/defects";
 import type { Defect } from "@/types";
@@ -40,6 +41,7 @@ type Props = {
   onDelete: (defect: Defect) => void;
   onResolve: (defect: Defect) => void;
   onDefer: (defect: Defect) => void;
+  onEstimate: (defect: Defect) => void;
 };
 
 function DeferralPill({
@@ -109,6 +111,7 @@ export default function DefectsList({
   onDelete,
   onResolve,
   onDefer,
+  onEstimate,
 }: Props) {
   if (defects.length === 0) return null;
 
@@ -124,6 +127,7 @@ export default function DefectsList({
         <span className="px-1">REQ</span>
         <span>Defect ({defects.length})</span>
         <span>Status</span>
+        <span>Estimate</span>
         <span>Reported</span>
         <span>TTAF</span>
         <span className="text-right">{readOnly ? "" : "Actions"}</span>
@@ -181,6 +185,14 @@ export default function DefectsList({
           >
             {PLAN_STATUS_LABEL[planStatus]}
           </span>
+          <div className="justify-self-start">
+            <EstimatePill
+              estimated={d.estimated}
+              estimatedManHours={d.estimatedManHours}
+              readOnly={readOnly}
+              onClick={() => onEstimate(d)}
+            />
+          </div>
           <div className="font-mono tabular-nums">
             {formatDate(d.reportedDate)}
           </div>

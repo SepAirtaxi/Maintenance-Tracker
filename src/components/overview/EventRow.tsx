@@ -15,16 +15,20 @@ import {
   type Severity,
 } from "@/lib/eventStatus";
 import WorkOrderCell from "@/components/overview/WorkOrderCell";
+import EstimatePill from "@/components/overview/EstimatePill";
 import { updateEvent } from "@/services/events";
 import type { MaintenanceEvent } from "@/types";
 
 // Shared grid template — header row in AircraftCard and the defects list must
-// use the same one so the Status column lines up across event/defect rows.
-// Columns: WO | REQ | Event(dot+name) | Status | Due-at(date|TTAF) | Time-left(days|hours) | Actions
+// use the same one so the Status / Estimate columns line up across event /
+// defect rows.
+// Columns: WO | REQ | Event(dot+name) | Status | Estimate | Due-at(date|TTAF) | Time-left(days|hours) | Actions
 // Actions is 108px to fit the defect row's 4 buttons (defer + resolve + edit +
 // delete). Events only render 3 buttons there but the extra slack is harmless.
+// Event titles are typically very short ("100 Hour Inspection", "AMP Review")
+// so the 1fr column gives back the slack to a dedicated Estimate column.
 export const EVENTS_GRID_COLS =
-  "grid-cols-[72px_72px_minmax(0,1fr)_120px_200px_140px_108px]";
+  "grid-cols-[72px_72px_minmax(0,1fr)_120px_130px_200px_140px_108px]";
 
 const dotClass: Record<Severity, string> = {
   green: "bg-status-green",
@@ -51,6 +55,7 @@ type Props = {
   onDelete: () => void;
   onResolve: () => void;
   onExtend: () => void;
+  onEstimate: () => void;
 };
 
 const PLAN_STATUS_LABEL: Record<PlanStatus, string> = {
@@ -74,6 +79,7 @@ export default function EventRow({
   onDelete,
   onResolve,
   onExtend,
+  onEstimate,
 }: Props) {
   const severity = getEventSeverity(event, currentTtafMinutes);
   const planStatus = getEventPlanStatus(
@@ -131,6 +137,14 @@ export default function EventRow({
       >
         {PLAN_STATUS_LABEL[planStatus]}
       </span>
+      <div className="justify-self-start">
+        <EstimatePill
+          estimated={event.estimated}
+          estimatedManHours={event.estimatedManHours}
+          readOnly={readOnly}
+          onClick={onEstimate}
+        />
+      </div>
       {/* Due at — date | TTAF compartment. The TTAF half shows the extended
           due time when an extension is in effect; a small "+Xh ext" tag below
           flags it so the original isn't silently rewritten. */}

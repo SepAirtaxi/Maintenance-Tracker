@@ -91,6 +91,13 @@ export type MaintenanceEvent = {
   // interval — see `services/events.ts#extendEvent`. Null = no extension.
   // The original due time is never mutated; render time adds these together.
   extensionMinutes: number | null;
+  // Planner estimate. `estimated` = the planner has reviewed this item;
+  // `estimatedManHours` = work-time guess (man-hours, NOT flight hours).
+  // The two are independent so an item can be reviewed without committing to
+  // a number yet. Phase 1 lives on the event itself; phase 2 may lift these
+  // onto a WorkOrder collection (names port directly).
+  estimated: boolean;
+  estimatedManHours: number | null;
   // Resolution metadata. Resolved events stay in Firestore as legacy; the
   // overview filters them out. All four resolution fields are set together.
   resolvedDate: Timestamp | null;
@@ -130,6 +137,9 @@ export type Defect = {
   deferredAt: Timestamp | null;
   deferralReason: string | null;
   deferredBy: string | null;
+  // Planner estimate — see `MaintenanceEvent.estimated` for semantics.
+  estimated: boolean;
+  estimatedManHours: number | null;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 };
