@@ -92,6 +92,9 @@ function docToDefect(id: string, data: Record<string, unknown>): Defect {
     resolutionKind,
     relatedDefectIds:
       (data.relatedDefectIds as string[] | undefined) ?? [],
+    deferredAt: (data.deferredAt as Timestamp | undefined) ?? null,
+    deferralReason: (data.deferralReason as string | undefined) ?? null,
+    deferredBy: (data.deferredBy as string | undefined) ?? null,
     createdAt: data.createdAt as Timestamp,
     updatedAt: data.updatedAt as Timestamp,
   };
@@ -125,6 +128,9 @@ export async function createDefect(input: DefectInput): Promise<string> {
     resolvedBy: null,
     resolutionKind: null,
     relatedDefectIds: relatedIds,
+    deferredAt: null,
+    deferralReason: null,
+    deferredBy: null,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -277,6 +283,58 @@ export async function resolveDefect(
     entity: "defect",
     entityId: id,
     summary,
+  });
+}
+
+export async function deferDefect(
+  id: string,
+  reason: string,
+  byUid: string,
+): Promise<void> {
+  const trimmed = reason.trim();
+  if (!trimmed) throw new Error("A reason is required to defer a defect.");
+
+  const snap = await getDoc(defectDoc(id));
+  if (!snap.exists()) throw new Error("Defect not found.");
+  const prev = docToDefect(id, snap.data());
+  if (prev.resolvedAt) throw new Error("Cannot defer a resolved defect.");
+
+  const wasDeferred = prev.deferredAt != null;
+  await updateDoc(defectDoc(id), {
+    deferredAt: serverTimestamp(),
+    deferralReason: trimmed,
+    deferredBy: byUid,
+    updatedAt: serverTimestamp(),
+  });
+
+  logAudit(prev.tailNumber, {
+    action: "update",
+    entity: "defect",
+    entityId: id,
+    summary: wasDeferred
+      ? `Defect re-deferred: "${prev.title}" — ${trimmed}`
+      : `Defect deferred (30-day review): "${prev.title}" — ${trimmed}`,
+  });
+}
+
+export async function undeferDefect(id: string): Promise<void> {
+  const snap = await getDoc(defectDoc(id));
+  if (!snap.exists()) throw new Error("Defect not found.");
+  const prev = docToDefect(id, snap.data());
+  if (prev.deferredAt == null) return;
+
+  await updateDoc(defectDoc(id), {
+    deferredAt: null,
+    deferralReason: null,
+    deferredBy: null,
+    updatedAt: serverTimestamp(),
+  });
+
+  logAudit(prev.tailNumber, {
+    action: "update",
+    entity: "defect",
+    entityId: id,
+    summary: `Defect deferral lifted: "${prev.title}"`,
   });
 }
 

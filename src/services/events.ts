@@ -57,6 +57,8 @@ function docToEvent(
     requisitionNumber: (data.requisitionNumber as string | null) ?? null,
     status: data.status as EventStatus,
     source: (data.source as "import" | "manual") ?? "manual",
+    extensionMinutes:
+      (data.extensionMinutes as number | undefined) ?? null,
     resolvedDate: (data.resolvedDate as Timestamp | undefined) ?? null,
     resolutionWorkOrder:
       (data.resolutionWorkOrder as string | undefined) ?? null,
@@ -115,6 +117,7 @@ export async function createEvent(
     requisitionNumber: req,
     status: statusFromWo(wo),
     source: opts.source,
+    extensionMinutes: null,
     resolvedDate: null,
     resolutionWorkOrder: null,
     resolvedAt: null,
@@ -283,6 +286,74 @@ export async function resolveEvent(
     summary: `Event closed: "${prev.warning}" (${closeDetail}, on ${formatDate(
       Timestamp.fromDate(input.resolvedDate),
     )})${ttafSuffix}`,
+  });
+}
+
+export const MAX_EXTENSION_HOURS = 5;
+export const MAX_EXTENSION_MINUTES = MAX_EXTENSION_HOURS * 60;
+
+// Sets (or replaces) the CAMO extension on an event. `hours` is a positive
+// number ≤ 5 — the maximum the CAMO can grant per interval. Stored as
+// integer minutes so a single source of truth in base-60. The audit log
+// captures who extended and when.
+export async function extendEvent(
+  id: string,
+  hours: number,
+): Promise<void> {
+  if (!Number.isFinite(hours) || hours <= 0) {
+    throw new Error("Extension must be a positive number of hours.");
+  }
+  if (hours > MAX_EXTENSION_HOURS) {
+    throw new Error(`Extension cannot exceed ${MAX_EXTENSION_HOURS} hours.`);
+  }
+
+  const snap = await getDoc(eventDoc(id));
+  if (!snap.exists()) throw new Error("Event not found.");
+  const prev = docToEvent(id, snap.data());
+  if (prev.resolvedAt) throw new Error("Cannot extend a closed event.");
+
+  const minutes = Math.round(hours * 60);
+  const wasExtended = prev.extensionMinutes != null;
+
+  await updateDoc(eventDoc(id), {
+    extensionMinutes: minutes,
+    updatedAt: serverTimestamp(),
+  });
+
+  // Audit summary references both the new extension and the prior value when
+  // we're replacing one — that's the chain SEP needs to read off the log.
+  const prevHours = prev.extensionMinutes != null
+    ? (prev.extensionMinutes / 60)
+    : null;
+  const summary = wasExtended
+    ? `Event extension updated: "${prev.warning}" — was +${prevHours}h, now +${hours}h`
+    : `Event extended: "${prev.warning}" — TTAF due +${hours}h (CAMO)`;
+
+  logAudit(prev.tailNumber, {
+    action: "update",
+    entity: "event",
+    entityId: id,
+    summary,
+  });
+}
+
+export async function clearEventExtension(id: string): Promise<void> {
+  const snap = await getDoc(eventDoc(id));
+  if (!snap.exists()) throw new Error("Event not found.");
+  const prev = docToEvent(id, snap.data());
+  if (prev.extensionMinutes == null) return;
+
+  const prevHours = prev.extensionMinutes / 60;
+  await updateDoc(eventDoc(id), {
+    extensionMinutes: null,
+    updatedAt: serverTimestamp(),
+  });
+
+  logAudit(prev.tailNumber, {
+    action: "update",
+    entity: "event",
+    entityId: id,
+    summary: `Event extension removed: "${prev.warning}" — was +${prevHours}h`,
   });
 }
 

@@ -19,14 +19,24 @@ export function computeDaysLeft(event: MaintenanceEvent): number | null {
   return differenceInCalendarDays(event.expiryDate.toDate(), new Date());
 }
 
+// CAMO extensions push the effective TTAF expiry out by `extensionMinutes`.
+// Returns null when the event has no TTAF expiry at all (calendar-only events).
+// We never mutate the stored `timerExpiryTimeMinutes` — extensions live in
+// their own field so the original is preserved for audit.
+export function getEffectiveTimerExpiryMinutes(
+  event: MaintenanceEvent,
+): number | null {
+  if (event.timerExpiryTimeMinutes == null) return null;
+  return event.timerExpiryTimeMinutes + (event.extensionMinutes ?? 0);
+}
+
 export function computeMinutesLeft(
   event: MaintenanceEvent,
   currentTtafMinutes: number | null,
 ): number | null {
-  if (event.timerExpiryTimeMinutes == null || currentTtafMinutes == null) {
-    return null;
-  }
-  return event.timerExpiryTimeMinutes - currentTtafMinutes;
+  const effective = getEffectiveTimerExpiryMinutes(event);
+  if (effective == null || currentTtafMinutes == null) return null;
+  return effective - currentTtafMinutes;
 }
 
 export function severityFromDays(daysLeft: number | null): Severity {
@@ -90,6 +100,28 @@ export function getDefectPlanStatus(
   const wo = defect.workOrderNumber?.trim();
   if (!wo) return "unplanned";
   return bookedDefectIds.has(defect.id) ? "booked" : "planned";
+}
+
+// Deferral state for a defect. CAMO policy is a 30-day review cycle from the
+// most recent `deferredAt`; once that elapses the defect needs CAMO follow-up.
+//   • none     → not deferred
+//   • within   → deferred, days elapsed < 30
+//   • overdue  → deferred, days elapsed >= 30 (needs follow-up)
+export type DeferralStatus = "none" | "within" | "overdue";
+
+export const DEFERRAL_REVIEW_DAYS = 30;
+
+export function daysSinceDeferred(defect: Defect): number | null {
+  if (!defect.deferredAt) return null;
+  // Calendar-day delta so a defect deferred yesterday reads "1d", matching how
+  // the CAMO counts the review window in practice.
+  return differenceInCalendarDays(new Date(), defect.deferredAt.toDate());
+}
+
+export function getDeferralStatus(defect: Defect): DeferralStatus {
+  const elapsed = daysSinceDeferred(defect);
+  if (elapsed == null) return "none";
+  return elapsed >= DEFERRAL_REVIEW_DAYS ? "overdue" : "within";
 }
 
 // Builds two id-sets describing which events / defects appear on a booking.

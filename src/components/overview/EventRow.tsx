@@ -1,4 +1,4 @@
-import { CheckCircle2, Pencil, Trash2 } from "lucide-react";
+import { CheckCircle2, Hourglass, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
@@ -6,6 +6,7 @@ import { formatHoursLeft, formatMinutesAsDuration } from "@/lib/time";
 import {
   computeDaysLeft,
   computeMinutesLeft,
+  getEffectiveTimerExpiryMinutes,
   getEventPlanStatus,
   getEventSeverity,
   severityFromDays,
@@ -17,10 +18,13 @@ import WorkOrderCell from "@/components/overview/WorkOrderCell";
 import { updateEvent } from "@/services/events";
 import type { MaintenanceEvent } from "@/types";
 
-// Shared grid template — header row in AircraftCard must use the same one.
+// Shared grid template — header row in AircraftCard and the defects list must
+// use the same one so the Status column lines up across event/defect rows.
 // Columns: WO | REQ | Event(dot+name) | Status | Due-at(date|TTAF) | Time-left(days|hours) | Actions
+// Actions is 108px to fit the defect row's 4 buttons (defer + resolve + edit +
+// delete). Events only render 3 buttons there but the extra slack is harmless.
 export const EVENTS_GRID_COLS =
-  "grid-cols-[72px_72px_minmax(0,1fr)_120px_200px_140px_84px]";
+  "grid-cols-[72px_72px_minmax(0,1fr)_120px_200px_140px_108px]";
 
 const dotClass: Record<Severity, string> = {
   green: "bg-status-green",
@@ -46,6 +50,7 @@ type Props = {
   onEdit: () => void;
   onDelete: () => void;
   onResolve: () => void;
+  onExtend: () => void;
 };
 
 const PLAN_STATUS_LABEL: Record<PlanStatus, string> = {
@@ -68,6 +73,7 @@ export default function EventRow({
   onEdit,
   onDelete,
   onResolve,
+  onExtend,
 }: Props) {
   const severity = getEventSeverity(event, currentTtafMinutes);
   const planStatus = getEventPlanStatus(
@@ -78,6 +84,9 @@ export default function EventRow({
   const minutesLeft = computeMinutesLeft(event, currentTtafMinutes);
   const daysSev = severityFromDays(daysLeft);
   const hoursSev = severityFromMinutes(minutesLeft);
+  const effectiveExpiry = getEffectiveTimerExpiryMinutes(event);
+  const extHours =
+    event.extensionMinutes != null ? event.extensionMinutes / 60 : null;
 
   return (
     <div
@@ -122,13 +131,39 @@ export default function EventRow({
       >
         {PLAN_STATUS_LABEL[planStatus]}
       </span>
-      {/* Due at — date | TTAF compartment */}
-      <div className="grid grid-cols-2 divide-x divide-border rounded-md border border-border bg-background shadow-sm overflow-hidden">
-        <span className="px-1.5 py-0.5 text-center font-mono text-xs tabular-nums">
+      {/* Due at — date | TTAF compartment. The TTAF half shows the extended
+          due time when an extension is in effect; a small "+Xh ext" tag below
+          flags it so the original isn't silently rewritten. */}
+      <div
+        className={cn(
+          "grid grid-cols-2 divide-x divide-border rounded-md border shadow-sm overflow-hidden",
+          extHours != null
+            ? "border-amber-400 bg-amber-50"
+            : "border-border bg-background",
+        )}
+        title={
+          extHours != null
+            ? `Extended +${extHours}h (was ${formatMinutesAsDuration(event.timerExpiryTimeMinutes)})`
+            : undefined
+        }
+      >
+        <span className="px-1.5 py-0.5 text-center font-mono text-xs tabular-nums self-center">
           {formatDate(event.expiryDate)}
         </span>
-        <span className="px-1.5 py-0.5 text-center font-mono text-xs tabular-nums">
-          {formatMinutesAsDuration(event.timerExpiryTimeMinutes)}
+        <span className="px-1 py-0 flex flex-col items-center justify-center leading-tight">
+          <span
+            className={cn(
+              "font-mono text-xs tabular-nums",
+              extHours != null && "font-semibold text-amber-900",
+            )}
+          >
+            {formatMinutesAsDuration(effectiveExpiry)}
+          </span>
+          {extHours != null && (
+            <span className="text-[9px] font-medium tracking-wide text-amber-700">
+              +{extHours}h ext
+            </span>
+          )}
         </span>
       </div>
       {/* Time left — days | hours compartment with per-half severity tint */}
@@ -153,6 +188,23 @@ export default function EventRow({
       <div className="flex items-center justify-end gap-0.5">
         {!readOnly && (
           <>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn(
+                "h-6 w-6",
+                extHours != null &&
+                  "text-amber-700 hover:bg-amber-100 hover:text-amber-800",
+              )}
+              onClick={onExtend}
+              title={
+                extHours != null
+                  ? `Extension active (+${extHours}h) — click to manage`
+                  : "Grant TTAF extension (CAMO, max 5h)"
+              }
+            >
+              <Hourglass className="h-3.5 w-3.5" />
+            </Button>
             <Button
               variant="ghost"
               size="icon"

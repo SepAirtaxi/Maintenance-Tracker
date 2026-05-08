@@ -1,15 +1,24 @@
-import { Check, Pencil, Trash2 } from "lucide-react";
+import { AlertTriangle, Check, Clock, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
 import { formatMinutesAsDuration } from "@/lib/time";
-import { getDefectPlanStatus, type PlanStatus } from "@/lib/eventStatus";
+import {
+  DEFERRAL_REVIEW_DAYS,
+  daysSinceDeferred,
+  getDefectPlanStatus,
+  getDeferralStatus,
+  type DeferralStatus,
+  type PlanStatus,
+} from "@/lib/eventStatus";
 import WorkOrderCell from "@/components/overview/WorkOrderCell";
+import { EVENTS_GRID_COLS } from "@/components/overview/EventRow";
 import { updateDefect } from "@/services/defects";
 import type { Defect } from "@/types";
 
-const DEFECTS_GRID_COLS =
-  "grid-cols-[72px_72px_minmax(0,1fr)_120px_92px_92px_84px]";
+// Share the events grid template so the Status column lines up vertically
+// across event and defect rows on the same aircraft card.
+const DEFECTS_GRID_COLS = EVENTS_GRID_COLS;
 
 const PLAN_STATUS_LABEL: Record<PlanStatus, string> = {
   unplanned: "no action",
@@ -30,7 +39,67 @@ type Props = {
   onEdit: (defect: Defect) => void;
   onDelete: (defect: Defect) => void;
   onResolve: (defect: Defect) => void;
+  onDefer: (defect: Defect) => void;
 };
+
+function DeferralPill({
+  status,
+  defect,
+  onClick,
+  readOnly,
+}: {
+  status: DeferralStatus;
+  defect: Defect;
+  onClick: () => void;
+  readOnly: boolean;
+}) {
+  if (status === "none") return null;
+  const elapsed = daysSinceDeferred(defect) ?? 0;
+  const overdue = status === "overdue";
+  const reasonHint = defect.deferralReason
+    ? ` — ${defect.deferralReason}`
+    : "";
+  const title = overdue
+    ? `Deferral OVERDUE: ${elapsed}d elapsed (limit ${DEFERRAL_REVIEW_DAYS}d). CAMO follow-up required.${reasonHint}`
+    : `Deferred ${elapsed}d ago (review at ${DEFERRAL_REVIEW_DAYS}d).${reasonHint}`;
+  const labelText = overdue
+    ? `OVERDUE ${elapsed}d`
+    : `Deferred ${elapsed}/${DEFERRAL_REVIEW_DAYS}d`;
+  const className = cn(
+    "shrink-0 inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+    overdue
+      ? "border-rose-500 bg-rose-200 text-rose-900 shadow-sm animate-pulse"
+      : "border-amber-400 bg-amber-100 text-amber-900",
+  );
+
+  if (readOnly) {
+    return (
+      <span className={className} title={title}>
+        {overdue ? (
+          <AlertTriangle className="h-3 w-3" />
+        ) : (
+          <Clock className="h-3 w-3" />
+        )}
+        {labelText}
+      </span>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={`${title} · click to manage`}
+      className={cn(className, "transition-colors hover:brightness-95")}
+    >
+      {overdue ? (
+        <AlertTriangle className="h-3 w-3" />
+      ) : (
+        <Clock className="h-3 w-3" />
+      )}
+      {labelText}
+    </button>
+  );
+}
 
 export default function DefectsList({
   defects,
@@ -39,6 +108,7 @@ export default function DefectsList({
   onEdit,
   onDelete,
   onResolve,
+  onDefer,
 }: Props) {
   if (defects.length === 0) return null;
 
@@ -60,12 +130,17 @@ export default function DefectsList({
       </div>
       {defects.map((d) => {
         const planStatus = getDefectPlanStatus(d, bookedDefectIds);
+        const deferralStatus = getDeferralStatus(d);
         return (
         <div
           key={d.id}
           className={cn(
             "grid items-center gap-2 px-3 py-1 border-t border-amber-200/60 text-xs hover:bg-amber-100/40",
             DEFECTS_GRID_COLS,
+            // Highlight the entire row when a deferral has hit the review
+            // limit so it can't be missed when scanning the overview.
+            deferralStatus === "overdue" &&
+              "bg-rose-50/60 hover:bg-rose-100/60",
           )}
         >
           <WorkOrderCell
@@ -80,8 +155,16 @@ export default function DefectsList({
             placeholder="REQ number"
             editTitle="Click to edit requisition number"
           />
-          <div className="truncate" title={d.title}>
-            {d.title}
+          <div className="flex items-center gap-1.5 min-w-0">
+            <DeferralPill
+              status={deferralStatus}
+              defect={d}
+              onClick={() => onDefer(d)}
+              readOnly={readOnly}
+            />
+            <span className="truncate" title={d.title}>
+              {d.title}
+            </span>
           </div>
           <span
             className={cn(
@@ -107,6 +190,23 @@ export default function DefectsList({
           <div className="flex items-center justify-end gap-0.5">
             {!readOnly && (
               <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn(
+                    "h-6 w-6",
+                    deferralStatus !== "none" &&
+                      "text-amber-700 hover:bg-amber-100 hover:text-amber-800",
+                  )}
+                  onClick={() => onDefer(d)}
+                  title={
+                    deferralStatus === "none"
+                      ? "Defer defect (start 30-day review)"
+                      : "Manage deferral"
+                  }
+                >
+                  <Clock className="h-3.5 w-3.5" />
+                </Button>
                 <Button
                   variant="ghost"
                   size="icon"

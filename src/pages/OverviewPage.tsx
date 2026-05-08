@@ -19,7 +19,9 @@ import NoteDialog from "@/components/overview/NoteDialog";
 import DefectFormDialog from "@/components/overview/DefectFormDialog";
 import DeleteDefectDialog from "@/components/overview/DeleteDefectDialog";
 import ResolveDefectDialog from "@/components/overview/ResolveDefectDialog";
+import DeferDefectDialog from "@/components/overview/DeferDefectDialog";
 import ResolveEventDialog from "@/components/overview/ResolveEventDialog";
+import ExtendEventDialog from "@/components/overview/ExtendEventDialog";
 import UpcomingEventsDialog from "@/components/overview/UpcomingEventsDialog";
 import HistoryDialog from "@/components/overview/HistoryDialog";
 import { useAuth } from "@/context/AuthContext";
@@ -184,6 +186,8 @@ export default function OverviewPage() {
   );
   const [resolveEventTarget, setResolveEventTarget] =
     useState<MaintenanceEvent | null>(null);
+  const [extendEventTarget, setExtendEventTarget] =
+    useState<MaintenanceEvent | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [ttafTarget, setTtafTarget] = useState<Aircraft | null>(null);
   const [bookingDialogOpen, setBookingDialogOpen] = useState(false);
@@ -199,6 +203,9 @@ export default function OverviewPage() {
     null,
   );
   const [defectResolveTarget, setDefectResolveTarget] = useState<Defect | null>(
+    null,
+  );
+  const [defectDeferTarget, setDefectDeferTarget] = useState<Defect | null>(
     null,
   );
   const [historyTail, setHistoryTail] = useState<string | null>(null);
@@ -503,10 +510,12 @@ export default function OverviewPage() {
       onEditEvent={openEditEvent}
       onDeleteEvent={setDeleteTarget}
       onResolveEvent={setResolveEventTarget}
+      onExtendEvent={setExtendEventTarget}
       onAddDefect={() => openAddDefect(s.aircraft.tailNumber)}
       onEditDefect={openEditDefect}
       onDeleteDefect={setDefectDeleteTarget}
       onResolveDefect={setDefectResolveTarget}
+      onDeferDefect={setDefectDeferTarget}
       onEditNote={() => setNoteTarget(s.aircraft)}
     />
     </div>
@@ -651,6 +660,10 @@ export default function OverviewPage() {
         event={resolveEventTarget}
         onClose={() => setResolveEventTarget(null)}
       />
+      <ExtendEventDialog
+        event={extendEventTarget}
+        onClose={() => setExtendEventTarget(null)}
+      />
       <ImportDialog open={importOpen} onOpenChange={setImportOpen} />
       <TtafDialog
         aircraft={ttafTarget}
@@ -695,6 +708,10 @@ export default function OverviewPage() {
       <ResolveDefectDialog
         defect={defectResolveTarget}
         onClose={() => setDefectResolveTarget(null)}
+      />
+      <DeferDefectDialog
+        defect={defectDeferTarget}
+        onClose={() => setDefectDeferTarget(null)}
       />
       <HistoryDialog
         tailNumber={historyTail}

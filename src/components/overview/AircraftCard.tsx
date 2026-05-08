@@ -60,10 +60,12 @@ type Props = {
   onEditEvent: (event: MaintenanceEvent) => void;
   onDeleteEvent: (event: MaintenanceEvent) => void;
   onResolveEvent: (event: MaintenanceEvent) => void;
+  onExtendEvent: (event: MaintenanceEvent) => void;
   onAddDefect: () => void;
   onEditDefect: (defect: Defect) => void;
   onDeleteDefect: (defect: Defect) => void;
   onResolveDefect: (defect: Defect) => void;
+  onDeferDefect: (defect: Defect) => void;
   onEditNote: () => void;
 };
 
@@ -102,10 +104,12 @@ export default function AircraftCard({
   onEditEvent,
   onDeleteEvent,
   onResolveEvent,
+  onExtendEvent,
   onAddDefect,
   onEditDefect,
   onDeleteDefect,
   onResolveDefect,
+  onDeferDefect,
   onEditNote,
 }: Props) {
   const [togglingAirworthy, setTogglingAirworthy] = useState(false);
@@ -553,6 +557,7 @@ export default function AircraftCard({
               onEdit={() => onEditEvent(event)}
               onDelete={() => onDeleteEvent(event)}
               onResolve={() => onResolveEvent(event)}
+              onExtend={() => onExtendEvent(event)}
             />
           ))}
         </div>
@@ -565,6 +570,7 @@ export default function AircraftCard({
         onEdit={onEditDefect}
         onDelete={onDeleteDefect}
         onResolve={onResolveDefect}
+        onDefer={onDeferDefect}
       />
     </section>
   );

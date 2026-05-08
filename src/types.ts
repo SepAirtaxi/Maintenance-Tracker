@@ -86,6 +86,11 @@ export type MaintenanceEvent = {
   requisitionNumber: string | null;
   status: EventStatus;
   source: EventSource;
+  // CAMO-granted extension on top of `timerExpiryTimeMinutes`. Stored in
+  // minutes so we can stay base-60 throughout. Capped at 5h (300 min) per
+  // interval — see `services/events.ts#extendEvent`. Null = no extension.
+  // The original due time is never mutated; render time adds these together.
+  extensionMinutes: number | null;
   // Resolution metadata. Resolved events stay in Firestore as legacy; the
   // overview filters them out. All four resolution fields are set together.
   resolvedDate: Timestamp | null;
@@ -119,6 +124,12 @@ export type Defect = {
   // recurrence of. Unidirectional (new → old). Empty array when none. Titles
   // are resolved at render time, dangling refs tolerated.
   relatedDefectIds: string[];
+  // Deferral state. CAMO policy: a deferred defect must be reviewed within
+  // 30 days of `deferredAt`; re-deferring overwrites these fields with the
+  // new timestamp/reason (the audit log keeps the chain). Null when active.
+  deferredAt: Timestamp | null;
+  deferralReason: string | null;
+  deferredBy: string | null;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 };
