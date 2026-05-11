@@ -8,7 +8,9 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import AircraftCard from "@/components/overview/AircraftCard";
+import AircraftCard, {
+  type BookingWithLinks,
+} from "@/components/overview/AircraftCard";
 import EventFormDialog from "@/components/overview/EventFormDialog";
 import DeleteEventDialog from "@/components/overview/DeleteEventDialog";
 import ImportDialog from "@/components/overview/ImportDialog";
@@ -31,7 +33,10 @@ import { useAuth } from "@/context/AuthContext";
 import { subscribeAircraft } from "@/services/aircraft";
 import { subscribeEvents } from "@/services/events";
 import { subscribeDefects } from "@/services/defects";
-import { nextBookingForTail, subscribeBookings } from "@/services/bookings";
+import {
+  subscribeBookings,
+  upcomingBookingsForTail,
+} from "@/services/bookings";
 import { subscribeLocations } from "@/services/locations";
 import { subscribeUsers } from "@/services/users";
 import {
@@ -142,9 +147,7 @@ type AircraftSummary = {
   aircraft: Aircraft;
   events: MaintenanceEvent[];
   defects: Defect[];
-  nextBooking: Booking | null;
-  nextBookingEvent: MaintenanceEvent | null;
-  nextBookingDefects: Defect[];
+  bookings: BookingWithLinks[];
   worst: Severity;
   earliestDueMillis: number | null;
   airworthy: boolean;
@@ -308,19 +311,19 @@ export default function OverviewPage() {
           earliestDueMillis = due;
         }
       }
-      const nextBooking = nextBookingForTail(allBookings, a.tailNumber);
-      const nextBookingEvent =
-        nextBooking?.eventId ? eventsById.get(nextBooking.eventId) ?? null : null;
-      const nextBookingDefects = (nextBooking?.defectIds ?? [])
-        .map((id) => defectsById.get(id))
-        .filter((d): d is Defect => !!d);
+      const tailBookings = upcomingBookingsForTail(allBookings, a.tailNumber);
+      const bookings: BookingWithLinks[] = tailBookings.map((b) => ({
+        booking: b,
+        event: b.eventId ? eventsById.get(b.eventId) ?? null : null,
+        defects: b.defectIds
+          .map((id) => defectsById.get(id))
+          .filter((d): d is Defect => !!d),
+      }));
       return {
         aircraft: a,
         events: sortEvents(events, a.totalTimeMinutes),
         defects: defectsByTail.get(a.tailNumber) ?? [],
-        nextBooking,
-        nextBookingEvent,
-        nextBookingDefects,
+        bookings,
         worst,
         earliestDueMillis,
         airworthy: a.airworthy !== false,
@@ -498,9 +501,7 @@ export default function OverviewPage() {
       aircraft={s.aircraft}
       events={s.events}
       defects={s.defects}
-      nextBooking={s.nextBooking}
-      nextBookingEvent={s.nextBookingEvent}
-      nextBookingDefects={s.nextBookingDefects}
+      bookings={s.bookings}
       worstSeverity={s.worst}
       airworthy={s.airworthy}
       bookedEventIds={bookedIds.eventIds}

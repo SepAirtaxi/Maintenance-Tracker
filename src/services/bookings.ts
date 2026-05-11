@@ -379,6 +379,16 @@ export function nextBookingForTail(
   tail: string,
   now: Date = new Date(),
 ): Booking | null {
+  return upcomingBookingsForTail(bookings, tail, now)[0] ?? null;
+}
+
+// All active + future bookings for the tail, sorted: currently-active first,
+// then upcoming by `from` ascending. Past bookings are excluded.
+export function upcomingBookingsForTail(
+  bookings: Booking[],
+  tail: string,
+  now: Date = new Date(),
+): Booking[] {
   const startOfToday = new Date(
     now.getFullYear(),
     now.getMonth(),
@@ -386,21 +396,20 @@ export function nextBookingForTail(
   );
   const todayMs = startOfToday.getTime();
 
-  let active: Booking | null = null;
-  let nextUpcoming: Booking | null = null;
+  const active: Booking[] = [];
+  const upcoming: Booking[] = [];
   for (const b of bookings) {
     if (b.tailNumber !== tail) continue;
     const fromMs = b.from.toMillis();
     const toMs = b.to ? b.to.toMillis() : OPEN_ENDED;
-    if (fromMs <= todayMs && todayMs <= toMs) {
-      if (!active || fromMs < active.from.toMillis()) active = b;
-    } else if (fromMs > todayMs) {
-      if (!nextUpcoming || fromMs < nextUpcoming.from.toMillis()) {
-        nextUpcoming = b;
-      }
-    }
+    if (fromMs <= todayMs && todayMs <= toMs) active.push(b);
+    else if (fromMs > todayMs) upcoming.push(b);
   }
-  return active ?? nextUpcoming;
+  const byFrom = (a: Booking, b: Booking) =>
+    a.from.toMillis() - b.from.toMillis();
+  active.sort(byFrom);
+  upcoming.sort(byFrom);
+  return [...active, ...upcoming];
 }
 
 export function isBookingActive(

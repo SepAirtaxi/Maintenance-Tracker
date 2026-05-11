@@ -1,11 +1,8 @@
-import { Fragment, useState } from "react";
+import { useState } from "react";
 import {
-  Building2,
   CalendarDays,
-  Check,
   Gauge,
   History,
-  MapPin,
   Pencil,
   Plus,
   ShieldAlert,
@@ -35,17 +32,20 @@ import type {
   MaintenanceEvent,
 } from "@/types";
 
+// One booking + the event/defects it links to. Resolved in the parent
+// (OverviewPage) so this card doesn't need the global event/defect lists.
+export type BookingWithLinks = {
+  booking: Booking;
+  event: MaintenanceEvent | null;
+  defects: Defect[];
+};
+
 type Props = {
   aircraft: Aircraft;
   events: MaintenanceEvent[];
   defects: Defect[];
-  nextBooking: Booking | null;
-  // The maintenance event linked from `nextBooking.eventId`, if any. Resolved
-  // here in the parent so we don't have to thread the events list down.
-  nextBookingEvent: MaintenanceEvent | null;
-  // Defects linked from `nextBooking.defectIds`. Same render-time-resolution
-  // pattern as `nextBookingEvent` — passed in already filtered.
-  nextBookingDefects: Defect[];
+  // All active + upcoming bookings for this tail, active-first then by `from`.
+  bookings: BookingWithLinks[];
   worstSeverity: Severity;
   airworthy: boolean;
   bookedEventIds: ReadonlySet<string>;
@@ -89,9 +89,7 @@ export default function AircraftCard({
   aircraft,
   events,
   defects,
-  nextBooking,
-  nextBookingEvent,
-  nextBookingDefects,
+  bookings,
   worstSeverity,
   airworthy,
   bookedEventIds,
@@ -117,13 +115,16 @@ export default function AircraftCard({
   onEditNote,
 }: Props) {
   const [togglingAirworthy, setTogglingAirworthy] = useState(false);
-  const inHangar = isBookingActive(nextBooking);
-  const bookingGroups = nextBooking
-    ? buildBookingGroups(nextBookingEvent, nextBookingDefects)
-    : [];
-  // First group is the "primary" one — event's group, else first defect group.
-  const primaryGroup = bookingGroups[0] ?? null;
-  const activeWo = inHangar ? primaryGroup?.wo ?? null : null;
+  // The first entry is the currently-active booking when one exists (sorted
+  // active-first upstream), so the "In maintenance" header pill mirrors that.
+  const activeBooking = bookings[0]?.booking ?? null;
+  const inHangar = isBookingActive(activeBooking);
+  const activeWo = inHangar
+    ? buildBookingGroups(
+        bookings[0]?.event ?? null,
+        bookings[0]?.defects ?? [],
+      )[0]?.wo ?? null
+    : null;
 
   const onToggleAirworthy = async () => {
     setTogglingAirworthy(true);
@@ -138,23 +139,6 @@ export default function AircraftCard({
     ? cn("border-l-4", stripe[worstSeverity])
     : "border-l-4 border-l-destructive bg-muted";
   const headerClass = airworthy ? headerBg[worstSeverity] : "bg-muted/80";
-
-  const bookingText = nextBooking
-    ? formatBookingRange(nextBooking.from, nextBooking.to)
-    : null;
-  const bookingNotes = nextBooking?.notes?.trim() || null;
-  const bookingDescription = describeBookingGroups(bookingGroups);
-  const bookingLocation = nextBooking?.locationId
-    ? locationsById.get(nextBooking.locationId) ?? null
-    : null;
-  const bookingTitleAttr = [
-    `Booked ${bookingText ?? ""}`,
-    bookingLocation ? `at ${bookingLocation.name}` : null,
-    bookingDescription,
-    bookingNotes,
-  ]
-    .filter(Boolean)
-    .join(" · ");
 
   return (
     <section
@@ -298,9 +282,12 @@ export default function AircraftCard({
           </div>
         </div>
 
-        {/* Row 2: TTAF + Booked, two equal cells with stable column placement */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 px-3 pb-1.5">
-          <div className="grid grid-cols-[14px_3rem_minmax(0,1fr)_auto_22px] items-center gap-x-2 rounded-md border bg-background px-2 py-1 shadow-sm">
+        {/* Row 2: TTAF (content-width) + Booked (fills remaining space). The
+            booking cell takes most of the row so multiple stacked bookings
+            have room to breathe; the event/defect titles live in the tables
+            below, so the booking rows only need date + location + WO chips. */}
+        <div className="grid grid-cols-1 md:grid-cols-[auto_minmax(0,1fr)] gap-2 px-3 pb-1.5">
+          <div className="grid grid-cols-[14px_3rem_auto_auto_22px] items-center gap-x-2 rounded-md border bg-background px-2 py-1 shadow-sm">
             <Gauge className="h-3.5 w-3.5 text-muted-foreground" />
             <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
               TTAF
@@ -331,163 +318,117 @@ export default function AircraftCard({
             )}
           </div>
 
-          {nextBooking ? (
-            <button
-              type="button"
-              onClick={() => onViewBooking(nextBooking)}
-              title={bookingTitleAttr || "View booking"}
-              className={cn(
-                "group flex items-center gap-2 rounded-md border px-2 py-1 shadow-sm text-left transition-colors",
-                inHangar
-                  ? "border-blue-300 bg-blue-50 hover:bg-blue-100"
-                  : "border-sky-200 bg-sky-50 hover:bg-sky-100",
-              )}
-            >
-              <CalendarDays
-                className={cn(
-                  "h-3.5 w-3.5 shrink-0",
-                  inHangar ? "text-blue-700" : "text-sky-700",
-                )}
-              />
-              <span
-                className={cn(
-                  "text-[10px] font-bold uppercase tracking-wider shrink-0",
-                  inHangar ? "text-blue-800" : "text-sky-800",
-                )}
-              >
-                {inHangar ? "In hangar" : "Booked"}
+          {/* Bookings cell — single-line height regardless of how many bookings
+              the tail has. Compact pills (start date · type · WO) scroll
+              horizontally if they overflow, so the card header stays a
+              stable height. Full details (range, location, notes, item
+              titles) live on click in BookingViewDialog and in tooltips. */}
+          <div className="flex items-center gap-2 rounded-md border bg-background px-2 py-1 shadow-sm overflow-hidden">
+            <CalendarDays className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground shrink-0">
+              Bookings
+            </span>
+            {bookings.length === 0 ? (
+              <span className="text-xs italic text-muted-foreground shrink-0">
+                none scheduled
               </span>
-              <span
-                className={cn(
-                  "font-mono tabular-nums text-xs shrink-0",
-                  inHangar ? "text-blue-900" : "text-sky-900",
-                )}
-              >
-                {bookingText}
-              </span>
-              {bookingLocation && (
-                <span
-                  className={cn(
-                    "shrink-0 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium",
-                    inHangar
-                      ? "bg-blue-100 text-blue-900 border border-blue-300"
-                      : "bg-sky-100 text-sky-900 border border-sky-300",
-                  )}
-                  title={`Location: ${bookingLocation.name}${bookingLocation.kind === "external" ? " (external)" : ""}`}
-                >
-                  {bookingLocation.kind === "external" ? (
-                    <MapPin className="h-2.5 w-2.5" />
-                  ) : (
-                    <Building2 className="h-2.5 w-2.5" />
-                  )}
-                  {bookingLocation.name}
-                </span>
-              )}
-              {bookingGroups.length > 0 ? (
-                bookingGroups.map((g, gi) => (
-                  <Fragment key={gi}>
-                    {gi > 0 && (
-                      <span
-                        className={cn(
-                          "shrink-0 opacity-50",
-                          inHangar ? "text-blue-800" : "text-sky-800",
-                        )}
-                      >
-                        |
-                      </span>
-                    )}
-                    {g.wo && (
-                      <span
-                        className={cn(
-                          "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-mono font-semibold",
-                          inHangar
-                            ? "bg-blue-200 text-blue-900"
-                            : "bg-sky-200 text-sky-900",
-                        )}
-                      >
-                        WO: {g.wo}
-                      </span>
-                    )}
-                    <span
+            ) : (
+              <div className="flex items-center gap-1.5 overflow-x-auto min-w-0">
+                {bookings.map((entry) => {
+                  const b = entry.booking;
+                  const active = isBookingActive(b);
+                  const groups = buildBookingGroups(
+                    entry.event,
+                    entry.defects,
+                  );
+                  const wos = groups
+                    .map((g) => g.wo)
+                    .filter((w): w is string => !!w);
+                  const primaryWo = wos[0] ?? null;
+                  const extraWoCount = Math.max(0, wos.length - 1);
+                  const hasEvent = !!entry.event;
+                  const hasDefect = entry.defects.length > 0;
+                  const typeLabel =
+                    hasEvent && hasDefect
+                      ? "Event+Defect"
+                      : hasEvent
+                        ? "Event"
+                        : hasDefect
+                          ? "Defect"
+                          : null;
+
+                  const range = formatBookingRange(b.from, b.to);
+                  const notes = b.notes?.trim() || null;
+                  const description = describeBookingGroups(groups);
+                  const location = b.locationId
+                    ? locationsById.get(b.locationId) ?? null
+                    : null;
+                  const titleAttr = [
+                    active ? `In hangar ${range}` : `Booked ${range}`,
+                    location ? `at ${location.name}` : null,
+                    description,
+                    notes,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ");
+
+                  return (
+                    <button
+                      key={b.id}
+                      type="button"
+                      onClick={() => onViewBooking(b)}
+                      title={titleAttr || "View booking"}
                       className={cn(
-                        "shrink min-w-0 truncate text-[11px]",
-                        inHangar ? "text-blue-800/80" : "text-sky-800/80",
+                        "shrink-0 inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] transition-colors",
+                        active
+                          ? "border-blue-400 bg-blue-100 hover:bg-blue-200 text-blue-950"
+                          : "border-sky-300 bg-sky-50 hover:bg-sky-100 text-sky-900",
                       )}
                     >
-                      {g.items.map((it, ii) => (
+                      <span className="font-mono tabular-nums">
+                        {formatDate(b.from)}
+                      </span>
+                      {typeLabel && (
                         <span
-                          key={ii}
                           className={cn(
-                            it.resolved && "line-through opacity-60",
+                            "rounded px-1 text-[9px] font-semibold uppercase tracking-wider",
+                            active
+                              ? "bg-blue-200 text-blue-900"
+                              : "bg-sky-200 text-sky-900",
                           )}
                         >
-                          {ii > 0 ? " · " : ""}
-                          {it.resolved && (
-                            <Check className="inline h-2.5 w-2.5 mr-0.5" />
-                          )}
-                          {it.label}
+                          {typeLabel}
                         </span>
-                      ))}
-                    </span>
-                  </Fragment>
-                ))
-              ) : bookingNotes ? (
-                <span
-                  className={cn(
-                    "shrink min-w-0 truncate text-[11px] italic",
-                    inHangar ? "text-blue-800/80" : "text-sky-800/80",
-                  )}
-                >
-                  · {bookingNotes}
-                </span>
-              ) : null}
-              {bookingNotes && bookingGroups.length > 0 && (
-                <StickyNote
-                  className={cn(
-                    "h-3 w-3 shrink-0",
-                    inHangar ? "text-blue-700/80" : "text-sky-700/80",
-                  )}
-                />
-              )}
-              {!readOnly && (
-                <span
-                  role="button"
-                  tabIndex={-1}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onAddBooking();
-                  }}
-                  title="Add booking for this tail"
-                  className={cn(
-                    "ml-auto rounded p-0.5 transition-colors",
-                    inHangar
-                      ? "text-blue-700/70 hover:bg-blue-200 hover:text-blue-900"
-                      : "text-sky-700/70 hover:bg-sky-200 hover:text-sky-900",
-                  )}
-                >
-                  <Plus className="h-3 w-3" />
-                </span>
-              )}
-            </button>
-          ) : (
-            <div className="flex items-center gap-2 rounded-md border border-dashed bg-background/60 px-2 py-1 text-muted-foreground">
-              <CalendarDays className="h-3.5 w-3.5" />
-              <span className="text-[10px] font-medium uppercase tracking-wider">
-                Booked
-              </span>
-              <span className="text-xs italic">not set</span>
-              {!readOnly && (
-                <button
-                  type="button"
-                  onClick={onAddBooking}
-                  title="Book maintenance slot"
-                  className="ml-auto rounded p-0.5 hover:bg-secondary hover:text-foreground"
-                >
-                  <Plus className="h-3 w-3" />
-                </button>
-              )}
-            </div>
-          )}
+                      )}
+                      {primaryWo && (
+                        <span
+                          className={cn(
+                            "rounded px-1 font-mono font-semibold",
+                            active
+                              ? "bg-blue-300 text-blue-950"
+                              : "bg-sky-300 text-sky-950",
+                          )}
+                        >
+                          WO: {primaryWo}
+                          {extraWoCount > 0 ? ` +${extraWoCount}` : ""}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {!readOnly && (
+              <button
+                type="button"
+                onClick={onAddBooking}
+                title="Add booking for this tail"
+                className="ml-auto shrink-0 rounded p-0.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
+              >
+                <Plus className="h-3 w-3" />
+              </button>
+            )}
+          </div>
         </div>
 
         {aircraft.note && (
