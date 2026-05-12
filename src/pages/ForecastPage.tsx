@@ -82,11 +82,32 @@ export default function ForecastPage() {
 
   return (
     <div className="space-y-6">
+      <div
+        role="alert"
+        className="flex items-start gap-3 rounded-md border-2 border-amber-400 bg-amber-50 px-4 py-3 text-amber-900 shadow-sm"
+      >
+        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+        <div className="space-y-0.5">
+          <div className="text-sm font-bold uppercase tracking-wider">
+            Work in progress — not ready for use
+          </div>
+          <div className="text-xs text-amber-900/90">
+            The Forecast module is under active development. The parser and
+            this UI are a first draft; results have not been verified for
+            operational use. Do not rely on this output for planning a work
+            order yet.
+          </div>
+        </div>
+      </div>
+
       <header className="flex items-center justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
             <Telescope className="h-5 w-5 text-muted-foreground" />
             Forecast
+            <span className="rounded border border-amber-400 bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-900">
+              WIP
+            </span>
           </h1>
           <p className="text-sm text-muted-foreground">
             Upload a CAMO Projection List <code>.docx</code> to render an

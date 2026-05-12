@@ -449,7 +449,14 @@ Example summaries:
 
 ---
 
-## 13. Forecast module (members only)
+## 13. Forecast module (members only) — WORK IN PROGRESS
+
+> **Status: WIP — not ready for use.** The Forecast module is under active
+> development. The runtime parser and a first-cut UI exist, but the output
+> has not been validated for operational planning. A persistent WIP banner
+> is rendered at the top of the page so members can't miss it. The
+> page is hidden from view-only users. Do not treat this section as a
+> shippable feature — assume any flow described here may still change.
 
 A standalone module for parsing CAMO `.docx` Forecast / Projection List
 exports into a structured cheat sheet for the next work order.
@@ -468,7 +475,9 @@ Models not in the dictionary still render rows with raw names and
 `needs review` badges.
 
 The runtime parser and bare UI exist; deeper integration with the events
-collection is not wired yet.
+collection is not wired yet. Pending work includes calculation rules
+(effective due, 50 HR piggyback, out-of-phase, bundling flag), severity
+tinting, and a display-window control — see `forecast_project/PLAN.md`.
 
 ---
 
