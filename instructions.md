@@ -115,10 +115,13 @@ const firebaseConfig = {
 - Events on **grounded** aircraft (`airworthy === false`) are filtered out of both lists — a grounded aircraft is by definition not flying down its TTAF/calendar timers, so its events shouldn't compete for attention with the active fleet.
 
 ### TTAF / duration format
-- Stored as integer minutes (base-60). Display everywhere in the app uses `HH:MM` (e.g. `2448:36`) so it's unambiguously not decimal hours.
-- The shared parser in `src/lib/time.ts` accepts either `HH:MM` or `HH.MM` on input — Flightlogger CSV uses `:`, older CAMO `.csv` exports use `.`. Either works.
-- TTAF/timer-expiry inputs (`TtafDialog`, `EventFormDialog`, `DefectFormDialog`) have a **HH:MM / Decimal** toggle next to the field label. HH:MM is the default. Switching modes auto-converts the current value (if it parses) so the number isn't lost.
-- **Decimal** mode parses decimal hours (e.g. `4969.5` → 4969h 30m), strips thousands-spaces (CAMO formats numbers like `4 969.5`), and rounds to the nearest minute. Use it when transcribing TTAF directly from the CAMO software's projection lists. Internal storage stays integer-minutes regardless of input mode.
+- Stored as integer minutes. Display everywhere in the app uses `HH:MM` (e.g. `2448:36`) so it's unambiguously not decimal hours.
+- TTAF/timer-expiry inputs (`TtafDialog`, `EventFormDialog`, `DefectFormDialog`) **auto-detect** which format is being typed based on the separator:
+  - `:` → sexagesimal (e.g. `6466:36` → 6466h 36m)
+  - `.` → decimal hours (e.g. `4969.5` → 4969h 30m, with thousands-spaces stripped)
+  - plain integer → whole hours (same result either way)
+- A small `HH:MM` / `Decimal` indicator next to the field label lights up live as you type, so you can confirm the parser interpreted the value the way you meant. It's display-only — there's no mode to toggle.
+- Parser entry points in `src/lib/time.ts`: `parseTtafInput` (auto-detect, used by all three dialogs), `parseDurationToMinutes` (`:` only, used by the Flightlogger CSV import), `parseDecimalHoursToMinutes` (decimal-only). `detectTtafFormat` powers the live indicator. Internal storage stays integer-minutes regardless of input format.
 
 ### Booked maintenance — auto-expiry sweep
 - Bookings auto-clear on the day after their `to` date. The sweep runs client-side once per session when the overview first loads (skipped for viewers).
