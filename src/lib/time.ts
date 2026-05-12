@@ -1,14 +1,16 @@
 // Durations (TTAF, log_time_left, timer_expiry_time) are stored as integer
-// minutes (base-60). Display uses `HHHH:MM`. Inputs accept either
-// `HHHH:MM` or `HHHH.MM` (Flightlogger CSV uses `:`, older CAMO files use `.`).
-// Decimal hours (`4969.5` = 4969h 30m) are NOT accepted by parseDurationToMinutes
-// — use parseDecimalHoursToMinutes for that path.
+// minutes. Display uses `HHHH:MM`. Two input formats are supported and
+// disambiguated by separator:
+//   • `HHHH:MM` — sexagesimal (e.g. 6466:36 → 6466h 36m)
+//   • `HHHH.MM` — decimal hours (e.g. 4969.5 → 4969h 30m)
+// `parseDurationToMinutes` only handles `:`. Use `parseTtafInput` for UI
+// inputs that should auto-detect between the two formats.
 
 export function parseDurationToMinutes(input: string): number | null {
   if (!input) return null;
   const trimmed = input.trim();
   if (!trimmed) return null;
-  const match = trimmed.match(/^(\d+)[:.](\d{1,2})$/);
+  const match = trimmed.match(/^(\d+):(\d{1,2})$/);
   if (!match) {
     // Allow plain integer hours (no minutes part).
     if (/^\d+$/.test(trimmed)) return parseInt(trimmed, 10) * 60;
@@ -32,6 +34,28 @@ export function parseDecimalHoursToMinutes(input: string): number | null {
   return Math.round(hours * 60);
 }
 
+export type TtafFormat = "hhmm" | "decimal";
+
+// Picks which format the user appears to be typing. Used both for parsing
+// and to drive a live "detected format" indicator next to the input.
+export function detectTtafFormat(input: string): TtafFormat {
+  const trimmed = input.trim();
+  if (trimmed.includes(":")) return "hhmm";
+  if (trimmed.includes(".")) return "decimal";
+  return "hhmm";
+}
+
+// Auto-dispatches between `:` (HH:MM) and `.` (decimal hours) based on
+// which separator is present. Plain integers are unambiguous.
+export function parseTtafInput(input: string): number | null {
+  if (!input) return null;
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+  return detectTtafFormat(trimmed) === "decimal"
+    ? parseDecimalHoursToMinutes(trimmed)
+    : parseDurationToMinutes(trimmed);
+}
+
 export function formatMinutesAsDuration(
   minutes: number | null | undefined,
 ): string {
@@ -39,17 +63,6 @@ export function formatMinutesAsDuration(
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   return `${h}:${m.toString().padStart(2, "0")}`;
-}
-
-// Formats integer minutes as decimal hours (e.g. 298170 → "4969.5").
-// Used when showing/seeding a decimal-hours input.
-export function formatMinutesAsDecimalHours(
-  minutes: number | null | undefined,
-): string {
-  if (minutes == null) return "";
-  const hours = minutes / 60;
-  // Trim trailing zeros: 4969.0 → "4969", 4969.5 → "4969.5", 4969.51 → "4969.51".
-  return parseFloat(hours.toFixed(2)).toString();
 }
 
 export function formatHoursLeft(

@@ -12,9 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   formatMinutesAsDuration,
-  formatMinutesAsDecimalHours,
-  parseDurationToMinutes,
-  parseDecimalHoursToMinutes,
+  detectTtafFormat,
+  parseTtafInput,
 } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { updateTtafManual } from "@/services/aircraft";
@@ -29,7 +28,6 @@ type Props = {
 export default function TtafDialog({ aircraft, onClose }: Props) {
   const { user } = useAuth();
   const [value, setValue] = useState("");
-  const [mode, setMode] = useState<"hhmm" | "decimal">("hhmm");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,7 +38,6 @@ export default function TtafDialog({ aircraft, onClose }: Props) {
           ? formatMinutesAsDuration(aircraft.totalTimeMinutes)
           : "",
       );
-      setMode("hhmm");
       setError(null);
       setSaving(false);
     }
@@ -48,47 +45,19 @@ export default function TtafDialog({ aircraft, onClose }: Props) {
 
   if (!aircraft) return null;
 
-  const switchMode = (next: "hhmm" | "decimal") => {
-    if (next === mode) return;
-    const trimmed = value.trim();
-    if (trimmed) {
-      const minutes =
-        mode === "hhmm"
-          ? parseDurationToMinutes(trimmed)
-          : parseDecimalHoursToMinutes(trimmed);
-      if (minutes != null) {
-        setValue(
-          next === "hhmm"
-            ? formatMinutesAsDuration(minutes)
-            : formatMinutesAsDecimalHours(minutes),
-        );
-      }
-    }
-    setMode(next);
-  };
+  const detectedMode = detectTtafFormat(value);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
-    const minutes =
-      mode === "decimal"
-        ? parseDecimalHoursToMinutes(value.trim())
-        : parseDurationToMinutes(value.trim());
+    const minutes = parseTtafInput(value.trim());
     if (minutes == null) {
-      setError(
-        mode === "decimal"
-          ? "Decimal hours must look like 4969.5."
-          : "Enter a value like 1234:30 (minutes 00–59).",
-      );
+      setError("Enter a value like 1234:30 (HH:MM) or 1234.5 (decimal hours).");
       return;
     }
     if (!user) {
       setError("You must be signed in.");
       return;
-    }
-    const stored = aircraft.totalTimeMinutes;
-    if (stored != null && minutes < stored) {
-      // Allow but require explicit confirmation via the confirm flow below.
     }
     setSaving(true);
     try {
@@ -101,10 +70,7 @@ export default function TtafDialog({ aircraft, onClose }: Props) {
     }
   };
 
-  const parsed =
-    mode === "decimal"
-      ? parseDecimalHoursToMinutes(value.trim())
-      : parseDurationToMinutes(value.trim());
+  const parsed = parseTtafInput(value.trim());
   const isDecrement =
     parsed != null &&
     aircraft.totalTimeMinutes != null &&
@@ -125,41 +91,38 @@ export default function TtafDialog({ aircraft, onClose }: Props) {
           <div className="py-4 space-y-4">
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-2">
-                <Label htmlFor="ttaf">
-                  TTAF ({mode === "decimal" ? "decimal hrs" : "HH:MM"})
-                </Label>
-                <div className="inline-flex rounded-md border bg-card p-0.5 text-[10px]">
-                  <button
-                    type="button"
-                    onClick={() => switchMode("hhmm")}
+                <Label htmlFor="ttaf">TTAF</Label>
+                <div
+                  className="inline-flex rounded-md border bg-card p-0.5 text-[10px]"
+                  aria-label="Detected input format"
+                >
+                  <span
                     className={cn(
                       "rounded px-1.5 py-0.5 font-mono transition-colors",
-                      mode === "hhmm"
+                      detectedMode === "hhmm"
                         ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:text-foreground",
+                        : "text-muted-foreground",
                     )}
                   >
                     HH:MM
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => switchMode("decimal")}
+                  </span>
+                  <span
                     className={cn(
                       "rounded px-1.5 py-0.5 font-mono transition-colors",
-                      mode === "decimal"
+                      detectedMode === "decimal"
                         ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:text-foreground",
+                        : "text-muted-foreground",
                     )}
                   >
                     Decimal
-                  </button>
+                  </span>
                 </div>
               </div>
               <Input
                 id="ttaf"
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
-                placeholder={mode === "decimal" ? "e.g. 6466.6" : "e.g. 6466:36"}
+                placeholder="e.g. 6466:36 or 6466.6"
                 className="font-mono"
                 autoFocus
               />

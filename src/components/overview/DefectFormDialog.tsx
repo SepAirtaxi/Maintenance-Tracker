@@ -14,9 +14,8 @@ import { Label } from "@/components/ui/label";
 import { createDefect, updateDefect } from "@/services/defects";
 import {
   formatMinutesAsDuration,
-  formatMinutesAsDecimalHours,
-  parseDurationToMinutes,
-  parseDecimalHoursToMinutes,
+  detectTtafFormat,
+  parseTtafInput,
 } from "@/lib/time";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -55,7 +54,6 @@ export default function DefectFormDialog({
   const [title, setTitle] = useState("");
   const [reportedDate, setReportedDate] = useState(tsToInput(new Date()));
   const [reportedTtaf, setReportedTtaf] = useState("");
-  const [ttafMode, setTtafMode] = useState<"hhmm" | "decimal">("hhmm");
   const [workOrderNumber, setWorkOrderNumber] = useState("");
   const [requisitionNumber, setRequisitionNumber] = useState("");
   const [linkedIds, setLinkedIds] = useState<Set<string>>(() => new Set());
@@ -81,7 +79,6 @@ export default function DefectFormDialog({
 
   useEffect(() => {
     if (!open) return;
-    setTtafMode("hhmm");
     if (defect) {
       setTitle(defect.title);
       setReportedDate(tsToInput(defect.reportedDate.toDate()));
@@ -104,24 +101,7 @@ export default function DefectFormDialog({
     setSaving(false);
   }, [open, defect]);
 
-  const switchTtafMode = (next: "hhmm" | "decimal") => {
-    if (next === ttafMode) return;
-    const trimmed = reportedTtaf.trim();
-    if (trimmed) {
-      const minutes =
-        ttafMode === "hhmm"
-          ? parseDurationToMinutes(trimmed)
-          : parseDecimalHoursToMinutes(trimmed);
-      if (minutes != null) {
-        setReportedTtaf(
-          next === "hhmm"
-            ? formatMinutesAsDuration(minutes)
-            : formatMinutesAsDecimalHours(minutes),
-        );
-      }
-    }
-    setTtafMode(next);
-  };
+  const ttafDetectedMode = detectTtafFormat(reportedTtaf);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -131,15 +111,10 @@ export default function DefectFormDialog({
       setError("Reported date is required.");
       return;
     }
-    const minutes =
-      ttafMode === "decimal"
-        ? parseDecimalHoursToMinutes(reportedTtaf.trim())
-        : parseDurationToMinutes(reportedTtaf.trim());
+    const minutes = parseTtafInput(reportedTtaf.trim());
     if (minutes == null) {
       setError(
-        ttafMode === "decimal"
-          ? "Reported TTAF must look like 4969.5 (decimal hours)."
-          : "Reported TTAF must look like 1234:30 (minutes 00–59).",
+        "Reported TTAF must look like 1234:30 (HH:MM) or 1234.5 (decimal hours).",
       );
       return;
     }
@@ -233,34 +208,31 @@ export default function DefectFormDialog({
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
-                  <Label htmlFor="defectTtaf">
-                    TTAF at report ({ttafMode === "decimal" ? "decimal hrs" : "HH:MM"})
-                  </Label>
-                  <div className="inline-flex rounded-md border bg-card p-0.5 text-[10px]">
-                    <button
-                      type="button"
-                      onClick={() => switchTtafMode("hhmm")}
+                  <Label htmlFor="defectTtaf">TTAF at report</Label>
+                  <div
+                    className="inline-flex rounded-md border bg-card p-0.5 text-[10px]"
+                    aria-label="Detected input format"
+                  >
+                    <span
                       className={cn(
                         "rounded px-1.5 py-0.5 font-mono transition-colors",
-                        ttafMode === "hhmm"
+                        ttafDetectedMode === "hhmm"
                           ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:text-foreground",
+                          : "text-muted-foreground",
                       )}
                     >
                       HH:MM
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => switchTtafMode("decimal")}
+                    </span>
+                    <span
                       className={cn(
                         "rounded px-1.5 py-0.5 font-mono transition-colors",
-                        ttafMode === "decimal"
+                        ttafDetectedMode === "decimal"
                           ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:text-foreground",
+                          : "text-muted-foreground",
                       )}
                     >
                       Decimal
-                    </button>
+                    </span>
                   </div>
                 </div>
                 <Input
@@ -268,7 +240,7 @@ export default function DefectFormDialog({
                   value={reportedTtaf}
                   onChange={(e) => setReportedTtaf(e.target.value)}
                   required
-                  placeholder={ttafMode === "decimal" ? "e.g. 6466.6" : "e.g. 6466:36"}
+                  placeholder="e.g. 6466:36 or 6466.6"
                   className="font-mono"
                 />
               </div>
