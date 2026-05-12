@@ -269,6 +269,14 @@ the chain.
 
 A deferred defect can be **lifted** (un-deferred) from the same dialog.
 
+**Deferral history popup.** The yellow "Deferred" pill on a defect row is
+clickable (members and viewers) and opens a read-only history dialog that
+lists every deferral event for that defect — initial deferral, each
+re-deferral, and each lift — with timestamp, the reason given, and the
+user's initials. The data is sourced from the per-aircraft audit log,
+filtered to that defect's entries. Writing actions (defer / re-defer /
+lift) remain on the Clock icon in the row's actions column.
+
 ### 7.4 Related defects
 
 When creating a new defect you can link it to one or more **prior defects** on

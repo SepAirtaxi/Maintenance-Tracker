@@ -22,6 +22,7 @@ import DefectFormDialog from "@/components/overview/DefectFormDialog";
 import DeleteDefectDialog from "@/components/overview/DeleteDefectDialog";
 import ResolveDefectDialog from "@/components/overview/ResolveDefectDialog";
 import DeferDefectDialog from "@/components/overview/DeferDefectDialog";
+import DeferralHistoryDialog from "@/components/overview/DeferralHistoryDialog";
 import ResolveEventDialog from "@/components/overview/ResolveEventDialog";
 import ExtendEventDialog from "@/components/overview/ExtendEventDialog";
 import EstimateDialog, {
@@ -216,6 +217,8 @@ export default function OverviewPage() {
   const [defectDeferTarget, setDefectDeferTarget] = useState<Defect | null>(
     null,
   );
+  const [deferralHistoryTarget, setDeferralHistoryTarget] =
+    useState<Defect | null>(null);
   const [historyTail, setHistoryTail] = useState<string | null>(null);
   const [upcomingOpen, setUpcomingOpen] = useState(false);
 
@@ -476,6 +479,16 @@ export default function OverviewPage() {
     return allBookings.find((b) => b.id === viewingBooking.id) ?? viewingBooking;
   }, [allBookings, viewingBooking]);
 
+  // Same pattern for the deferral history dialog: keep the current-state
+  // banner in sync if the user re-defers / lifts while it's open.
+  const liveDeferralHistoryTarget = useMemo(() => {
+    if (!deferralHistoryTarget) return null;
+    return (
+      allDefects.find((d) => d.id === deferralHistoryTarget.id) ??
+      deferralHistoryTarget
+    );
+  }, [allDefects, deferralHistoryTarget]);
+
   const promoteViewToEdit = () => {
     if (!viewingBooking) return;
     const target = viewingBooking;
@@ -525,6 +538,7 @@ export default function OverviewPage() {
       onDeleteDefect={setDefectDeleteTarget}
       onResolveDefect={setDefectResolveTarget}
       onDeferDefect={setDefectDeferTarget}
+      onViewDeferralHistory={setDeferralHistoryTarget}
       onEstimateDefect={(defect) =>
         setEstimateTarget({ kind: "defect", defect })
       }
@@ -728,6 +742,10 @@ export default function OverviewPage() {
       <DeferDefectDialog
         defect={defectDeferTarget}
         onClose={() => setDefectDeferTarget(null)}
+      />
+      <DeferralHistoryDialog
+        defect={liveDeferralHistoryTarget}
+        onClose={() => setDeferralHistoryTarget(null)}
       />
       <HistoryDialog
         tailNumber={historyTail}

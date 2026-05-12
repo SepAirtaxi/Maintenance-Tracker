@@ -67,6 +67,7 @@ type Props = {
   onDeleteDefect: (defect: Defect) => void;
   onResolveDefect: (defect: Defect) => void;
   onDeferDefect: (defect: Defect) => void;
+  onViewDeferralHistory: (defect: Defect) => void;
   onEstimateDefect: (defect: Defect) => void;
   onEditNote: () => void;
 };
@@ -111,6 +112,7 @@ export default function AircraftCard({
   onDeleteDefect,
   onResolveDefect,
   onDeferDefect,
+  onViewDeferralHistory,
   onEstimateDefect,
   onEditNote,
 }: Props) {
@@ -518,6 +520,7 @@ export default function AircraftCard({
         onDelete={onDeleteDefect}
         onResolve={onResolveDefect}
         onDefer={onDeferDefect}
+        onViewDeferralHistory={onViewDeferralHistory}
         onEstimate={onEstimateDefect}
       />
     </section>

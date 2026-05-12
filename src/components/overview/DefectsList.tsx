@@ -41,6 +41,7 @@ type Props = {
   onDelete: (defect: Defect) => void;
   onResolve: (defect: Defect) => void;
   onDefer: (defect: Defect) => void;
+  onViewDeferralHistory: (defect: Defect) => void;
   onEstimate: (defect: Defect) => void;
 };
 
@@ -48,12 +49,10 @@ function DeferralPill({
   status,
   defect,
   onClick,
-  readOnly,
 }: {
   status: DeferralStatus;
   defect: Defect;
   onClick: () => void;
-  readOnly: boolean;
 }) {
   if (status === "none") return null;
   const elapsed = daysSinceDeferred(defect) ?? 0;
@@ -74,23 +73,14 @@ function DeferralPill({
       : "border-amber-400 bg-amber-100 text-amber-900",
   );
 
-  if (readOnly) {
-    return (
-      <span className={className} title={title}>
-        {overdue ? (
-          <AlertTriangle className="h-3 w-3" />
-        ) : (
-          <Clock className="h-3 w-3" />
-        )}
-        {labelText}
-      </span>
-    );
-  }
+  // The pill is always clickable (members and viewers) — it opens a read-only
+  // history popup. Write actions (defer / re-defer / lift) live on the Clock
+  // icon in the row's action column and remain hidden for viewers.
   return (
     <button
       type="button"
       onClick={onClick}
-      title={`${title} · click to manage`}
+      title={`${title} · click to see deferral history`}
       className={cn(className, "transition-colors hover:brightness-95")}
     >
       {overdue ? (
@@ -111,6 +101,7 @@ export default function DefectsList({
   onDelete,
   onResolve,
   onDefer,
+  onViewDeferralHistory,
   onEstimate,
 }: Props) {
   if (defects.length === 0) return null;
@@ -163,8 +154,7 @@ export default function DefectsList({
             <DeferralPill
               status={deferralStatus}
               defect={d}
-              onClick={() => onDefer(d)}
-              readOnly={readOnly}
+              onClick={() => onViewDeferralHistory(d)}
             />
             <span className="truncate" title={d.title}>
               {d.title}
