@@ -73,7 +73,7 @@ function SectionTab({
       className={cn(
         "inline-flex items-center gap-2 rounded px-3 py-1.5 transition-colors",
         active
-          ? "bg-foreground text-background"
+          ? "bg-primary text-primary-foreground"
           : "text-muted-foreground hover:text-foreground",
       )}
     >

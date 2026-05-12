@@ -150,7 +150,7 @@ export default function AircraftCard({
       <header className={cn("border-b", headerClass)}>
         {/* Row 1: identity, status, actions */}
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 px-3 py-1.5">
-          <span className="inline-flex items-center rounded-md bg-foreground text-background px-2.5 py-1 font-mono text-base font-bold tracking-wide shadow-sm">
+          <span className="inline-flex items-center rounded-md bg-primary text-primary-foreground px-2.5 py-1 font-mono text-base font-bold tracking-wide shadow-sm">
             {aircraft.tailNumber}
           </span>
           <span className="text-xs text-muted-foreground">

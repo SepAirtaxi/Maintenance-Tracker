@@ -243,7 +243,7 @@ export default function DefectFormDialog({
                       className={cn(
                         "rounded px-1.5 py-0.5 font-mono transition-colors",
                         ttafMode === "hhmm"
-                          ? "bg-foreground text-background"
+                          ? "bg-primary text-primary-foreground"
                           : "text-muted-foreground hover:text-foreground",
                       )}
                     >
@@ -255,7 +255,7 @@ export default function DefectFormDialog({
                       className={cn(
                         "rounded px-1.5 py-0.5 font-mono transition-colors",
                         ttafMode === "decimal"
-                          ? "bg-foreground text-background"
+                          ? "bg-primary text-primary-foreground"
                           : "text-muted-foreground hover:text-foreground",
                       )}
                     >

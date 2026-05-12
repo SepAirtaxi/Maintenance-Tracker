@@ -1,6 +1,7 @@
 import { FormEvent, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { FirebaseError } from "firebase/app";
+import { Eye } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -80,7 +81,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen grid place-items-center p-6">
-      <div className="w-full max-w-sm space-y-6">
+      <div className="w-full max-w-md space-y-8">
         <div className="flex flex-col items-center space-y-3">
           <img
             src={logoUrl}
@@ -92,11 +93,34 @@ export default function LoginPage() {
             <h1 className="text-2xl font-semibold tracking-tight">
               CAT Maintenance Tracker
             </h1>
-            <p className="text-sm text-muted-foreground">
-              {mode === "signin"
-                ? "Sign in to continue."
-                : "Create an account to continue."}
-            </p>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <Button
+            type="button"
+            onClick={onContinueAsViewer}
+            disabled={viewerLoading || submitting}
+            className="w-full h-20 text-lg font-semibold shadow-lg ring-1 ring-primary/20 hover:shadow-xl transition-shadow"
+          >
+            <Eye className="h-6 w-6 mr-3" />
+            {viewerLoading ? "Opening…" : "View Overview & Calendar"}
+          </Button>
+          <p className="text-sm text-muted-foreground text-center">
+            Click here to see the maintenance overview and hangar calendar.
+            <br />
+            Read-only — no sign-in needed.
+          </p>
+        </div>
+
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t" />
+          </div>
+          <div className="relative flex justify-center">
+            <span className="bg-background px-2 text-xs uppercase tracking-wider text-muted-foreground">
+              or sign in as staff
+            </span>
           </div>
         </div>
 
@@ -140,7 +164,12 @@ export default function LoginPage() {
             </p>
           )}
 
-          <Button type="submit" className="w-full" disabled={submitting}>
+          <Button
+            type="submit"
+            variant="outline"
+            className="w-full"
+            disabled={submitting}
+          >
             {submitting
               ? "Working…"
               : mode === "signin"
@@ -148,31 +177,6 @@ export default function LoginPage() {
                 : "Create account"}
           </Button>
         </form>
-
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t" />
-          </div>
-          <div className="relative flex justify-center">
-            <span className="bg-background px-2 text-xs uppercase tracking-wider text-muted-foreground">
-              or
-            </span>
-          </div>
-        </div>
-
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full"
-          onClick={onContinueAsViewer}
-          disabled={viewerLoading || submitting}
-        >
-          {viewerLoading ? "Opening…" : "Continue as viewer"}
-        </Button>
-        <p className="text-xs text-muted-foreground text-center -mt-2">
-          Read-only access to the fleet overview. No edits, no sign-up
-          required.
-        </p>
 
         <p className="text-sm text-muted-foreground text-center">
           {mode === "signin" ? (

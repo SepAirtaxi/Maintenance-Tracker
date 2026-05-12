@@ -107,7 +107,7 @@ export default function LocationFormDialog({
                     className={cn(
                       "rounded px-3 py-1 transition-colors",
                       kind === k
-                        ? "bg-foreground text-background"
+                        ? "bg-primary text-primary-foreground"
                         : "text-muted-foreground hover:text-foreground",
                     )}
                   >

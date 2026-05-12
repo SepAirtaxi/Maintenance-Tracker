@@ -197,7 +197,7 @@ export default function EventFormDialog({
                       className={cn(
                         "rounded px-1.5 py-0.5 font-mono transition-colors",
                         timerMode === "hhmm"
-                          ? "bg-foreground text-background"
+                          ? "bg-primary text-primary-foreground"
                           : "text-muted-foreground hover:text-foreground",
                       )}
                     >
@@ -209,7 +209,7 @@ export default function EventFormDialog({
                       className={cn(
                         "rounded px-1.5 py-0.5 font-mono transition-colors",
                         timerMode === "decimal"
-                          ? "bg-foreground text-background"
+                          ? "bg-primary text-primary-foreground"
                           : "text-muted-foreground hover:text-foreground",
                       )}
                     >

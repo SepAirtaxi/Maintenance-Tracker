@@ -209,7 +209,7 @@ function Row({
         gridTemplateColumns: "72px minmax(0,1fr) 96px 96px",
       }}
     >
-      <span className="inline-flex items-center justify-center rounded bg-foreground text-background px-1.5 py-0.5 font-mono text-[11px] font-bold">
+      <span className="inline-flex items-center justify-center rounded bg-primary text-primary-foreground px-1.5 py-0.5 font-mono text-[11px] font-bold">
         {tail}
       </span>
       <span className="truncate" title={warning}>

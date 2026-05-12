@@ -244,7 +244,7 @@ export default function CalendarPage() {
             className={cn(
               "rounded px-2 py-0.5 transition-colors",
               viewMode === "week"
-                ? "bg-foreground text-background"
+                ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >
@@ -256,7 +256,7 @@ export default function CalendarPage() {
             className={cn(
               "rounded px-2 py-0.5 transition-colors",
               viewMode === "month"
-                ? "bg-foreground text-background"
+                ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >
