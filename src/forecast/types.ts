@@ -124,6 +124,13 @@ export type ForecastConsolidation = {
   flaggedForReview: ForecastConsolidationRow[];
   // defer-band rows (next 50 hr cycle).
   nextCycle: ForecastConsolidationRow[];
+  // Procurement / lead-time planning: components with Ret (retire) or Ove
+  // (overhaul) actions falling inside the configured lead-time horizon. Used
+  // as an additive surface — rows here ALSO appear in their natural band
+  // panel; this view exists so SEP can plan swap-unit procurement without
+  // missing items hidden behind the cycle window.
+  leadTimePlanning: ForecastConsolidationRow[];
+  leadTimeHorizon: { hoursAhead: number; monthsAhead: number };
   // Rows that couldn't be band-assigned at all (missing both axes, or missing
   // current TTAF when only a date deadline was available). Surfaced so they
   // don't silently disappear.

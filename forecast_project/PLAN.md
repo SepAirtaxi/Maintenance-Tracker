@@ -208,14 +208,15 @@ forecast_project/
 - [x] Wire current TTAF (`aircraft.totalTimeMinutes`) and today's date into the calc; the docx's "Remaining" column is no longer rendered.
 - [x] Severity tinting (four bands) — emerald / amber / rose / neutral per the four bands. Implemented in `src/pages/ForecastPage.tsx`.
 - [x] Per-aircraft utilization rate field on `Aircraft` (`utilizationHoursPerMonth?: number | null`) — type + create-path init done; default constant 25 h/month when null.
-- [ ] **Visual sanity check by SEP in browser** — engine + UI passed typecheck + production build; smoke tests show clean band distribution on OY-CAH (TB-10), OY-CAC (P.68), OY-BUF (C172M), OY-CDB (TB-20). Awaiting user eyeball.
-- [ ] Tolerance + utilization config surface — defaults baked in; per-aircraft util override field exists on `Aircraft` but no Settings UI to edit it yet.
-- [ ] Display-window control (default 3M/100H, expandable) — deferred per "Open items"; the four bands + next-cycle preview may already cover the use case.
-- [ ] Real-data validation pass with user
+- [x] **Lead-time planning panel** (2026-05-13) — surfaces Ret/Ove component rows within 100 h / 3 months of "now" in a sky-tinted panel between the anchor card and the draft WO. Additive: rows also remain in their natural band panel. Caught by OY-CDJ edge case (engine mount Ret + NLG mount Ret at gap=+61 h were buried in defer; prop overhaul at gap=+28 h was in flagged). Constants `LEAD_TIME_HOURS_AHEAD` / `LEAD_TIME_MONTHS_AHEAD` in `consolidation.ts`.
+- [x] **Visual sanity check by SEP in browser** (2026-05-13) — confirmed working as intended.
+- [x] **Real-data validation pass with user** (2026-05-13) — verified against a fresh OY-CDJ export; the lead-time panel was added in response to that pass.
+- [ ] Tolerance + utilization config surface — defaults baked in; per-aircraft util override field exists on `Aircraft` but no Settings UI to edit it yet. Revisit if/when the defaults feel wrong in operation.
+- [ ] Display-window control (default 3M/100H, expandable) — open question whether it's needed at all given the four bands + next-cycle preview + lead-time panel. Defer until SEP misses it.
 
 ## Where to pick up next session
 
-Consolidation engine + UI re-skin are done (session of 2026-05-13). The page renders an anchor card, draft WO, flagged-for-review, and a collapsible next-cycle preview, with four-band tints and direction badges on every non-anchor row. **Next concrete step: visual sanity check by SEP in the browser**, then a real-data validation pass against a fresh CAMO export. After that the open items (utilization editor in Settings, display-window control if it's still wanted) can be addressed.
+Forecast module is shipped. Engine + UI panels are in code, validated against fresh CAMO data, and the WIP banner has been removed. Remaining items are optional polish: a Settings editor for the per-aircraft utilization rate, and a display-window control if SEP ends up wanting one. Neither is blocking — pick up if asked.
 
 ### What exists now (runtime side)
 

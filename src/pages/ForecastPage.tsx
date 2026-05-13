@@ -6,6 +6,7 @@ import {
   ChevronRight,
   FileText,
   Loader2,
+  PackageOpen,
   Telescope,
   Upload,
 } from "lucide-react";
@@ -103,32 +104,11 @@ export default function ForecastPage() {
 
   return (
     <div className="space-y-6">
-      <div
-        role="alert"
-        className="flex items-start gap-3 rounded-md border-2 border-amber-400 bg-amber-50 px-4 py-3 text-amber-900 shadow-sm"
-      >
-        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
-        <div className="space-y-0.5">
-          <div className="text-sm font-bold uppercase tracking-wider">
-            Work in progress — not ready for use
-          </div>
-          <div className="text-xs text-amber-900/90">
-            The Forecast module is under active development. Parser and the
-            consolidation engine are first cuts; results have not been verified
-            for operational use. Do not rely on this output for planning a work
-            order yet.
-          </div>
-        </div>
-      </div>
-
       <header className="flex items-center justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
             <Telescope className="h-5 w-5 text-muted-foreground" />
             Forecast
-            <span className="rounded border border-amber-400 bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-900">
-              WIP
-            </span>
           </h1>
           <p className="text-sm text-muted-foreground">
             Upload a CAMO Projection List <code>.docx</code> to render an
@@ -275,6 +255,13 @@ function ForecastResult({ loaded }: { loaded: LoadedForecast }) {
 
       <AnchorCard consolidation={consolidation} />
 
+      {consolidation.leadTimePlanning.length > 0 && (
+        <LeadTimePlanningPanel
+          rows={consolidation.leadTimePlanning}
+          horizon={consolidation.leadTimeHorizon}
+        />
+      )}
+
       <DraftWorkOrderPanel rows={consolidation.draftWorkOrder} />
 
       {consolidation.flaggedForReview.length > 0 && (
@@ -383,6 +370,42 @@ function Stat({
         {value}
       </span>
     </div>
+  );
+}
+
+// ---- Lead-time planning panel --------------------------------------------
+
+function LeadTimePlanningPanel({
+  rows,
+  horizon,
+}: {
+  rows: ForecastConsolidationRow[];
+  horizon: { hoursAhead: number; monthsAhead: number };
+}) {
+  return (
+    <section className="rounded-md border-2 border-sky-200 bg-sky-50/40">
+      <header className="flex items-baseline justify-between gap-2 border-b border-sky-200 bg-sky-50 px-3 py-2">
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-sky-900">
+          <PackageOpen className="h-4 w-4" />
+          Lead-time planning — retire &amp; overhaul
+        </h2>
+        <span className="text-xs text-sky-800/80">
+          {rows.length} item{rows.length === 1 ? "" : "s"} · horizon{" "}
+          {horizon.hoursAhead} h / {horizon.monthsAhead} mo
+        </span>
+      </header>
+      <div className="px-3 py-2 text-xs text-sky-900/80">
+        Components due for retire (<code>Ret</code>) or overhaul (<code>Ove</code>)
+        within the lead-time horizon. Order swap units or schedule the overhaul
+        slot now — items here are also shown in their natural band panel below,
+        so this is a procurement-planning surface, not a re-classification.
+      </div>
+      <ul className="divide-y border-t border-sky-100">
+        {rows.map((r, i) => (
+          <ConsolidatedRowItem key={`lead-${i}`} row={r} />
+        ))}
+      </ul>
+    </section>
   );
 }
 

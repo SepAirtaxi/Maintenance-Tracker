@@ -99,6 +99,18 @@ for (const r of result.draftWorkOrder) {
   );
 }
 
+console.log(
+  "\n=== LEAD-TIME PLANNING ===",
+  summarize(result.leadTimePlanning),
+  `(horizon: ${result.leadTimeHorizon.hoursAhead} h / ${result.leadTimeHorizon.monthsAhead} mo)`,
+);
+for (const r of result.leadTimePlanning) {
+  const est = r.gapEstimated ? " (est)" : "";
+  console.log(
+    `  [${r.band.padEnd(14)}] gap=${r.gapHours.toFixed(1).padStart(7)} ${r.direction.padEnd(20)} ${r.section.padEnd(12)} ${r.canonicalName}${est}`,
+  );
+}
+
 console.log("\n=== FLAGGED FOR REVIEW ===", summarize(result.flaggedForReview));
 for (const r of result.flaggedForReview) {
   const est = r.gapEstimated ? " (est)" : "";

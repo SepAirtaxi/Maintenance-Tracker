@@ -21,6 +21,14 @@ export const DEFAULT_GREEN_HOURS = 5;
 export const DEFAULT_AMBER_HOURS = 10;
 export const CYCLE_HOURS = 50;
 export const DEFAULT_UTILIZATION_HOURS_PER_MONTH = 25;
+// Lead-time planning horizon: items requiring procurement lead time (Ret /
+// Ove actions on components) are surfaced when their deadline falls within
+// this window of "now" on either axis. The TTAF window is 2× the cycle so the
+// next 50 hr visit's heavy items stay visible; the calendar window is set so
+// out-of-cycle calendar deadlines are caught with enough runway to order
+// swap units.
+export const LEAD_TIME_HOURS_AHEAD = 100;
+export const LEAD_TIME_MONTHS_AHEAD = 3;
 // Days-per-month for the calendar→hour conversion. 30 is the convention in
 // PLAN.md ("× utilization / 30"). Average calendar month would be 30.44; the
 // difference is well inside the ±1-day precision target.
@@ -74,7 +82,12 @@ export function consolidateForecast(input: ConsolidateInput): ForecastConsolidat
   const draftWorkOrder: ForecastConsolidationRow[] = [];
   const flaggedForReview: ForecastConsolidationRow[] = [];
   const nextCycle: ForecastConsolidationRow[] = [];
+  const leadTimePlanning: ForecastConsolidationRow[] = [];
   const unclassified: ForecastRow[] = [];
+  const leadTimeHorizon = {
+    hoursAhead: LEAD_TIME_HOURS_AHEAD,
+    monthsAhead: LEAD_TIME_MONTHS_AHEAD,
+  };
 
   if (anchor.anchorTtafHours == null) {
     // No anchor — surface every row as unclassified so nothing silently drops.
@@ -84,6 +97,8 @@ export function consolidateForecast(input: ConsolidateInput): ForecastConsolidat
       draftWorkOrder,
       flaggedForReview,
       nextCycle,
+      leadTimePlanning,
+      leadTimeHorizon,
       unclassified,
       currentTtafHours,
       today: input.today,
@@ -103,13 +118,17 @@ export function consolidateForecast(input: ConsolidateInput): ForecastConsolidat
     // hasn't been reset for years); the min-gap rule would then mislabel the
     // anchor as `needs_earlier_visit` from the date axis.
     if (isAnchor) {
-      draftWorkOrder.push({
+      const anchorRow: ForecastConsolidationRow = {
         ...row,
         band: "green",
         direction: "at_anchor",
         gapHours: 0,
         gapEstimated: false,
-      });
+      };
+      draftWorkOrder.push(anchorRow);
+      if (isHeavyAction(row) && isInLeadTimeHorizon(row, currentTtafHours, input.today)) {
+        leadTimePlanning.push(anchorRow);
+      }
       continue;
     }
 
@@ -142,23 +161,36 @@ export function consolidateForecast(input: ConsolidateInput): ForecastConsolidat
       // bucket placement but keep the original band on the row so the UI can
       // still surface "this was technically defer" if it matters.
       draftWorkOrder.push(consolidated);
-      continue;
-    }
-
-    if (band === "green" || band === "amber") {
+    } else if (band === "green" || band === "amber") {
       draftWorkOrder.push(consolidated);
     } else if (band === "forced_awkward") {
       flaggedForReview.push(consolidated);
     } else {
       nextCycle.push(consolidated);
     }
+
+    // Additive: heavy items inside the lead-time horizon are duplicated into
+    // leadTimePlanning so procurement-class work isn't hidden behind the
+    // cycle window. The same row is still in its natural band panel above.
+    if (
+      isHeavyAction(row) &&
+      isInLeadTimeHorizon(row, currentTtafHours, input.today)
+    ) {
+      leadTimePlanning.push(consolidated);
+    }
   }
+
+  // Sort lead-time panel by gap (soonest first) so the row most in need of
+  // procurement attention reads first.
+  leadTimePlanning.sort((a, b) => a.gapHours - b.gapHours);
 
   return {
     anchor,
     draftWorkOrder,
     flaggedForReview,
     nextCycle,
+    leadTimePlanning,
+    leadTimeHorizon,
     unclassified,
     currentTtafHours,
     today: input.today,
@@ -193,6 +225,39 @@ function isHundredHrInspectionRow(r: ForecastRow): boolean {
 
 function isCatPracticeRow(r: ForecastRow): boolean {
   return CAT_PRACTICE_RE.test(r.canonicalName);
+}
+
+// Heavy action = retire or overhaul. Components carry the action inline in
+// the name cell (e.g. "Engine mount / Ret"); Tasks carry it as a separate
+// field. Match either signal so we catch both shapes.
+const HEAVY_ACTION_NAME_RE = /\/\s*(ret|ove)\s*$/i;
+const HEAVY_ACTION_FIELD_RE = /^(ret|ove)$/i;
+
+function isHeavyAction(r: ForecastRow): boolean {
+  if (r.action && HEAVY_ACTION_FIELD_RE.test(r.action.trim())) return true;
+  if (HEAVY_ACTION_NAME_RE.test(r.canonicalName)) return true;
+  if (HEAVY_ACTION_NAME_RE.test(r.rawName)) return true;
+  return false;
+}
+
+// True when the row's deadline is within the lead-time horizon on either
+// axis. Bounded only from above (≤ horizon) — overdue heavy items remain in
+// the panel because they're still procurement-relevant (and have already
+// been flagged elsewhere as forced-awkward / needs-earlier-visit).
+function isInLeadTimeHorizon(
+  r: ForecastRow,
+  currentTtafHours: number | null,
+  today: Date,
+): boolean {
+  if (r.due?.hours != null && currentTtafHours != null) {
+    const hoursFromNow = r.due.hours - currentTtafHours;
+    if (hoursFromNow <= LEAD_TIME_HOURS_AHEAD) return true;
+  }
+  if (r.due?.date != null) {
+    const horizonMs = LEAD_TIME_MONTHS_AHEAD * 30 * MS_PER_DAY;
+    if (r.due.date.getTime() - today.getTime() <= horizonMs) return true;
+  }
+  return false;
 }
 
 function findAnchorRow(rows: ForecastRow[]): ForecastRow | null {
