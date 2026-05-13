@@ -4,7 +4,7 @@ Consolidated from planning sessions. This is the source of truth; if a future se
 
 ## Goal
 
-A forecasting tool that ingests the CAMO ForecastList export and produces a clean, opinionated cheat sheet of upcoming maintenance events for a single tail, organised so a CAMO can quickly draft a Work Order. Calculator-style, not a black-box optimiser — the tool does the math and flagging; the human keeps the call.
+A **decoder and consolidation organiser** for the CAMO ForecastList export — not a forecaster. The docx already holds the predictions; this module's job is to surface, organise, and consolidate them against the live aircraft state so a CAMO can quickly draft a Work Order for the next scheduled visit. Calculator-style, not a black-box optimiser — the tool does the math and flagging; the human keeps the call.
 
 Lives inside Maintenance Tracker for human convenience (same app, consolidated tooling), but otherwise runs standalone — its only shared dependency is **TTAF lookup** from the existing aircraft records.
 
@@ -16,8 +16,10 @@ Lives inside Maintenance Tracker for human convenience (same app, consolidated t
 3. Upload the `.docx` to the forecast module.
 4. Tool reads:
    - forecast bounds (date + TTAF) from the doc header,
-   - current TTAF from Maintenance Tracker (Settings > Aircraft).
-5. Tool renders the cheat sheet on screen. No export, no print — once the WO is issued, the cheat sheet is disposable.
+   - per-row due-dates and due-TTAFs from the docx (the **"Remaining" column is ignored** — it's stale by upload time, derived from whatever TTAF/date the CAMO system had when the doc was generated),
+   - current TTAF from Maintenance Tracker (Settings > Aircraft) — the live truth,
+   - today's date (= upload date).
+5. Tool runs the consolidation model (see below) and renders the cheat sheet on screen. No export, no print — once the WO is issued, the cheat sheet is disposable.
 
 One tail at a time. The CAMO system can't bulk export.
 
@@ -50,6 +52,74 @@ One tail at a time. The CAMO system can't bulk export.
   - AD type if applicable (initial / recurring / terminating)
 - Pulls header fields: forecast date, forecast TTAF, tail number.
 
+## Consolidation model
+
+The engine that turns parsed forecast rows into a proposed Work Order. Locked in during the design conversation on 2026-05-13.
+
+### Rule #1 — deadlines are never exceeded
+Every due-date and due-TTAF in the forecast is a hard ceiling. The module may only propose performing items **early** — never late. This drives every other rule below.
+
+### Inputs
+
+- Parsed docx (one tail).
+- **Current TTAF** from Maintenance Tracker (`aircraft.totalTimeMinutes`) — live, not the docx's snapshot.
+- **Today's date** (= docx upload date).
+- Configurable tolerances. Defaults: **±5 h green**, **±10 h amber**. Same values for 50 hr and 100 hr visits (the cadence is strict 50 h either way — see anchor section).
+- Utilization rate (h/month) for calendar→hour conversion. Per-aircraft override or estimated from recent flight history; ±1 h / ±1 day precision is plenty.
+
+The docx's "Remaining" column is **not used** anywhere — every "hours from now" / "days from now" figure is recomputed against current TTAF and today's date.
+
+### Anchor — the next 50 hr inspection
+
+The anchor is the next scheduled 50 hr inspection. Located via:
+
+- `anchor_TTAF` = the 50 hr row's due-TTAF in the docx
+- `anchor_date` = the 50 hr row's due-date in the docx
+- `hours_to_anchor` = `anchor_TTAF − current_TTAF`
+- `days_to_anchor` = `anchor_date − today`
+
+The 50 hr visit may also be a 100 hr visit (alternating). When it is, the workshop window is wider in practice, but the consolidation tolerances stay the same — per user direction, the wider 100 hr window is a *scope* concern (how much component work fits in the visit), not a tolerance-window concern.
+
+### The cycle window
+
+Every item with a deadline between `anchor` and `anchor + 50 h` MUST be addressed at the upcoming visit — there's no other visit before the deadline runs out, given the strict 50 h cadence. This is the direct consequence of Rule #1.
+
+Within that cycle window, items are **labeled** — not gated — by the four bands below.
+
+### The four bands
+
+For each forecast item, compute `gap = item_deadline − anchor` (positive = item is due after the anchor, negative = item is due before). Calendar items get converted to hours via the utilization rate and tagged `estimated`.
+
+| Band | Gap to anchor | Behaviour |
+|---|---|---|
+| **Green** | within ±5 h | Auto-include in draft WO. Clean consolidation. |
+| **Amber** | within ±10 h (and outside green) | Include in draft WO, labeled `premature by X h` so it's visible at a glance. |
+| **Forced but awkward** | beyond ±10 h, still inside `anchor + 50 h` | MUST be addressed (Rule #1) but too far from the anchor to be a clean fit. Flag separately — the user may want a different visit scope (e.g. workshop time for a propeller overhaul) instead of cramming it into a 50 hr pit-stop. |
+| **Defer** | beyond `anchor + 50 h` | Wait for the next 50 hr cycle. Available in an expanded view if the user wants to peek further. |
+
+### Direction matters
+
+Items with **positive** gap (deadline after anchor) → labeled `item pulls forward by X h`. The visit happens on schedule; the item is brought forward into it.
+
+Items with **negative** gap (deadline before anchor) → labeled `anchor moves earlier by X h`. The visit itself has to shift forward to honour Rule #1. More disruptive than pulling an item forward, so this direction should be visually distinct in the output.
+
+Beyond the negative amber band, the item can't be absorbed by shifting the anchor — it needs its own earlier visit. Flag that explicitly.
+
+### Calendar → hour conversion
+
+For date-based deadlines (annual inspections, calendar-deadline ADs): convert to estimated hours-from-now using the utilization rate. Tag every converted item as `estimated` so the user knows the band placement has slop. When in doubt, **err on the side of "due sooner"** so Rule #1 is never breached by overestimating remaining hours.
+
+### Outputs
+
+- **Anchor visit summary**: due-TTAF, due-date, whether it's 50-only or 50+100.
+- **Draft WO**: greens + ambers, in existing grouping order (Inspections / ADs / Components / Tasks). Each row shows the band, direction, and gap.
+- **Flagged for review** (separate panel): forced-but-awkward items with their gap to the anchor and a short explanation of why they need a human decision.
+- **Out-of-cycle preview** (optional / expandable): defer-band items so the CAMO can peek at the next cycle.
+
+### Auto-includes that bypass band logic
+
+- **Cat practice ("50 hour inspection cat practice")** — always included on any 50 hr visit, regardless of where it sits in the forecast.
+
 ## Display logic
 
 Default display window: **3M / 100H**. (Matches the standard live export bounds.) Events outside this window are parsed but not shown by default — adjustable via UI control if the user wants to peek further out.
@@ -65,30 +135,35 @@ Per-event row shows: name (canonical), due (date + TTAF), tolerance, remaining, 
 
 ### Calculation rules
 
-- **Effective due** = stated due extended by `limit × tolerance%`. Items inside the bounds but inside their tolerance get a different visual flag from items hard-due.
-- **Cat practice ("50 hour inspection cat practice")**: always included on any scheduled WO. Auto-added to the cheat sheet if any inspection is in window.
-- **50 HR piggyback**: if any larger inspection (100 HR, 200 HR, annual, …) falls in window, the 50 HR is auto-included alongside it. Conservative assumption — revisit if real-world cases prove otherwise.
-- **Bundling alignment**: when a Component / Task / AD has due time and last-performed matching a scheduled inspection, **flag** for bundling. Do not auto-bundle. Human decides.
-- **Out of phase**: a life-limited item (own tach, e.g. governor) whose remaining hours are *less than* the gap to the next scheduled WO. Flag with the gap delta visible — e.g. "governor: 10 H left; next 100 HR: 45 H out — 35 H sacrifice if consolidated." This is the moment the CAMO has to make a judgment call.
+See **Consolidation model** above for the full engine (Rule #1, anchor, cycle window, four bands, direction handling, calendar→hour conversion). Notes specific to display:
+
+- **Effective due** = stated due. Tolerance % from the docx is informational only — the consolidation model uses the *hard* due date/TTAF as the ceiling per Rule #1, then expresses prematurity in absolute hours via the ±5 h / ±10 h bands. (We don't extend the deadline by `limit × tolerance%`; the docx's tolerance % is shown alongside the row but doesn't drive band placement.)
+- **Cat practice** auto-included on every visit (see Consolidation model).
+- **50 HR piggyback** is now implicit: the anchor is always the next 50 hr visit, and a 100 hr visit (when one is due) coincides with a 50 hr by definition of the alternating cadence.
+- **Bundling alignment** → folded into green/amber bands.
+- **Out of phase** → now the explicit "forced but awkward" band, with the same delta-visible flag (e.g. "governor: 10 h left; anchor at +15 h — 25 h sacrifice if consolidated; consider earlier visit").
 - **AD types**: include initial + recurring + terminating; surface the type column so the user can see at a glance.
 
 ## UI
 
-Match existing Maintenance Tracker visual language: dense pill/card layout, severity tinting. Severity tiers (working draft):
+Match existing Maintenance Tracker visual language: dense pill/card layout, severity tinting. Severity tiers map 1:1 to the consolidation model's four bands:
 
-- **Hard due in window** — strongest tint
-- **In tolerance** — softened tint
-- **Bundling-aligned** — neutral with a "bundle?" affordance
-- **Out of phase** — distinctive flag (yellow/amber suggestion) with delta visible
+- **Green** — clean consolidation (≤ ±5 h from anchor). Neutral / positive tint.
+- **Amber** — premature by 5–10 h. Softer warning tint; row shows `premature by X h`.
+- **Forced but awkward** — beyond ±10 h but inside the cycle window. Distinctive flag (red/strong amber) with the gap delta visible.
+- **Defer** — out of cycle. Muted / hidden by default; expandable.
+
+Direction badges (`pulls forward by X h` / `anchor moves earlier by X h`) sit on each non-defer row so the user can tell pull-forward from anchor-shift at a glance.
 
 No print/export. Screen-only cheat sheet.
 
 ## Open items (defer to implementation phase)
 
-- Exact severity colour assignments — settle once first prototype is on screen.
-- Display-window UI control: slider vs. text inputs vs. preset toggles (3M/100H, 6M/250H, 12M/500H).
-- "Needs review" affordance for unmapped event names at runtime — do we block, warn, or silently include with raw name?
-- Whether the upload is per-session or persisted to Firestore for audit (probably not, since CAMO is the source of truth — confirm).
+See "Open items still to settle" near the end of the doc for the current live list. Items resolved since this section was written:
+
+- **"Needs review" affordance** → resolved: never drop events; render raw name with badge.
+- **Persistence** → resolved: no Firestore persistence, per-session only.
+- **Severity colours** and **display-window control** → still open, see end of doc.
 
 ## Decisions explicitly **not** taken (and why)
 
@@ -128,14 +203,19 @@ forecast_project/
 - [x] Module skeleton in Maintenance Tracker (route `/forecast`, nav entry, file picker, members-only)
 - [x] Parser (docx → header → 4 section tables → dictionary lookup → typed rows)
 - [x] First end-to-end UI render (grouped table; no severity tinting yet)
-- [ ] Visual sanity check by SEP in browser (pending — server was up at `localhost:5173/forecast` but session ended before review)
-- [ ] Calculation rules: effective due (limit × tolerance), 50 HR piggyback / Cat-practice auto-include, out-of-phase delta, bundling-aligned flag
-- [ ] Severity tinting + display-window control (default 3M/100H, expandable)
+- [x] **Consolidation model agreed with user** (2026-05-13) — Rule #1, anchor = next 50 hr, cycle window, four bands (green/amber/forced-but-awkward/defer), direction labels, calendar→hour conversion. See **Consolidation model** section above.
+- [x] **Implement consolidation model** (2026-05-13) — anchor detection, gap calc, four-band assignment, direction labels, calendar→hour conversion via utilization rate. Lives in `src/forecast/consolidation.ts` (pure module).
+- [x] Wire current TTAF (`aircraft.totalTimeMinutes`) and today's date into the calc; the docx's "Remaining" column is no longer rendered.
+- [x] Severity tinting (four bands) — emerald / amber / rose / neutral per the four bands. Implemented in `src/pages/ForecastPage.tsx`.
+- [x] Per-aircraft utilization rate field on `Aircraft` (`utilizationHoursPerMonth?: number | null`) — type + create-path init done; default constant 25 h/month when null.
+- [ ] **Visual sanity check by SEP in browser** — engine + UI passed typecheck + production build; smoke tests show clean band distribution on OY-CAH (TB-10), OY-CAC (P.68), OY-BUF (C172M), OY-CDB (TB-20). Awaiting user eyeball.
+- [ ] Tolerance + utilization config surface — defaults baked in; per-aircraft util override field exists on `Aircraft` but no Settings UI to edit it yet.
+- [ ] Display-window control (default 3M/100H, expandable) — deferred per "Open items"; the four bands + next-cycle preview may already cover the use case.
 - [ ] Real-data validation pass with user
 
 ## Where to pick up next session
 
-The runtime parser and the first-cut UI are done. The CAMO upload → cheat-sheet pipeline works end-to-end against every training tail. **Next concrete step: SEP eyeballs the page in a browser to confirm the layout is sensible, then build the calculation rules (task 8) and severity tinting (task 9).**
+Consolidation engine + UI re-skin are done (session of 2026-05-13). The page renders an anchor card, draft WO, flagged-for-review, and a collapsible next-cycle preview, with four-band tints and direction badges on every non-anchor row. **Next concrete step: visual sanity check by SEP in the browser**, then a real-data validation pass against a fresh CAMO export. After that the open items (utilization editor in Settings, display-window control if it's still wanted) can be addressed.
 
 ### What exists now (runtime side)
 
@@ -191,21 +271,56 @@ Two parser bugs were caught and fixed during validation:
 - **Part S/Ns and trailing engine/carb identifiers are noise** — stripped from canonical titles.
 - **Manual canonical-title overrides** for 4 P.68 clusters (in `CANONICAL_TITLE_OVERRIDES` in `extractor.py`).
 
-### Next-session task: SEP eyeballs the page, then calc rules + severity tinting
+### Consolidation model — implemented 2026-05-13
 
-1. **Visual sanity check first.** Run `npm run dev`, open `http://localhost:5173/forecast`, upload a training docx (e.g. `forecast_project/training_data/OY-CAH.docx`). Confirm the layout is legible and the data looks right at a glance. Adjust column widths / spacing if needed before stacking calc rules on top.
-2. **Calculation rules** (task 8 in tracker):
-   - Effective due = stated due extended by `limit × tolerance%`. Distinguish "hard due in window" from "in tolerance".
-   - 50 HR piggyback: if any inspection ≥ 100 HR is in window, auto-include the 50 HR.
-   - Cat practice ("50 hour inspection cat practice"): always included if any inspection is in window.
-   - Out of phase: life-limited item whose remaining hours are less than the gap to the next scheduled WO. Show delta visibly ("governor: 10 H left; next 100 HR: 45 H out — 35 H sacrifice if consolidated").
-   - Bundling alignment: when a Component / Task / AD shares due time + last-performed with a scheduled inspection, **flag** for bundling. Do not auto-bundle — human decides.
-3. **Severity tinting + display window** (task 9):
-   - Tints per master plan (hard-due / in-tolerance / bundling-aligned / out-of-phase). Match Maintenance Tracker's existing severity palette.
-   - Display window control: default 3M/100H, expandable. Slider vs presets — settle once first prototype is on screen.
-4. **Real-data validation pass with user** — confirm against a fresh CAMO export.
+The engine + UI panels described in the **Consolidation model** and **UI**
+sections at the top of this doc are now in code:
+
+- `src/forecast/consolidation.ts` — pure module. Anchor detection (50 hr
+  inspection row, lubrication excluded), gap calc (binding axis = min of
+  hour-gap and calendar-converted gap), band assignment, direction labels,
+  cat-practice auto-include, warnings for missing anchor / missing TTAF.
+  Defaults: 5 h green, 10 h amber, 50 h cycle, 25 h/month utilization.
+- `src/forecast/types.ts` — `ForecastBand`, `ForecastDirection`,
+  `ForecastConsolidationRow`, `ForecastAnchor`, `ForecastConsolidation`.
+- `src/pages/ForecastPage.tsx` — anchor card, draft WO panel (grouped
+  Inspections / ADs / Components / Tasks, band-tinted), flagged-for-review
+  panel, collapsible next-cycle preview, unclassified fallback.
+- `src/types.ts` — `Aircraft.utilizationHoursPerMonth?: number | null` field
+  (init `null` on create; default constant applied at consolidation time).
+- `forecast_project/smoke_consolidation.ts` — Node-runnable smoke. Pass a
+  training docx + model; defaults the synthetic current TTAF to anchor−5 h
+  so the upcoming visit lands in green for a realistic scenario.
+
+Two bugs caught + fixed during smoke:
+
+1. **Anchor row picked up a stale calendar gap.** Some CAMO records carry a
+   years-old date deadline alongside a current TTAF on the 50 hr line; the
+   min-gap rule mislabeled the anchor as `needs_earlier_visit` from the
+   date axis. Fixed by hard-coding the anchor's gap to 0 / `at_anchor` /
+   `green` and never running it through `computeGap`.
+2. **Items at exactly `gap = 50` were flagged forced-awkward.** Most
+   recurring 100/200/500 hr items land on exact 50-multiples; the plan's
+   "still inside `anchor + 50 h`" reads as strict, so the boundary now
+   defers. Caught on OY-BUF (14 false-flags → defer).
+
+### Next-session task: real-data validation
+
+1. **Browser eyeball.** Run `npm run dev`, upload a fresh CAMO export, and
+   sanity-check anchor placement, band assignments, and the flagged-for-
+   review panel against operational judgment.
+2. **Tweak tolerances if the green/amber bands feel wrong** — they're
+   constants in `consolidation.ts` (`DEFAULT_GREEN_HOURS`, `DEFAULT_AMBER_HOURS`).
+3. **Per-aircraft utilization editor** — the field exists on `Aircraft`
+   but Settings → Aircraft has no input for it yet. Add one if/when the
+   default 25 h/month feels too coarse.
+4. **Display-window control** — open question whether it's needed at all
+   given the four bands + next-cycle preview. Defer until user has lived
+   with the page.
 
 ### Open items still to settle
 
-- **Display window UI control** — slider vs preset toggles. Defer until first prototype is on screen.
-- **Current TTAF from Settings > Aircraft.** The aircraft record is fetched (so `aircraft.totalTimeMinutes` is available), but the page doesn't yet use it for remaining-hours calculations — the doc's own `Rem.` column is rendered as-is. The PLAN says the runtime parser should pull current TTAF from Maintenance Tracker; revisit when implementing calc rules to decide whether we trust the doc's remaining or recompute against fresh TTAF.
+- **Configurable tolerances UI.** Tolerances (±5 h / ±10 h) start as constants in code. Decide later whether to expose per-aircraft or per-airframe overrides — probably overkill for v1.
+- **Utilization rate source.** First pass: per-aircraft override field on `Aircraft`, default constant when unset. Second pass (maybe): auto-estimate from recent flight history (`MaintenanceEvent` TTAF deltas over the last N months). Don't build the estimator until v1 is on screen and the user has lived with it.
+- **Display window UI control** — defer until v1 is on screen. The four bands plus "next cycle preview" may already cover the use case without a window slider.
+- **Severity colour palette** — settle once the four-band layout is on screen. Match existing Maintenance Tracker tints.

@@ -505,7 +505,7 @@ Example summaries:
 > shippable feature — assume any flow described here may still change.
 
 A standalone module for parsing CAMO `.docx` Forecast / Projection List
-exports into a structured cheat sheet for the next work order.
+exports into an opinionated cheat sheet for the next work order.
 
 Workflow:
 
@@ -515,15 +515,102 @@ Workflow:
 3. Each row is canonicalized against `event_dictionary.json` (locked at 718
    clusters, 8 models). AD events outrank SBs when an AD wraps an SB; same-
    action multi-interval items collapse to the smallest interval.
-4. Rows are grouped by forecast section and rendered as a tabular preview.
+4. The consolidation engine runs against the live aircraft state
+   (`aircraft.totalTimeMinutes` + today's date) and produces a banded cheat
+   sheet — see below.
 
 Models not in the dictionary still render rows with raw names and
-`needs review` badges.
+`needs review` badges. The CAMO "Remaining" column from the docx is ignored
+— every gap is recomputed against the live TTAF and today's date.
 
-The runtime parser and bare UI exist; deeper integration with the events
-collection is not wired yet. Pending work includes calculation rules
-(effective due, 50 HR piggyback, out-of-phase, bundling flag), severity
-tinting, and a display-window control — see `forecast_project/PLAN.md`.
+### 13.1 Consolidation model
+
+Locked-in design from `forecast_project/PLAN.md` (session 2026-05-13). The
+core rule is **Rule #1 — deadlines are never exceeded**: the engine may
+propose performing items early, never late.
+
+**Anchor.** The next 50 hr inspection row (canonical name matching
+`/50\s+(hrs?|hour|hours)\b.*\b(inspection|insp)\b/i`, lubrication excluded)
+is the reference point. The visit is flagged as a **50 + 100 hr** when a 100
+hr inspection row sits within the green tolerance (±5 h) of the anchor TTAF
+— real-world CAMO data carries small drift between the two cadences.
+
+**Gap.** For every other row, `gap = item_deadline_TTAF − anchor_TTAF`. Rows
+with only a calendar deadline convert to estimated hours via the
+`utilizationHoursPerMonth` rate on the aircraft (defaults to 25 h/month when
+unset) and are tagged `estimated`. Rows with both axes use the binding axis
+(whichever runs out first).
+
+**Four bands**, mapped to severity tints:
+
+- **Green** (`bg-emerald-50`) — `|gap| ≤ 5 h`. Clean consolidation into the
+  draft WO.
+- **Amber** (`bg-amber-50`) — `|gap| ≤ 10 h` outside green. Still in the
+  draft, badged premature/anchor-moves with the absolute hours.
+- **Forced but awkward** (`bg-rose-50`) — beyond ±10 h but strictly inside
+  the cycle window (`gap < 50 h` on the positive side, or any negative gap
+  beyond amber). Must be handled this visit per Rule #1, but the human picks
+  whether to pull forward, shift the anchor, or run a separate visit.
+- **Defer** (`bg-card`) — `gap ≥ 50 h`. Coincides with or sits beyond the
+  next 50 hr cycle.
+
+**Direction labels** sit on every non-anchor row so a user can tell
+pull-forward from anchor-shift at a glance:
+
+- `pulls forward X h` — gap > 0; item brought into the anchor visit.
+- `anchor moves earlier X h` — gap < 0 within the amber band; anchor shifts.
+- `needs earlier visit (X h before anchor)` — gap < 0 beyond amber; can't
+  be absorbed.
+- `at anchor` — `|gap| ≤ 0.5 h`.
+
+**Cat practice** (`/cat\s*practice/i`) is auto-included on every 50 hr
+visit regardless of band — the row is force-pushed into the draft WO with a
+distinct chip.
+
+### 13.2 UI layout
+
+The page renders the result as four stacked panels:
+
+1. **Header summary** — tail, model, current TTAF, today's date, forecast
+   end, file name. Inline notices for unknown models, needs-review rows,
+   and any engine warnings (no anchor found, missing TTAF).
+2. **Anchor card** — large emerald-tinted callout. Shows the anchor row
+   name, due TTAF, due date, hours-to-anchor, days-to-anchor, and the
+   `50 + 100 hr visit` tag when applicable.
+3. **Draft Work Order** — greens + ambers + cat-practice auto-includes,
+   grouped by section (Inspections → ADs → Components → Tasks). Each row
+   shows its band chip, direction badge, gap value, and an `estimated`
+   tag when the gap was derived from a calendar deadline.
+4. **Forced but awkward — needs human decision** — rose-tinted panel for
+   forced-awkward rows, only rendered when at least one row lands there.
+5. **Next-cycle preview (defer)** — collapsible panel, expanded on demand.
+6. **Unclassified** — rows with no usable deadline at all (rare; surfaced
+   so nothing silently drops).
+
+### 13.3 Data shape
+
+- `src/forecast/types.ts` carries `ForecastBand`, `ForecastDirection`,
+  `ForecastConsolidationRow`, `ForecastAnchor`, `ForecastConsolidation`.
+- `src/forecast/consolidation.ts` is a pure function — no React, no
+  Firestore — that takes parsed rows + live inputs and returns a
+  `ForecastConsolidation`. Default constants: 5 h green, 10 h amber,
+  50 h cycle, 25 h/month utilization.
+- `Aircraft.utilizationHoursPerMonth?: number | null` was added on the
+  aircraft doc to allow per-airframe overrides. New aircraft are
+  initialized to `null` (use default). The editing UI for this field is
+  deferred — the consolidation engine reads the value, but Settings →
+  Aircraft does not yet expose an input.
+
+No persistence; the consolidation runs per upload and lives in component
+state only — CAMO remains the source of truth for events.
+
+### 13.4 Status
+
+Parser ✓, dictionary ✓, consolidation engine ✓, UI panels ✓. **Not yet
+validated in browser by user** — the WIP banner remains until a real
+upload pass has been signed off. Open items (tolerance/utilization config
+surface, display-window control, severity palette polish) tracked in
+`forecast_project/PLAN.md`.
 
 ---
 
