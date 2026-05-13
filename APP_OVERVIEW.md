@@ -98,7 +98,9 @@ below.
 **Row 1 (header):**
 - Tail number, model.
 - **Airworthy / Grounded toggle** — switches the aircraft between active and
-  grounded.
+  grounded. Going airworthy → grounded opens the **Grounding dialog** (see
+  §4.5); going grounded → airworthy is a one-click manual lift and clears
+  any stored cause.
 - **In-maintenance badge** — present when today falls inside the active
   booking; shows `WO: <num>` when the booking is linked to a WO.
 - **Defect badge** — count of open defects.
@@ -107,14 +109,24 @@ below.
 
 **Row 2:**
 - **TTAF** (total time airframe) with the date/source it was last updated and
-  a pencil to override it.
+  a pencil to override it. Also shows a small **Last flight: HH:MM**
+  indicator next to the value — the increase since the previous TTAF
+  reading on this aircraft. Hidden when no prior value is on record (e.g.
+  the very first import for a new tail) or when the change was a downward
+  correction.
 - **Booked** pill — sky-tinted ("Booked dd.mm – dd.mm") or blue ("In hangar")
   when today is inside the period. Click the pill to open the booking view;
   click the inline `+` to create a new booking.
 
-**Note banner (conditional):** amber sticky-note banner below row 2 when the
-aircraft has a free-text note (e.g. *"Waiting on spare part — ETA 2 weeks"*).
-Edit pencil for members; viewers see it read-only.
+**Grounding cause banner (conditional):** rose sticky-note-style banner shown
+on grounded aircraft, below the booking row. Renders the cause stored at
+grounding time (see §4.5). Defect/event variants are click-through —
+clicking opens the linked defect's resolve dialog (the most common next
+action, since resolving auto-lifts) or the linked event's edit dialog.
+
+**Note banner (conditional):** amber sticky-note banner below the grounding
+banner when the aircraft has a free-text note (e.g. *"Waiting on spare part
+— ETA 2 weeks"*). Edit pencil for members; viewers see it read-only.
 
 ### 4.3 Events list (per aircraft)
 
@@ -137,6 +149,32 @@ alongside the WO; it's purely informational.
 ### 4.4 Defects list (per aircraft)
 
 Same column geometry as events. See §7 for the actions.
+
+### 4.5 Grounding & cause linking
+
+Every grounding requires a cause. The toggle on the aircraft header opens a
+dialog that asks for a **cause type** plus the linked item or reason:
+
+- **Defect** — pick from the aircraft's open defects. Resolving that defect
+  (WO# + date) auto-lifts the grounding.
+- **Maintenance event** — pick from the aircraft's open events. Closing the
+  event auto-lifts the grounding.
+- **Other** — free-text reason up to 300 chars (e.g. *"Parts AOG — awaiting
+  prop overhaul kit"*). Only manual ungrounding clears these.
+
+The cause is stored on the aircraft doc (`groundingCauseType`,
+`groundingCauseId`, `groundingReason`, `groundedAt`, `groundedBy`). The
+grounded-card banner renders it inline (defect title / WO + event title /
+free text) and links through to the related dialog where applicable.
+
+Both ends are audit-trailed:
+- `Grounded — cause: Defect "Brake judder on rollout"`
+- `Ungrounded — linked defect "Brake judder on rollout" resolved (WO 6711)`
+- `Ungrounded` (manual lift)
+
+If a linked defect/event is deleted before lifting, the banner falls back to
+an italic *"linked … no longer exists, manually lift to clear"* note — the
+aircraft stays grounded until a member toggles it back.
 
 ---
 
@@ -399,6 +437,14 @@ Imports never decrease the stored TTAF. If you genuinely need to roll back
 (import error), use the manual override — it's the only path that allows
 TTAF to go down.
 
+### 10.4 "Last flight" delta
+
+Every TTAF write (import or manual override) snapshots the prior value to
+`previousTotalTimeMinutes`. The overview renders the difference next to the
+TTAF cell as `Last flight: HH:MM`. The line is suppressed when there is no
+prior value (e.g. the very first import for a newly-added tail) or when the
+new value is lower than the old one (a correction, not a flight).
+
 ---
 
 ## 11. Severity model
@@ -508,7 +554,7 @@ wired in `index.html`.
 
 | Collection      | Key fields                                                                                                |
 | --------------- | --------------------------------------------------------------------------------------------------------- |
-| `aircraft`      | tailNumber, model, airworthy, totalTimeMinutes, totalTimeSource, note                                     |
+| `aircraft`      | tailNumber, model, airworthy, totalTimeMinutes, previousTotalTimeMinutes, totalTimeSource, note, groundingCauseType, groundingCauseId, groundingReason, groundedAt, groundedBy |
 | `events`        | tailNumber, warning, importedWarning, expiryDate, timerExpiryTimeMinutes, workOrderNumber, status, extensionMinutes, estimated, estimatedManHours, resolved* |
 | `defects`       | tailNumber, title, reportedDate, reportedTtafMinutes, workOrderNumber, relatedDefectIds, deferredAt, deferralReason, resolutionKind, resolved* |
 | `bookings`      | tailNumber, from, to, eventId, defectIds[], locationId, notes                                             |

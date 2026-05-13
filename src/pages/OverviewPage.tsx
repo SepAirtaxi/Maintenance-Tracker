@@ -18,6 +18,7 @@ import TtafDialog from "@/components/overview/TtafDialog";
 import BookingDialog from "@/components/calendar/BookingDialog";
 import BookingViewDialog from "@/components/calendar/BookingViewDialog";
 import NoteDialog from "@/components/overview/NoteDialog";
+import GroundingDialog from "@/components/overview/GroundingDialog";
 import DefectFormDialog from "@/components/overview/DefectFormDialog";
 import DeleteDefectDialog from "@/components/overview/DeleteDefectDialog";
 import ResolveDefectDialog from "@/components/overview/ResolveDefectDialog";
@@ -204,6 +205,7 @@ export default function OverviewPage() {
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
   const [viewingBooking, setViewingBooking] = useState<Booking | null>(null);
   const [noteTarget, setNoteTarget] = useState<Aircraft | null>(null);
+  const [groundingTarget, setGroundingTarget] = useState<Aircraft | null>(null);
 
   const [defectFormOpen, setDefectFormOpen] = useState(false);
   const [defectFormTail, setDefectFormTail] = useState("");
@@ -525,6 +527,7 @@ export default function OverviewPage() {
       onUpdateTtaf={() => setTtafTarget(s.aircraft)}
       onAddBooking={() => openAddBooking(s.aircraft.tailNumber)}
       onViewBooking={setViewingBooking}
+      onGround={() => setGroundingTarget(s.aircraft)}
       onAddEvent={() => openAddEvent(s.aircraft.tailNumber)}
       onEditEvent={openEditEvent}
       onDeleteEvent={setDeleteTarget}
@@ -543,6 +546,12 @@ export default function OverviewPage() {
         setEstimateTarget({ kind: "defect", defect })
       }
       onEditNote={() => setNoteTarget(s.aircraft)}
+      // Click-throughs from the grounding-cause banner. Defects open the
+      // resolve dialog (the most common next action — resolving lifts the
+      // grounding automatically); events use the edit dialog since closing
+      // them has its own dedicated row action.
+      onOpenLinkedDefect={(defect) => setDefectResolveTarget(defect)}
+      onOpenLinkedEvent={(event) => openEditEvent(event)}
     />
     </div>
   );
@@ -723,6 +732,26 @@ export default function OverviewPage() {
       <NoteDialog
         aircraft={noteTarget}
         onClose={() => setNoteTarget(null)}
+      />
+      <GroundingDialog
+        aircraft={groundingTarget}
+        openDefects={
+          groundingTarget
+            ? allDefects.filter(
+                (d) =>
+                  d.tailNumber === groundingTarget.tailNumber && !d.resolvedAt,
+              )
+            : []
+        }
+        openEvents={
+          groundingTarget
+            ? allEvents.filter(
+                (e) =>
+                  e.tailNumber === groundingTarget.tailNumber && !e.resolvedAt,
+              )
+            : []
+        }
+        onClose={() => setGroundingTarget(null)}
       />
       <DefectFormDialog
         open={defectFormOpen}

@@ -1,1 +1,0 @@
-1: QOL improvement request for entering TTAF: is it possible to make a function which automatically detects wheter a value is entered as xxxx:xx or xxxx.xx and automatically detects which of the options being used? This is basically a tiny improvement which eliminates 1 mouse click (choosing between HH:MM and Decimal) whenever entering TTAF data.

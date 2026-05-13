@@ -16,6 +16,10 @@ import { normaliseTailNumber } from "@/lib/tails";
 import { logAudit } from "@/services/audit";
 import { formatDate } from "@/lib/format";
 import { formatMinutesAsDuration } from "@/lib/time";
+import {
+  findAircraftGroundedByCause,
+  liftGrounding,
+} from "@/services/aircraft";
 import type { Defect } from "@/types";
 
 const defectsCol = () => collection(db, "defects");
@@ -289,6 +293,21 @@ export async function resolveDefect(
     entityId: id,
     summary,
   });
+
+  // Auto-lift any groundings that pointed at this defect. The query is
+  // bounded (at most one aircraft per defect under normal use) and the lift
+  // writes its own audit entry so the chain reads "Defect resolved …" →
+  // "Ungrounded — linked defect resolved" on the same tail.
+  const groundedTails = await findAircraftGroundedByCause("defect", id);
+  await Promise.all(
+    groundedTails.map((tail) =>
+      liftGrounding(tail, {
+        kind: "defect-resolved",
+        defectTitle: prev.title,
+        workOrder: wo,
+      }),
+    ),
+  );
 }
 
 export async function deferDefect(

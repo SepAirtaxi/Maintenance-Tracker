@@ -9,6 +9,8 @@ export type UserProfile = {
   updatedAt: Timestamp;
 };
 
+export type GroundingCauseType = "defect" | "event" | "other";
+
 export type Aircraft = {
   tailNumber: string;
   model: string;
@@ -16,6 +18,10 @@ export type Aircraft = {
   // airworthy at read-time via `airworthy !== false`.
   airworthy?: boolean;
   totalTimeMinutes: number | null;
+  // Snapshot of `totalTimeMinutes` from the previous write — used to render
+  // the "Last flight: HH:MM" delta on the overview. Null until at least one
+  // TTAF change has been recorded against an existing value.
+  previousTotalTimeMinutes?: number | null;
   totalTimeUpdatedAt: Timestamp | null;
   totalTimeUpdatedBy: string | null;
   totalTimeSource: "import" | "manual" | null;
@@ -23,6 +29,15 @@ export type Aircraft = {
   // doesn't belong on a specific event/defect (e.g. "grounded — waiting on
   // spare part"). Null/absent when no note is set.
   note?: string | null;
+  // Grounding cause. Set when the aircraft is grounded, cleared when lifted.
+  // - `defect`/`event`: `groundingCauseId` is the linked Defect/MaintenanceEvent id.
+  //   Resolving that item auto-lifts the grounding.
+  // - `other`: `groundingReason` carries free text; only manual ungrounding lifts it.
+  groundingCauseType?: GroundingCauseType | null;
+  groundingCauseId?: string | null;
+  groundingReason?: string | null;
+  groundedAt?: Timestamp | null;
+  groundedBy?: string | null;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 };

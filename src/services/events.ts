@@ -18,6 +18,10 @@ import { normaliseTailNumber } from "@/lib/tails";
 import { logAudit } from "@/services/audit";
 import { formatDate } from "@/lib/format";
 import { formatMinutesAsDuration } from "@/lib/time";
+import {
+  findAircraftGroundedByCause,
+  liftGrounding,
+} from "@/services/aircraft";
 import type { EventStatus, MaintenanceEvent } from "@/types";
 
 const eventsCol = () => collection(db, "events");
@@ -292,6 +296,20 @@ export async function resolveEvent(
       Timestamp.fromDate(input.resolvedDate),
     )})${ttafSuffix}`,
   });
+
+  // Auto-lift any groundings linked to this event. Same pattern as defect
+  // resolution: each lift writes its own audit entry so the chain reads
+  // naturally on the aircraft log.
+  const groundedTails = await findAircraftGroundedByCause("event", id);
+  await Promise.all(
+    groundedTails.map((tail) =>
+      liftGrounding(tail, {
+        kind: "event-closed",
+        eventTitle: prev.warning,
+        workOrder: wo,
+      }),
+    ),
+  );
 }
 
 export const MAX_EXTENSION_HOURS = 5;

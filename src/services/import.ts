@@ -233,6 +233,9 @@ export async function executeImport(
         const ref = doc(db, "aircraft", tail);
         batch.update(ref, {
           totalTimeMinutes: candidate,
+          // Snapshot the prior TTAF so the overview can render the
+          // "Last flight: HH:MM" delta for the just-imported value.
+          previousTotalTimeMinutes: stored,
           totalTimeUpdatedAt: serverTimestamp(),
           totalTimeUpdatedBy: user.uid,
           totalTimeSource: "import",

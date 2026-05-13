@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import { formatBookingRange, formatDate } from "@/lib/format";
 import { formatMinutesAsDuration } from "@/lib/time";
 import { type Severity } from "@/lib/eventStatus";
-import { setAircraftAirworthy } from "@/services/aircraft";
+import { liftGrounding } from "@/services/aircraft";
 import { isBookingActive } from "@/services/bookings";
 import {
   buildBookingGroups,
@@ -56,6 +56,10 @@ type Props = {
   onUpdateTtaf: () => void;
   onAddBooking: () => void;
   onViewBooking: (booking: Booking) => void;
+  // Open the grounding dialog (cause picker). Called when toggling
+  // airworthy → grounded; un-grounding is handled inline here via
+  // liftGrounding because it carries no extra data.
+  onGround: () => void;
   onAddEvent: () => void;
   onEditEvent: (event: MaintenanceEvent) => void;
   onDeleteEvent: (event: MaintenanceEvent) => void;
@@ -70,6 +74,10 @@ type Props = {
   onViewDeferralHistory: (defect: Defect) => void;
   onEstimateDefect: (defect: Defect) => void;
   onEditNote: () => void;
+  // Jump to the defect/event card section for a click-through on the
+  // grounding-cause banner. The cause lives on the same tail by construction.
+  onOpenLinkedDefect?: (defect: Defect) => void;
+  onOpenLinkedEvent?: (event: MaintenanceEvent) => void;
 };
 
 const stripe: Record<Severity, string> = {
@@ -101,6 +109,7 @@ export default function AircraftCard({
   onUpdateTtaf,
   onAddBooking,
   onViewBooking,
+  onGround,
   onAddEvent,
   onEditEvent,
   onDeleteEvent,
@@ -115,6 +124,8 @@ export default function AircraftCard({
   onViewDeferralHistory,
   onEstimateDefect,
   onEditNote,
+  onOpenLinkedDefect,
+  onOpenLinkedEvent,
 }: Props) {
   const [togglingAirworthy, setTogglingAirworthy] = useState(false);
   // The first entry is the currently-active booking when one exists (sorted
@@ -129,13 +140,41 @@ export default function AircraftCard({
     : null;
 
   const onToggleAirworthy = async () => {
+    if (airworthy) {
+      // Grounding requires a cause — defer to the parent's dialog.
+      onGround();
+      return;
+    }
     setTogglingAirworthy(true);
     try {
-      await setAircraftAirworthy(aircraft.tailNumber, !airworthy);
+      await liftGrounding(aircraft.tailNumber, { kind: "manual" });
     } finally {
       setTogglingAirworthy(false);
     }
   };
+
+  // Resolve the linked defect/event on this tail so the grounding-cause
+  // banner can render a meaningful label and click-through. Missing refs
+  // (e.g. the linked item was deleted before lifting) fall back to the
+  // stored reason; "other" groundings carry their own free text.
+  const linkedDefect =
+    aircraft.groundingCauseType === "defect" && aircraft.groundingCauseId
+      ? defects.find((d) => d.id === aircraft.groundingCauseId) ?? null
+      : null;
+  const linkedEvent =
+    aircraft.groundingCauseType === "event" && aircraft.groundingCauseId
+      ? events.find((e) => e.id === aircraft.groundingCauseId) ?? null
+      : null;
+
+  // TTAF delta — only render when we know the prior value and it's lower
+  // than the current one. Negative deltas (a correction) are hidden so the
+  // pill doesn't read "Last flight: -2:00".
+  const ttafDeltaMinutes =
+    aircraft.totalTimeMinutes != null &&
+    aircraft.previousTotalTimeMinutes != null &&
+    aircraft.totalTimeMinutes > aircraft.previousTotalTimeMinutes
+      ? aircraft.totalTimeMinutes - aircraft.previousTotalTimeMinutes
+      : null;
 
   const containerClass = airworthy
     ? cn("border-l-4", stripe[worstSeverity])
@@ -289,7 +328,7 @@ export default function AircraftCard({
             have room to breathe; the event/defect titles live in the tables
             below, so the booking rows only need date + location + WO chips. */}
         <div className="grid grid-cols-1 md:grid-cols-[auto_minmax(0,1fr)] gap-2 px-3 pb-1.5">
-          <div className="grid grid-cols-[14px_3rem_auto_auto_22px] items-center gap-x-2 rounded-md border bg-background px-2 py-1 shadow-sm">
+          <div className="grid grid-cols-[14px_3rem_auto_auto_auto_22px] items-center gap-x-2 rounded-md border bg-background px-2 py-1 shadow-sm">
             <Gauge className="h-3.5 w-3.5 text-muted-foreground" />
             <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
               TTAF
@@ -297,6 +336,19 @@ export default function AircraftCard({
             <span className="font-mono font-semibold tabular-nums text-sm">
               {formatMinutesAsDuration(aircraft.totalTimeMinutes)}
             </span>
+            {ttafDeltaMinutes != null ? (
+              <span
+                className="text-[10px] text-muted-foreground whitespace-nowrap"
+                title="Increase since the previous TTAF reading on this aircraft"
+              >
+                Last flight:{" "}
+                <span className="font-mono tabular-nums text-foreground">
+                  {formatMinutesAsDuration(ttafDeltaMinutes)}
+                </span>
+              </span>
+            ) : (
+              <span />
+            )}
             <span className="text-[10px] text-muted-foreground whitespace-nowrap justify-self-end">
               {aircraft.totalTimeUpdatedAt
                 ? `Last updated: ${formatDate(aircraft.totalTimeUpdatedAt)}${
@@ -432,6 +484,107 @@ export default function AircraftCard({
             )}
           </div>
         </div>
+
+        {!airworthy && aircraft.groundingCauseType && (
+          <div className="px-3 pb-2">
+            {(() => {
+              // Three render paths share the same banner shell. Linked
+              // defect/event variants are click-through (open the related
+              // dialog); "other" is plain text. We resolve the live linked
+              // item up at the top of the component so the title here
+              // tracks edits made after grounding.
+              const causeType = aircraft.groundingCauseType;
+              let label: React.ReactNode = null;
+              let onClick: (() => void) | undefined;
+              let title = "Grounding cause";
+
+              if (causeType === "defect") {
+                if (linkedDefect) {
+                  label = (
+                    <>
+                      <span className="font-semibold uppercase tracking-wider text-[10px]">
+                        Grounded — Defect:
+                      </span>{" "}
+                      <span className="font-medium">"{linkedDefect.title}"</span>
+                      {linkedDefect.workOrderNumber && (
+                        <span className="ml-1 font-mono text-[11px]">
+                          (WO {linkedDefect.workOrderNumber})
+                        </span>
+                      )}
+                    </>
+                  );
+                  if (onOpenLinkedDefect) {
+                    onClick = () => onOpenLinkedDefect(linkedDefect);
+                    title = "Open linked defect";
+                  }
+                } else {
+                  label = (
+                    <span className="italic">
+                      Grounded — linked defect no longer exists. Manually
+                      lift to clear the cause.
+                    </span>
+                  );
+                }
+              } else if (causeType === "event") {
+                if (linkedEvent) {
+                  const wo = linkedEvent.workOrderNumber?.trim();
+                  label = (
+                    <>
+                      <span className="font-semibold uppercase tracking-wider text-[10px]">
+                        Grounded — {wo ? `WO ${wo}:` : "Event:"}
+                      </span>{" "}
+                      <span className="font-medium">"{linkedEvent.warning}"</span>
+                    </>
+                  );
+                  if (onOpenLinkedEvent) {
+                    onClick = () => onOpenLinkedEvent(linkedEvent);
+                    title = "Open linked event";
+                  }
+                } else {
+                  label = (
+                    <span className="italic">
+                      Grounded — linked event no longer exists. Manually
+                      lift to clear the cause.
+                    </span>
+                  );
+                }
+              } else {
+                label = (
+                  <>
+                    <span className="font-semibold uppercase tracking-wider text-[10px]">
+                      Grounded —
+                    </span>{" "}
+                    <span className="whitespace-pre-wrap break-words">
+                      {aircraft.groundingReason ?? "(no reason recorded)"}
+                    </span>
+                  </>
+                );
+              }
+
+              const interactive = !!onClick;
+              const Wrap: keyof React.JSX.IntrinsicElements = interactive
+                ? "button"
+                : "div";
+              return (
+                <Wrap
+                  {...(interactive
+                    ? { type: "button", onClick, title }
+                    : {})}
+                  className={cn(
+                    "w-full flex items-start gap-2 rounded-md border border-rose-300 bg-rose-50 px-2.5 py-1.5 shadow-sm text-left",
+                    interactive &&
+                      "transition-colors hover:bg-rose-100 cursor-pointer",
+                  )}
+                >
+                  <ShieldOff className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-700" />
+                  <span className="flex-1 text-xs text-rose-900">
+                    {label}
+                  </span>
+                </Wrap>
+              );
+            })()}
+          </div>
+        )}
 
         {aircraft.note && (
           <div className="px-3 pb-2">
