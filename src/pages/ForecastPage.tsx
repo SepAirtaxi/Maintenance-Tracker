@@ -13,6 +13,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
+  severityFromDays,
+  severityFromMinutes,
+  type Severity,
+} from "@/lib/eventStatus";
+import {
   parseForecastUnresolved,
   resolveRows,
   type UnresolvedParse,
@@ -259,17 +264,31 @@ function ForecastResult({ loaded }: { loaded: LoadedForecast }) {
         <LeadTimePlanningPanel
           rows={consolidation.leadTimePlanning}
           horizon={consolidation.leadTimeHorizon}
+          today={consolidation.today}
+          currentTtafHours={consolidation.currentTtafHours}
         />
       )}
 
-      <DraftWorkOrderPanel rows={consolidation.draftWorkOrder} />
+      <DraftWorkOrderPanel
+        rows={consolidation.draftWorkOrder}
+        today={consolidation.today}
+        currentTtafHours={consolidation.currentTtafHours}
+      />
 
       {consolidation.flaggedForReview.length > 0 && (
-        <FlaggedForReviewPanel rows={consolidation.flaggedForReview} />
+        <FlaggedForReviewPanel
+          rows={consolidation.flaggedForReview}
+          today={consolidation.today}
+          currentTtafHours={consolidation.currentTtafHours}
+        />
       )}
 
       {consolidation.nextCycle.length > 0 && (
-        <NextCyclePreview rows={consolidation.nextCycle} />
+        <NextCyclePreview
+          rows={consolidation.nextCycle}
+          today={consolidation.today}
+          currentTtafHours={consolidation.currentTtafHours}
+        />
       )}
 
       {consolidation.unclassified.length > 0 && (
@@ -378,9 +397,13 @@ function Stat({
 function LeadTimePlanningPanel({
   rows,
   horizon,
+  today,
+  currentTtafHours,
 }: {
   rows: ForecastConsolidationRow[];
   horizon: { hoursAhead: number; monthsAhead: number };
+  today: Date;
+  currentTtafHours: number | null;
 }) {
   return (
     <section className="rounded-md border-2 border-sky-200 bg-sky-50/40">
@@ -400,9 +423,15 @@ function LeadTimePlanningPanel({
         slot now — items here are also shown in their natural band panel below,
         so this is a procurement-planning surface, not a re-classification.
       </div>
-      <ul className="divide-y border-t border-sky-100">
+      <ColumnHeader />
+      <ul className="divide-y">
         {rows.map((r, i) => (
-          <ConsolidatedRowItem key={`lead-${i}`} row={r} />
+          <ConsolidatedRowItem
+            key={`lead-${i}`}
+            row={r}
+            today={today}
+            currentTtafHours={currentTtafHours}
+          />
         ))}
       </ul>
     </section>
@@ -411,7 +440,15 @@ function LeadTimePlanningPanel({
 
 // ---- Draft WO panel -------------------------------------------------------
 
-function DraftWorkOrderPanel({ rows }: { rows: ForecastConsolidationRow[] }) {
+function DraftWorkOrderPanel({
+  rows,
+  today,
+  currentTtafHours,
+}: {
+  rows: ForecastConsolidationRow[];
+  today: Date;
+  currentTtafHours: number | null;
+}) {
   const grouped = useMemo(() => groupBySection(rows), [rows]);
   return (
     <section className="rounded-md border bg-card">
@@ -428,23 +465,39 @@ function DraftWorkOrderPanel({ rows }: { rows: ForecastConsolidationRow[] }) {
           below — or the anchor itself may sit at an unusual offset.
         </div>
       ) : (
-        FORECAST_SECTION_DISPLAY_ORDER.map((section) => {
-          const sectionRows = grouped[section];
-          if (!sectionRows || sectionRows.length === 0) return null;
-          return (
-            <SectionBlock key={section} section={section} count={sectionRows.length}>
-              {sectionRows.map((r, i) => (
-                <ConsolidatedRowItem key={`${section}-${i}`} row={r} />
-              ))}
-            </SectionBlock>
-          );
-        })
+        <>
+          <ColumnHeader />
+          {FORECAST_SECTION_DISPLAY_ORDER.map((section) => {
+            const sectionRows = grouped[section];
+            if (!sectionRows || sectionRows.length === 0) return null;
+            return (
+              <SectionBlock key={section} section={section} count={sectionRows.length}>
+                {sectionRows.map((r, i) => (
+                  <ConsolidatedRowItem
+                    key={`${section}-${i}`}
+                    row={r}
+                    today={today}
+                    currentTtafHours={currentTtafHours}
+                  />
+                ))}
+              </SectionBlock>
+            );
+          })}
+        </>
       )}
     </section>
   );
 }
 
-function FlaggedForReviewPanel({ rows }: { rows: ForecastConsolidationRow[] }) {
+function FlaggedForReviewPanel({
+  rows,
+  today,
+  currentTtafHours,
+}: {
+  rows: ForecastConsolidationRow[];
+  today: Date;
+  currentTtafHours: number | null;
+}) {
   const grouped = useMemo(() => groupBySection(rows), [rows]);
   return (
     <section className="rounded-md border-2 border-rose-200 bg-rose-50/30">
@@ -461,13 +514,19 @@ function FlaggedForReviewPanel({ rows }: { rows: ForecastConsolidationRow[] }) {
         requires they be addressed before the cycle runs out; the human picks
         whether to pull forward, shift the anchor, or schedule a separate visit.
       </div>
+      <ColumnHeader />
       {FORECAST_SECTION_DISPLAY_ORDER.map((section) => {
         const sectionRows = grouped[section];
         if (!sectionRows || sectionRows.length === 0) return null;
         return (
           <SectionBlock key={section} section={section} count={sectionRows.length}>
             {sectionRows.map((r, i) => (
-              <ConsolidatedRowItem key={`${section}-${i}`} row={r} />
+              <ConsolidatedRowItem
+                key={`${section}-${i}`}
+                row={r}
+                today={today}
+                currentTtafHours={currentTtafHours}
+              />
             ))}
           </SectionBlock>
         );
@@ -476,7 +535,15 @@ function FlaggedForReviewPanel({ rows }: { rows: ForecastConsolidationRow[] }) {
   );
 }
 
-function NextCyclePreview({ rows }: { rows: ForecastConsolidationRow[] }) {
+function NextCyclePreview({
+  rows,
+  today,
+  currentTtafHours,
+}: {
+  rows: ForecastConsolidationRow[];
+  today: Date;
+  currentTtafHours: number | null;
+}) {
   const [open, setOpen] = useState(false);
   const grouped = useMemo(() => groupBySection(rows), [rows]);
   return (
@@ -498,6 +565,7 @@ function NextCyclePreview({ rows }: { rows: ForecastConsolidationRow[] }) {
           {rows.length} item{rows.length === 1 ? "" : "s"} · beyond anchor + 50 h
         </span>
       </button>
+      {open && <ColumnHeader />}
       {open &&
         FORECAST_SECTION_DISPLAY_ORDER.map((section) => {
           const sectionRows = grouped[section];
@@ -505,7 +573,13 @@ function NextCyclePreview({ rows }: { rows: ForecastConsolidationRow[] }) {
           return (
             <SectionBlock key={section} section={section} count={sectionRows.length}>
               {sectionRows.map((r, i) => (
-                <ConsolidatedRowItem key={`${section}-${i}`} row={r} muted />
+                <ConsolidatedRowItem
+                  key={`${section}-${i}`}
+                  row={r}
+                  today={today}
+                  currentTtafHours={currentTtafHours}
+                  muted
+                />
               ))}
             </SectionBlock>
           );
@@ -595,11 +669,19 @@ const BAND_LABEL: Record<ForecastBand, string> = {
 
 function ConsolidatedRowItem({
   row,
+  today,
+  currentTtafHours,
   muted = false,
 }: {
   row: ForecastConsolidationRow;
+  today: Date;
+  currentTtafHours: number | null;
   muted?: boolean;
 }) {
+  const dDays = daysLeft(row.due?.date, today);
+  const dHours = hoursLeft(row.due?.hours, currentTtafHours);
+  const daysSev = severityFromDays(dDays);
+  const hoursSev = severityFromMinutes(dHours != null ? dHours * 60 : null);
   return (
     <li
       className={cn(
@@ -608,7 +690,7 @@ function ConsolidatedRowItem({
         muted && "opacity-80",
       )}
     >
-      <div className="col-span-6 min-w-0">
+      <div className="col-span-5 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="truncate font-medium" title={row.canonicalName}>
             {row.canonicalName}
@@ -634,6 +716,14 @@ function ConsolidatedRowItem({
               {row.adType}
             </span>
           )}
+          {row.tolerancePct != null && row.tolerancePct > 0 && (
+            <span
+              className="rounded border bg-muted px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-muted-foreground"
+              title="Tolerance window"
+            >
+              ±{row.tolerancePct}%
+            </span>
+          )}
         </div>
         {row.adNumberCanonical && (
           <div className="text-xs text-muted-foreground">
@@ -650,14 +740,43 @@ function ConsolidatedRowItem({
           </div>
         )}
       </div>
-      <div className="col-span-3 text-xs text-muted-foreground">
-        <div>
-          Due:{" "}
-          <span className="text-foreground">{formatDue(row)}</span>
-        </div>
-        {row.tolerancePct != null && row.tolerancePct > 0 && (
-          <div>Tolerance: ±{row.tolerancePct}%</div>
-        )}
+      {/* Due on — date | TTAF compartment */}
+      <div className="col-span-2 grid grid-cols-2 divide-x divide-border rounded-md border border-border bg-background shadow-sm overflow-hidden">
+        <span
+          className="px-1.5 py-0.5 text-center font-mono text-[11px] tabular-nums"
+          title="Due date"
+        >
+          {row.due?.date ? format(row.due.date, "dd.MM.yy") : "—"}
+        </span>
+        <span
+          className="px-1.5 py-0.5 text-center font-mono text-[11px] tabular-nums"
+          title="Due TTAF (hours)"
+        >
+          {row.due?.hours != null ? row.due.hours.toFixed(1) : "—"}
+        </span>
+      </div>
+      {/* Time until — days | hours compartment with per-half severity tint */}
+      <div className="col-span-2 grid grid-cols-2 divide-x divide-border rounded-md border border-border shadow-sm overflow-hidden">
+        <span
+          className={cn(
+            "px-1.5 py-0.5 text-center font-mono text-[11px] tabular-nums",
+            severityHalf[daysSev],
+          )}
+          title="Days until due"
+        >
+          {dDays == null ? "—" : `${dDays > 0 ? "+" : ""}${dDays}d`}
+        </span>
+        <span
+          className={cn(
+            "px-1.5 py-0.5 text-center font-mono text-[11px] tabular-nums",
+            severityHalf[hoursSev],
+          )}
+          title="Hours until due (vs current TTAF)"
+        >
+          {dHours == null
+            ? "—"
+            : `${dHours > 0 ? "+" : ""}${dHours.toFixed(1)}h`}
+        </span>
       </div>
       <div className="col-span-3 text-right text-xs">
         <DirectionBadge direction={row.direction} gapHours={row.gapHours} />
@@ -668,6 +787,38 @@ function ConsolidatedRowItem({
         )}
       </div>
     </li>
+  );
+}
+
+const severityHalf: Record<Severity, string> = {
+  green: "bg-emerald-100 text-emerald-800",
+  yellow: "bg-amber-100 text-amber-900",
+  red: "bg-rose-200 text-rose-900 font-semibold",
+  unknown: "bg-background text-muted-foreground",
+};
+
+function ColumnHeader() {
+  return (
+    <div className="border-b bg-muted/30">
+      <div className="grid grid-cols-12 items-end gap-3 px-3 pt-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <div className="col-span-5">Event</div>
+        <div className="col-span-2 text-center">Due at</div>
+        <div className="col-span-2 text-center">Time left</div>
+        <div className="col-span-3 text-right">Status</div>
+      </div>
+      <div className="grid grid-cols-12 items-center gap-3 px-3 pb-1 text-[9px] uppercase tracking-wider text-muted-foreground/70">
+        <div className="col-span-5"></div>
+        <div className="col-span-2 grid grid-cols-2 text-center">
+          <span>Date</span>
+          <span>TTAF</span>
+        </div>
+        <div className="col-span-2 grid grid-cols-2 text-center">
+          <span>Days</span>
+          <span>Hours</span>
+        </div>
+        <div className="col-span-3"></div>
+      </div>
+    </div>
   );
 }
 
@@ -736,11 +887,20 @@ function groupBySection<T extends { section: ForecastSection }>(
   return out;
 }
 
-function formatDue(r: ForecastRow): string {
-  const parts: string[] = [];
-  if (r.due?.date) parts.push(format(r.due.date, "dd.MM.yyyy"));
-  if (r.due?.hours != null) parts.push(`${formatHours(r.due.hours)}`);
-  return parts.length === 0 ? "—" : parts.join(" · ");
+function daysLeft(due: Date | undefined, today: Date): number | null {
+  if (!due) return null;
+  const msPerDay = 1000 * 60 * 60 * 24;
+  const a = new Date(due.getFullYear(), due.getMonth(), due.getDate()).getTime();
+  const b = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+  return Math.round((a - b) / msPerDay);
+}
+
+function hoursLeft(
+  dueHours: number | undefined,
+  currentTtafHours: number | null,
+): number | null {
+  if (dueHours == null || currentTtafHours == null) return null;
+  return dueHours - currentTtafHours;
 }
 
 function formatHours(hours: number): string {
