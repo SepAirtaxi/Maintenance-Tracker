@@ -102,6 +102,11 @@ const firebaseConfig = {
 - **Note banner (conditional):** when the aircraft has a free-text note set, an amber sticky-note banner appears below row 2 with the note text and an edit pencil (members only).
 - "Updated <date>" reflects any change to the aircraft document — TTAF, model change, airworthiness toggle, note. (Bookings live in their own collection now and don't bump the aircraft `updatedAt`.)
 
+### Aircraft card — Print
+- A **Print** button in the row-1 action group (after **History**) prints just that aircraft card via the browser's standard print dialog. Available to viewers as well as members — printing the card view is read-only by nature.
+- Implemented entirely in CSS via `@media print` rules in `src/index.css`. The button handler in `AircraftCard.tsx` tags the target `<section>` with a `print-target` class and the `<body>` with `printing-card`, calls `window.print()`, then strips both on the `afterprint` event.
+- Print rules force **landscape** orientation (`@page { size: landscape }`), hide every element that's not the target card or one of its ancestors using `:has()` (so blank pages don't get paginated from collapsed-but-still-present siblings), and enable `print-color-adjust: exact` so pill/severity background colors print accurately. Ancestor margin/padding are reset so the card flows from the page origin instead of inheriting Layout offsets.
+
 ### Aircraft notes
 - Free-text remark field on the aircraft document (`note: string | null`). Up to 500 characters.
 - Intended for context that doesn't belong on a specific event/defect — e.g. *"Grounded — waiting on spare part (ETA 2 weeks)"*.

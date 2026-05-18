@@ -38,7 +38,7 @@
 @media print {
   @page {
     size: landscape;
-    margin: 1cm;
+    margin: 0.5cm;
   }
 
   /* Hide everything outside the target card's lineage. Using display:none
@@ -67,5 +67,10 @@
 
   body.printing-card .print-target {
     box-shadow: none !important;
+    /* Zoom shrinks the rendered card while letting it lay out at a wider
+       logical width, so the Event column gets enough room to show full
+       titles ("Engine Vibration Isolator Replacement") instead of
+       truncating. Tweak this factor if columns still feel cramped. */
+    zoom: 0.85;
   }
 }
