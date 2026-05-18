@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   CalendarDays,
   Gauge,
   History,
   Pencil,
   Plus,
+  Printer,
   ShieldAlert,
   ShieldCheck,
   ShieldOff,
@@ -128,6 +129,21 @@ export default function AircraftCard({
   onOpenLinkedEvent,
 }: Props) {
   const [togglingAirworthy, setTogglingAirworthy] = useState(false);
+  const cardRef = useRef<HTMLElement | null>(null);
+
+  const onPrint = () => {
+    const card = cardRef.current;
+    if (!card) return;
+    card.classList.add("print-target");
+    document.body.classList.add("printing-card");
+    const cleanup = () => {
+      card.classList.remove("print-target");
+      document.body.classList.remove("printing-card");
+      window.removeEventListener("afterprint", cleanup);
+    };
+    window.addEventListener("afterprint", cleanup);
+    window.print();
+  };
   // The first entry is the currently-active booking when one exists (sorted
   // active-first upstream), so the "In maintenance" header pill mirrors that.
   const activeBooking = bookings[0]?.booking ?? null;
@@ -183,6 +199,7 @@ export default function AircraftCard({
 
   return (
     <section
+      ref={cardRef}
       className={cn(
         "rounded-md border shadow-md overflow-hidden",
         containerClass,
@@ -318,6 +335,16 @@ export default function AircraftCard({
               >
                 <History className="h-3 w-3" />
                 History
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={onPrint}
+                title="Print this aircraft card"
+              >
+                <Printer className="h-3 w-3" />
+                Print
               </Button>
             </div>
           </div>
