@@ -18,7 +18,7 @@ import { normaliseTailNumber } from "@/lib/tails";
 import { logAudit } from "@/services/audit";
 import { requireCurrentUserCtx } from "@/lib/currentUser";
 import { formatBookingRange } from "@/lib/format";
-import type { Booking } from "@/types";
+import type { Booking, BookingItemResolution } from "@/types";
 
 const bookingsCol = () => collection(db, "bookings");
 const bookingDoc = (id: string) => doc(db, "bookings", id);
@@ -63,6 +63,9 @@ function docToBooking(id: string, data: Record<string, unknown>): Booking {
   const defectIds = Array.isArray(rawDefectIds)
     ? (rawDefectIds.filter((v) => typeof v === "string") as string[])
     : [];
+  const rawResolutions = data.itemResolutions as
+    | Record<string, BookingItemResolution>
+    | undefined;
   return {
     id,
     tailNumber: data.tailNumber as string,
@@ -72,6 +75,7 @@ function docToBooking(id: string, data: Record<string, unknown>): Booking {
     defectIds,
     locationId: (data.locationId as string | null) ?? null,
     notes: (data.notes as string | null) ?? null,
+    itemResolutions: rawResolutions ?? undefined,
     createdAt: data.createdAt as Timestamp,
     createdBy: (data.createdBy as string) ?? "",
     updatedAt: data.updatedAt as Timestamp,
@@ -410,6 +414,37 @@ export function upcomingBookingsForTail(
   active.sort(byFrom);
   upcoming.sort(byFrom);
   return [...active, ...upcoming];
+}
+
+// Writes a resolution snapshot onto every booking for `tail` that has already
+// started (booking.from <= now) and links the given item, unless one already
+// exists. Future bookings are left live-linked so they keep reflecting the
+// current state — which is what's wanted when an aircraft is later booked
+// for rectification. No-op for items that don't appear on any started
+// booking.
+export async function snapshotItemResolution(
+  tail: string,
+  itemKind: "event" | "defect",
+  itemId: string,
+  resolution: BookingItemResolution,
+): Promise<void> {
+  const bookings = await fetchBookingsForTail(tail);
+  const nowMs = Date.now();
+  const targets = bookings.filter((b) => {
+    if (b.from.toMillis() > nowMs) return false;
+    if (b.itemResolutions?.[itemId]) return false;
+    if (itemKind === "event") return b.eventId === itemId;
+    return b.defectIds.includes(itemId);
+  });
+  if (targets.length === 0) return;
+  await Promise.all(
+    targets.map((b) =>
+      updateDoc(bookingDoc(b.id), {
+        [`itemResolutions.${itemId}`]: resolution,
+        updatedAt: serverTimestamp(),
+      }),
+    ),
+  );
 }
 
 export function isBookingActive(

@@ -47,6 +47,28 @@ export type Aircraft = {
   updatedAt: Timestamp;
 };
 
+export type BookingItemResolutionKind = "resolved" | "deferred" | "nff";
+
+// Frozen snapshot of how a linked event/defect was closed/deferred relative
+// to a specific booking. Captured when the entity transitions while the
+// booking has already started, so the historical booking dialog can show how
+// it actually closed even if the entity is later re-resolved on a different
+// WO. Absent for bookings that pre-date this feature or for items that
+// haven't transitioned yet.
+export type BookingItemResolution = {
+  kind: BookingItemResolutionKind;
+  // For resolved/nff: the WO the work was logged on. For deferred: null.
+  workOrder: string | null;
+  // resolvedDate for resolved/nff, deferredAt for deferred.
+  date: Timestamp;
+  // Defer reason for deferred items.
+  reason: string | null;
+  // Frozen entity label at the moment of transition — stable if the entity
+  // is later renamed.
+  label: string;
+  itemKind: "event" | "defect";
+};
+
 export type Booking = {
   id: string;
   tailNumber: string;
@@ -65,6 +87,10 @@ export type Booking = {
   // Free-text notes for the booking — shown after the event name on the
   // calendar block, or on hover when space is tight.
   notes: string | null;
+  // Per-linked-item resolution snapshot, keyed by eventId or defectId. Future
+  // bookings stay live-linked (no snapshot). Bookings that pre-date the
+  // feature have this field absent and fall back to live entity state.
+  itemResolutions?: Record<string, BookingItemResolution>;
   createdAt: Timestamp;
   createdBy: string;
   updatedAt: Timestamp;
@@ -162,4 +188,27 @@ export type Defect = {
   estimatedManHours: number | null;
   createdAt: Timestamp;
   updatedAt: Timestamp;
+};
+
+export type NotificationType = "auto-grounded" | "deferral-overdue";
+
+// Persistent banner notification. Global ack — once anyone dismisses it, the
+// banner disappears for everyone. View-only users never see banners and never
+// read or write this collection. Doc id is deterministic: `${type}__${tail}__
+// ${causeId}` so re-raising for the same cause is a no-op (setDoc + merge).
+export type Notification = {
+  id: string;
+  type: NotificationType;
+  tailNumber: string;
+  // For `auto-grounded` this is the eventId; for `deferral-overdue` it's the
+  // defectId. The other field is null.
+  eventId: string | null;
+  defectId: string | null;
+  // Frozen message text captured when the notification was raised, so the
+  // banner reads the same even if the linked entity is later renamed.
+  message: string;
+  createdAt: Timestamp;
+  // Global ack — non-null = dismissed by `acknowledgedBy`.
+  acknowledgedAt: Timestamp | null;
+  acknowledgedBy: string | null;
 };

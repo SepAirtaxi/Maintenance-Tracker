@@ -22,6 +22,8 @@ import {
   findAircraftGroundedByCause,
   liftGrounding,
 } from "@/services/aircraft";
+import { clearNotification } from "@/services/notifications";
+import { snapshotItemResolution } from "@/services/bookings";
 import type { EventStatus, MaintenanceEvent } from "@/types";
 
 const eventsCol = () => collection(db, "events");
@@ -310,6 +312,20 @@ export async function resolveEvent(
       }),
     ),
   );
+
+  // Clear any auto-grounded banner tied to this event — the cause is gone.
+  await clearNotification("auto-grounded", prev.tailNumber, id);
+
+  // Snapshot how the event closed onto bookings that have already started.
+  // Future bookings are left live so they reflect later changes.
+  await snapshotItemResolution(prev.tailNumber, "event", id, {
+    kind: "resolved",
+    workOrder: wo,
+    date: Timestamp.fromDate(input.resolvedDate),
+    reason: null,
+    label: prev.warning,
+    itemKind: "event",
+  });
 }
 
 export const MAX_EXTENSION_HOURS = 5;
@@ -473,5 +489,6 @@ export async function deleteEvent(id: string): Promise<void> {
       entityId: id,
       summary: `Event deleted: ${prev.warning}`,
     });
+    await clearNotification("auto-grounded", prev.tailNumber, id);
   }
 }

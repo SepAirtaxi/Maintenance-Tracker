@@ -291,7 +291,7 @@ export default function CalendarGrid({
               const linkedLocation = b.locationId
                 ? locationsById.get(b.locationId) ?? null
                 : null;
-              const groups = buildBookingGroups(linkedEvent, linkedDefects);
+              const groups = buildBookingGroups(linkedEvent, linkedDefects, b);
               const notes = b.notes?.trim() || null;
               const description = describeBookingGroups(groups);
 

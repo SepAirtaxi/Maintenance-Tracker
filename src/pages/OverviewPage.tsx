@@ -32,9 +32,11 @@ import EstimateDialog, {
 import UpcomingEventsDialog from "@/components/overview/UpcomingEventsDialog";
 import HistoryDialog from "@/components/overview/HistoryDialog";
 import { useAuth } from "@/context/AuthContext";
-import { subscribeAircraft } from "@/services/aircraft";
+import { autoGroundExpired, subscribeAircraft } from "@/services/aircraft";
 import { subscribeEvents } from "@/services/events";
 import { subscribeDefects } from "@/services/defects";
+import { raiseNotification } from "@/services/notifications";
+import { formatDate } from "@/lib/format";
 import {
   subscribeBookings,
   upcomingBookingsForTail,
@@ -43,6 +45,8 @@ import { subscribeLocations } from "@/services/locations";
 import { subscribeUsers } from "@/services/users";
 import {
   buildBookedIdSets,
+  daysSinceDeferred,
+  getDeferralStatus,
   getEventSeverity,
   worstSeverity,
   type Severity,
@@ -63,19 +67,63 @@ const EVENT_SEVERITY_ORDER: Record<Severity, number> = {
   unknown: 3,
 };
 
+// Sorts events with WO-grouping: events sharing a workOrderNumber sit
+// adjacent to each other. Events with no WO# are each their own group, so
+// they slot in by severity/expiry as before. Groups sort by their worst
+// event first; within a group, severity then expiry.
 function sortEvents(
   events: MaintenanceEvent[],
   currentTtafMinutes: number | null,
 ): MaintenanceEvent[] {
-  return [...events].sort((a, b) => {
-    const sa = getEventSeverity(a, currentTtafMinutes);
-    const sb = getEventSeverity(b, currentTtafMinutes);
-    const diff = EVENT_SEVERITY_ORDER[sa] - EVENT_SEVERITY_ORDER[sb];
-    if (diff !== 0) return diff;
-    const da = a.expiryDate?.toMillis() ?? Number.POSITIVE_INFINITY;
-    const db = b.expiryDate?.toMillis() ?? Number.POSITIVE_INFINITY;
-    return da - db;
+  type GroupKey = string;
+  type Group = {
+    key: GroupKey;
+    events: MaintenanceEvent[];
+    worstRank: number;
+    earliestExpiry: number;
+  };
+
+  const groups = new Map<GroupKey, Group>();
+  let singletonCounter = 0;
+  for (const e of events) {
+    const wo = e.workOrderNumber?.trim();
+    // Blank/null WO# → unique key per event so each becomes its own group.
+    const key = wo ? `wo:${wo}` : `solo:${singletonCounter++}`;
+    const rank = EVENT_SEVERITY_ORDER[getEventSeverity(e, currentTtafMinutes)];
+    const expiry = e.expiryDate?.toMillis() ?? Number.POSITIVE_INFINITY;
+    const existing = groups.get(key);
+    if (existing) {
+      existing.events.push(e);
+      if (rank < existing.worstRank) existing.worstRank = rank;
+      if (expiry < existing.earliestExpiry) existing.earliestExpiry = expiry;
+    } else {
+      groups.set(key, {
+        key,
+        events: [e],
+        worstRank: rank,
+        earliestExpiry: expiry,
+      });
+    }
+  }
+
+  const sortedGroups = [...groups.values()].sort((a, b) => {
+    if (a.worstRank !== b.worstRank) return a.worstRank - b.worstRank;
+    return a.earliestExpiry - b.earliestExpiry;
   });
+
+  const result: MaintenanceEvent[] = [];
+  for (const g of sortedGroups) {
+    g.events.sort((a, b) => {
+      const sa = EVENT_SEVERITY_ORDER[getEventSeverity(a, currentTtafMinutes)];
+      const sb = EVENT_SEVERITY_ORDER[getEventSeverity(b, currentTtafMinutes)];
+      if (sa !== sb) return sa - sb;
+      const da = a.expiryDate?.toMillis() ?? Number.POSITIVE_INFINITY;
+      const db = b.expiryDate?.toMillis() ?? Number.POSITIVE_INFINITY;
+      return da - db;
+    });
+    result.push(...g.events);
+  }
+  return result;
 }
 
 type SortKey = "severity" | "tail" | "model" | "ttaf" | "due";
@@ -167,7 +215,7 @@ function compareNullable(
 }
 
 export default function OverviewPage() {
-  const { isViewer } = useAuth();
+  const { isViewer, user } = useAuth();
   const [aircraft, setAircraft] = useState<Aircraft[] | null>(null);
   const [allEvents, setAllEvents] = useState<MaintenanceEvent[]>([]);
   const [allDefects, setAllDefects] = useState<Defect[]>([]);
@@ -184,6 +232,12 @@ export default function OverviewPage() {
   const [activeTail, setActiveTail] = useState<string | null>(null);
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const visibleTails = useRef<Set<string>>(new Set());
+
+  // Guards the auto-ground sweep so re-renders during the in-flight Firestore
+  // writes don't fire a second concurrent pass (idempotent at the service
+  // layer, but the ref keeps writes out of the network in the common case).
+  const autoGroundProcessing = useRef(false);
+  const deferralScanProcessing = useRef(false);
 
   const [eventFormOpen, setEventFormOpen] = useState(false);
   const [eventFormTail, setEventFormTail] = useState<string>("");
@@ -230,6 +284,83 @@ export default function OverviewPage() {
   useEffect(() => subscribeBookings(setAllBookings), []);
   useEffect(() => subscribeLocations(setAllLocations), []);
   useEffect(() => subscribeUsers(setAllUsers), []);
+
+  // Auto-ground sweep: walks airworthy aircraft for expired events and
+  // grounds them, raising a banner notification per grounding. Runs client-
+  // side on every aircraft/events change because the app stays open all day
+  // and SEP wants the grounded state to surface the moment anyone loads the
+  // overview. Skipped entirely for view-only users — they neither write nor
+  // see banners.
+  useEffect(() => {
+    if (isViewer || !user || !aircraft) return;
+    if (autoGroundProcessing.current) return;
+    let cancelled = false;
+    autoGroundProcessing.current = true;
+    (async () => {
+      try {
+        const grounded = await autoGroundExpired(user.uid, aircraft, allEvents);
+        if (cancelled) return;
+        await Promise.all(
+          grounded.map(({ tail, event }) => {
+            const dueStr = event.expiryDate
+              ? ` on ${formatDate(event.expiryDate)}`
+              : "";
+            return raiseNotification({
+              type: "auto-grounded",
+              tailNumber: tail,
+              eventId: event.id,
+              message: `${tail} grounded — event "${event.warning}" expired${dueStr}.`,
+            });
+          }),
+        );
+      } catch (err) {
+        console.error("autoGroundExpired sweep failed", err);
+      } finally {
+        autoGroundProcessing.current = false;
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isViewer, user, aircraft, allEvents]);
+
+  // Deferral-overdue sweep: any active defect past its 30-day review window
+  // raises a gentle banner reminding CAMO to either extend (re-defer) or
+  // resolve. Re-deferring or resolving clears the banner in the service so a
+  // new one only re-raises after the next full window.
+  useEffect(() => {
+    if (isViewer || !user) return;
+    if (deferralScanProcessing.current) return;
+    const overdue = allDefects.filter(
+      (d) => !d.resolvedAt && getDeferralStatus(d) === "overdue",
+    );
+    if (overdue.length === 0) return;
+    let cancelled = false;
+    deferralScanProcessing.current = true;
+    (async () => {
+      try {
+        await Promise.all(
+          overdue.map((d) => {
+            const days = daysSinceDeferred(d) ?? 30;
+            return raiseNotification({
+              type: "deferral-overdue",
+              tailNumber: d.tailNumber,
+              defectId: d.id,
+              message: `CAMO reminder: deferred defect "${d.title}" on ${d.tailNumber} is past 30 days (${days}d) — please review.`,
+            });
+          }),
+        );
+        if (cancelled) return;
+      } catch (err) {
+        console.error("deferral-overdue sweep failed", err);
+      } finally {
+        deferralScanProcessing.current = false;
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isViewer, user, allDefects]);
 
   const usersByUid = useMemo(() => {
     const m = new Map<string, UserProfile>();

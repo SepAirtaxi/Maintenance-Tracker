@@ -152,6 +152,7 @@ export default function AircraftCard({
     ? buildBookingGroups(
         bookings[0]?.event ?? null,
         bookings[0]?.defects ?? [],
+        bookings[0]?.booking ?? null,
       )[0]?.wo ?? null
     : null;
 
@@ -421,6 +422,7 @@ export default function AircraftCard({
                   const groups = buildBookingGroups(
                     entry.event,
                     entry.defects,
+                    b,
                   );
                   const wos = groups
                     .map((g) => g.wo)

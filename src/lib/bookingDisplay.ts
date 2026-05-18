@@ -1,11 +1,19 @@
-import type { Defect, MaintenanceEvent } from "@/types";
+import type {
+  Booking,
+  BookingItemResolution,
+  Defect,
+  MaintenanceEvent,
+} from "@/types";
 
 // A single line item that hangs off a booking — either the linked event
-// or one of the linked defects.
+// or one of the linked defects. `resolution` is the frozen snapshot from
+// the booking doc when present (preferred), falling back to deriving from
+// live entity state for bookings that pre-date the snapshot feature.
 export type BookingItem = {
   kind: "event" | "defect";
   label: string;
   resolved: boolean;
+  resolution: BookingItemResolution | null;
 };
 
 // Items grouped by shared WO# so the calendar block / overview tile can
@@ -20,14 +28,19 @@ export type BookingGroup = {
 //   • The event's group (if any) is rendered first — it's the parent.
 //   • Within a group, the event comes before defects.
 //   • Groups without a WO# come last.
+// Optional `booking` lets the function prefer the frozen `itemResolutions`
+// snapshot over live entity state. Call sites that don't yet have the
+// booking can omit it; the live-state fallback path is preserved.
 export function buildBookingGroups(
   event: MaintenanceEvent | null,
   defects: Defect[],
+  booking?: Booking | null,
 ): BookingGroup[] {
   type Bucket = { wo: string | null; items: BookingItem[] };
   const woBuckets = new Map<string, Bucket>();
   const noWo: Bucket = { wo: null, items: [] };
   let eventWoKey: string | null = null;
+  const snapshots = booking?.itemResolutions ?? null;
 
   const push = (
     woRaw: string | null | undefined,
@@ -45,23 +58,33 @@ export function buildBookingGroups(
   };
 
   if (event) {
+    const snap = snapshots?.[event.id] ?? null;
     push(
-      event.workOrderNumber,
+      snap?.kind === "resolved" ? snap.workOrder : event.workOrderNumber,
       {
         kind: "event",
-        label: event.warning,
-        resolved: !!event.resolvedAt,
+        label: snap?.label ?? event.warning,
+        resolved: snap ? snap.kind !== "deferred" : !!event.resolvedAt,
+        resolution: snap,
       },
       true,
     );
   }
   for (const d of defects) {
+    const snap = snapshots?.[d.id] ?? null;
     push(
-      d.workOrderNumber,
+      snap?.kind === "resolved" || snap?.kind === "nff"
+        ? snap.workOrder
+        : d.workOrderNumber,
       {
         kind: "defect",
-        label: d.title,
-        resolved: !!d.resolvedAt,
+        label: snap?.label ?? d.title,
+        // Deferred items are not "resolved" — they stay open. Strike-through
+        // should only apply for resolved/NFF closures.
+        resolved: snap
+          ? snap.kind === "resolved" || snap.kind === "nff"
+          : !!d.resolvedAt,
+        resolution: snap,
       },
       false,
     );
@@ -83,14 +106,29 @@ export function buildBookingGroups(
   return ordered;
 }
 
+function describeItem(it: BookingItem): string {
+  if (it.resolution) {
+    if (it.resolution.kind === "resolved") {
+      return it.resolution.workOrder
+        ? `${it.label} (resolved on WO ${it.resolution.workOrder})`
+        : `${it.label} (resolved)`;
+    }
+    if (it.resolution.kind === "nff") {
+      return it.resolution.workOrder
+        ? `${it.label} (NFF on WO ${it.resolution.workOrder})`
+        : `${it.label} (NFF)`;
+    }
+    return `${it.label} (deferred)`;
+  }
+  return it.resolved ? `${it.label} (resolved)` : it.label;
+}
+
 // Plain-text rendering for tooltips / aria-labels / audit summaries.
 export function describeBookingGroups(groups: BookingGroup[]): string {
   if (groups.length === 0) return "";
   return groups
     .map((g) => {
-      const labels = g.items
-        .map((it) => (it.resolved ? `${it.label} (resolved)` : it.label))
-        .join(" · ");
+      const labels = g.items.map(describeItem).join(" · ");
       return g.wo ? `WO ${g.wo}: ${labels}` : labels;
     })
     .join(" | ");

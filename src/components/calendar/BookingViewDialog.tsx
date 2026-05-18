@@ -14,7 +14,13 @@ import {
 } from "@/lib/bookingDisplay";
 import { formatBookingRange } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import type { Booking, Defect, Location, MaintenanceEvent } from "@/types";
+import type {
+  Booking,
+  BookingItemResolution,
+  Defect,
+  Location,
+  MaintenanceEvent,
+} from "@/types";
 
 type Props = {
   booking: Booking | null;
@@ -58,7 +64,8 @@ export default function BookingViewDialog({
   }, [booking, defects]);
 
   const groups: BookingGroup[] = useMemo(
-    () => (booking ? buildBookingGroups(linkedEvent, linkedDefects) : []),
+    () =>
+      booking ? buildBookingGroups(linkedEvent, linkedDefects, booking) : [],
     [booking, linkedEvent, linkedDefects],
   );
 
@@ -162,35 +169,44 @@ export default function BookingViewDialog({
                       </span>
                     )}
                     <div className="flex-1 min-w-0">
-                      {g.items.map((it, ii) => (
-                        <Fragment key={ii}>
-                          {ii > 0 && (
-                            <span className="text-muted-foreground"> · </span>
-                          )}
-                          <span
-                            className={cn(
-                              "inline-flex items-center gap-1",
-                              it.resolved && "line-through opacity-60",
-                            )}
-                          >
-                            {it.resolved && (
-                              <Check className="h-3 w-3 text-emerald-600" />
+                      {g.items.map((it, ii) => {
+                        const res = it.resolution;
+                        // Strike only true closures (resolved/NFF). Deferred
+                        // items stay open visually but get the deferred chip.
+                        const strike =
+                          it.resolved &&
+                          (!res || res.kind === "resolved" || res.kind === "nff");
+                        return (
+                          <Fragment key={ii}>
+                            {ii > 0 && (
+                              <span className="text-muted-foreground"> · </span>
                             )}
                             <span
                               className={cn(
-                                it.kind === "event"
-                                  ? "font-medium"
-                                  : "text-foreground/90",
+                                "inline-flex items-center gap-1",
+                                strike && "line-through opacity-60",
                               )}
                             >
-                              {it.label}
+                              {strike && (
+                                <Check className="h-3 w-3 text-emerald-600" />
+                              )}
+                              <span
+                                className={cn(
+                                  it.kind === "event"
+                                    ? "font-medium"
+                                    : "text-foreground/90",
+                                )}
+                              >
+                                {it.label}
+                              </span>
+                              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                                {it.kind}
+                              </span>
                             </span>
-                            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                              {it.kind}
-                            </span>
-                          </span>
-                        </Fragment>
-                      ))}
+                            {res && <ResolutionBadge resolution={res} />}
+                          </Fragment>
+                        );
+                      })}
                     </div>
                   </div>
                 ))}
@@ -222,5 +238,34 @@ export default function BookingViewDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function ResolutionBadge({ resolution }: { resolution: BookingItemResolution }) {
+  if (resolution.kind === "resolved") {
+    return (
+      <span className="ml-1 inline-flex items-center rounded bg-emerald-100 text-emerald-900 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider">
+        {resolution.workOrder
+          ? `Resolved · WO ${resolution.workOrder}`
+          : "Resolved"}
+      </span>
+    );
+  }
+  if (resolution.kind === "nff") {
+    return (
+      <span className="ml-1 inline-flex items-center rounded bg-sky-100 text-sky-900 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider">
+        {resolution.workOrder
+          ? `NFF · WO ${resolution.workOrder}`
+          : "NFF"}
+      </span>
+    );
+  }
+  return (
+    <span
+      className="ml-1 inline-flex items-center rounded bg-amber-100 text-amber-900 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
+      title={resolution.reason ?? undefined}
+    >
+      Deferred
+    </span>
   );
 }

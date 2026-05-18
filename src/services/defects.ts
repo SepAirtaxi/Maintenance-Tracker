@@ -20,6 +20,8 @@ import {
   findAircraftGroundedByCause,
   liftGrounding,
 } from "@/services/aircraft";
+import { clearNotification } from "@/services/notifications";
+import { snapshotItemResolution } from "@/services/bookings";
 import type { Defect } from "@/types";
 
 const defectsCol = () => collection(db, "defects");
@@ -308,6 +310,19 @@ export async function resolveDefect(
       }),
     ),
   );
+
+  // Clear any deferral-overdue banner tied to this defect — it's resolved.
+  await clearNotification("deferral-overdue", prev.tailNumber, id);
+
+  // Snapshot the resolution onto bookings that have already started.
+  await snapshotItemResolution(prev.tailNumber, "defect", id, {
+    kind: input.resolutionKind === "nff" ? "nff" : "resolved",
+    workOrder: wo,
+    date: Timestamp.fromDate(input.resolvedDate),
+    reason: null,
+    label: prev.title,
+    itemKind: "defect",
+  });
 }
 
 export async function deferDefect(
@@ -339,6 +354,24 @@ export async function deferDefect(
       ? `Defect re-deferred: "${prev.title}" — ${trimmed}`
       : `Defect deferred (30-day review): "${prev.title}" — ${trimmed}`,
   });
+
+  // Re-deferral resets the 30-day clock — drop any stale overdue banner so a
+  // fresh one can raise after the next window. First-time defer is a no-op
+  // (no notification exists yet) but is safe and cheap.
+  await clearNotification("deferral-overdue", prev.tailNumber, id);
+
+  // Snapshot the deferral onto bookings that have already started so the
+  // historical record reads "deferred" even if the defect is later resolved
+  // on a different WO. snapshotItemResolution skips bookings that already
+  // have a snapshot — re-deferral doesn't overwrite the original capture.
+  await snapshotItemResolution(prev.tailNumber, "defect", id, {
+    kind: "deferred",
+    workOrder: null,
+    date: Timestamp.now(),
+    reason: trimmed,
+    label: prev.title,
+    itemKind: "defect",
+  });
 }
 
 export async function undeferDefect(id: string): Promise<void> {
@@ -360,6 +393,8 @@ export async function undeferDefect(id: string): Promise<void> {
     entityId: id,
     summary: `Defect deferral lifted: "${prev.title}"`,
   });
+
+  await clearNotification("deferral-overdue", prev.tailNumber, id);
 }
 
 export type EstimatePatch = {
@@ -453,5 +488,6 @@ export async function deleteDefect(id: string): Promise<void> {
       entityId: id,
       summary: `Defect deleted: ${prev.title}`,
     });
+    await clearNotification("deferral-overdue", prev.tailNumber, id);
   }
 }

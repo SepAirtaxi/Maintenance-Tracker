@@ -16,7 +16,8 @@ import { db } from "@/lib/firebase";
 import { logAudit } from "@/services/audit";
 import { formatMinutesAsDuration } from "@/lib/time";
 import { normaliseTailNumber } from "@/lib/tails";
-import type { Aircraft, GroundingCauseType } from "@/types";
+import { getEventSeverity } from "@/lib/eventStatus";
+import type { Aircraft, GroundingCauseType, MaintenanceEvent } from "@/types";
 
 export { normaliseTailNumber };
 
@@ -211,6 +212,60 @@ export async function findAircraftGroundedByCause(
   );
   const snap = await getDocs(q);
   return snap.docs.map((d) => (d.data() as Aircraft).tailNumber);
+}
+
+// Scans airworthy aircraft and grounds any with at least one open event whose
+// severity is red (date or hours expired). Picks the earliest-expiring red
+// event as the grounding cause. Skips aircraft that are already grounded.
+// Returns the (tail, event) pairs that were grounded so the caller can raise
+// matching notifications.
+export async function autoGroundExpired(
+  byUid: string,
+  aircraft: Aircraft[],
+  events: MaintenanceEvent[],
+): Promise<{ tail: string; event: MaintenanceEvent }[]> {
+  const eventsByTail = new Map<string, MaintenanceEvent[]>();
+  for (const e of events) {
+    if (e.resolvedAt) continue;
+    const arr = eventsByTail.get(e.tailNumber) ?? [];
+    arr.push(e);
+    eventsByTail.set(e.tailNumber, arr);
+  }
+
+  const grounded: { tail: string; event: MaintenanceEvent }[] = [];
+  for (const ac of aircraft) {
+    if (ac.airworthy === false) continue;
+    const tailEvents = eventsByTail.get(ac.tailNumber);
+    if (!tailEvents || tailEvents.length === 0) continue;
+
+    const redEvents = tailEvents.filter(
+      (e) => getEventSeverity(e, ac.totalTimeMinutes) === "red",
+    );
+    if (redEvents.length === 0) continue;
+
+    // Pick the cause as the red event with the earliest expiryDate
+    // (date-expired events take precedence over hours-only red events).
+    redEvents.sort((a, b) => {
+      const da = a.expiryDate?.toMillis() ?? Number.POSITIVE_INFINITY;
+      const db = b.expiryDate?.toMillis() ?? Number.POSITIVE_INFINITY;
+      return da - db;
+    });
+    const cause = redEvents[0];
+
+    await groundAircraft(
+      ac.tailNumber,
+      {
+        type: "event",
+        eventId: cause.id,
+        eventTitle: cause.warning,
+        workOrderNumber: cause.workOrderNumber,
+      },
+      byUid,
+    );
+    grounded.push({ tail: ac.tailNumber, event: cause });
+  }
+
+  return grounded;
 }
 
 export async function updateAircraftModel(

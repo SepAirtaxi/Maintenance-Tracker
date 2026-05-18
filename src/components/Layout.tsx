@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { CalendarDays, Eye, LayoutGrid, LogOut, Settings, Telescope } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
+import NotificationBannerStack from "@/components/notifications/NotificationBannerStack";
 import logoUrl from "@/img/logo.png";
 
 const navItems = [
@@ -93,7 +94,8 @@ export default function Layout() {
           </div>
         </div>
       </header>
-      <main className="container flex-1 py-6">
+      <main className="container flex-1 py-6 space-y-3">
+        <NotificationBannerStack />
         <Outlet />
       </main>
     </div>
