@@ -3,6 +3,7 @@ import {
   ArrowDown,
   ArrowUp,
   CalendarClock,
+  CalendarPlus,
   ShieldOff,
   Upload,
 } from "lucide-react";
@@ -30,12 +31,17 @@ import EstimateDialog, {
   type EstimateTarget,
 } from "@/components/overview/EstimateDialog";
 import UpcomingEventsDialog from "@/components/overview/UpcomingEventsDialog";
+import NeedsBookingDialog from "@/components/overview/NeedsBookingDialog";
 import HistoryDialog from "@/components/overview/HistoryDialog";
 import { useAuth } from "@/context/AuthContext";
 import { autoGroundExpired, subscribeAircraft } from "@/services/aircraft";
 import { subscribeEvents } from "@/services/events";
 import { subscribeDefects } from "@/services/defects";
-import { raiseNotification } from "@/services/notifications";
+import {
+  clearBookingReminder,
+  raiseNotification,
+  subscribeBookingReminders,
+} from "@/services/notifications";
 import { formatDate } from "@/lib/format";
 import {
   subscribeBookings,
@@ -48,7 +54,9 @@ import {
   daysSinceDeferred,
   getDeferralStatus,
   getEventSeverity,
+  getNeedsBookingMatches,
   worstSeverity,
+  type NeedsBookingMatch,
   type Severity,
 } from "@/lib/eventStatus";
 import type {
@@ -57,8 +65,21 @@ import type {
   Defect,
   Location,
   MaintenanceEvent,
+  Notification,
   UserProfile,
 } from "@/types";
+
+// Frozen-message snippet for the booking-reminder banner. Lists up to three
+// event titles inline; collapses the rest into a count so very busy tails
+// don't spam a paragraph-length banner.
+function formatEventList(titles: string[]): string {
+  if (titles.length === 0) return "event(s)";
+  if (titles.length === 1) return `"${titles[0]}"`;
+  if (titles.length === 2) return `"${titles[0]}" and "${titles[1]}"`;
+  if (titles.length === 3)
+    return `"${titles[0]}", "${titles[1]}" and "${titles[2]}"`;
+  return `"${titles[0]}", "${titles[1]}", "${titles[2]}" and ${titles.length - 3} more`;
+}
 
 const EVENT_SEVERITY_ORDER: Record<Severity, number> = {
   red: 0,
@@ -238,6 +259,9 @@ export default function OverviewPage() {
   // layer, but the ref keeps writes out of the network in the common case).
   const autoGroundProcessing = useRef(false);
   const deferralScanProcessing = useRef(false);
+  const bookingReminderProcessing = useRef(false);
+
+  const [bookingReminders, setBookingReminders] = useState<Notification[]>([]);
 
   const [eventFormOpen, setEventFormOpen] = useState(false);
   const [eventFormTail, setEventFormTail] = useState<string>("");
@@ -277,6 +301,7 @@ export default function OverviewPage() {
     useState<Defect | null>(null);
   const [historyTail, setHistoryTail] = useState<string | null>(null);
   const [upcomingOpen, setUpcomingOpen] = useState(false);
+  const [needsBookingOpen, setNeedsBookingOpen] = useState(false);
 
   useEffect(() => subscribeAircraft(setAircraft), []);
   useEffect(() => subscribeEvents(setAllEvents), []);
@@ -284,6 +309,10 @@ export default function OverviewPage() {
   useEffect(() => subscribeBookings(setAllBookings), []);
   useEffect(() => subscribeLocations(setAllLocations), []);
   useEffect(() => subscribeUsers(setAllUsers), []);
+  useEffect(() => {
+    if (isViewer) return;
+    return subscribeBookingReminders(setBookingReminders);
+  }, [isViewer]);
 
   // Auto-ground sweep: walks airworthy aircraft for expired events and
   // grounds them, raising a banner notification per grounding. Runs client-
@@ -414,6 +443,93 @@ export default function OverviewPage() {
     () => buildBookedIdSets(allBookings, eventsById, defectsById),
     [allBookings, eventsById, defectsById],
   );
+
+  const needsBookingMatches: NeedsBookingMatch[] = useMemo(() => {
+    if (!aircraft) return [];
+    const ttafByTail = new Map<string, number | null>();
+    const airworthyTails = new Set<string>();
+    for (const a of aircraft) {
+      ttafByTail.set(a.tailNumber, a.totalTimeMinutes);
+      if (a.airworthy !== false) airworthyTails.add(a.tailNumber);
+    }
+    return getNeedsBookingMatches(
+      allEvents,
+      ttafByTail,
+      airworthyTails,
+      bookedIds.eventIds,
+    );
+  }, [aircraft, allEvents, bookedIds.eventIds]);
+
+  const needsBookingByTail: Map<string, NeedsBookingMatch[]> = useMemo(() => {
+    const m = new Map<string, NeedsBookingMatch[]>();
+    for (const match of needsBookingMatches) {
+      const arr = m.get(match.event.tailNumber) ?? [];
+      arr.push(match);
+      m.set(match.event.tailNumber, arr);
+    }
+    return m;
+  }, [needsBookingMatches]);
+
+  // Reconciliation sweep: raises one booking-reminder banner per tail that has
+  // qualifying events, and clears the banner for any tail that no longer has
+  // any. Driven off the existing `bookingReminders` subscription so writes only
+  // fire when state actually changes (no per-scan delete churn).
+  useEffect(() => {
+    if (isViewer || !user || !aircraft) return;
+    if (bookingReminderProcessing.current) return;
+
+    const existingTails = new Set<string>();
+    for (const n of bookingReminders) existingTails.add(n.tailNumber);
+
+    const matchedTails = new Set<string>(needsBookingByTail.keys());
+    const airworthyTails = new Set<string>();
+    for (const a of aircraft) {
+      if (a.airworthy !== false) airworthyTails.add(a.tailNumber);
+    }
+
+    const toRaise: { tail: string; matches: NeedsBookingMatch[] }[] = [];
+    const toClear: string[] = [];
+    for (const tail of matchedTails) {
+      if (!existingTails.has(tail)) {
+        toRaise.push({ tail, matches: needsBookingByTail.get(tail) ?? [] });
+      }
+    }
+    for (const tail of existingTails) {
+      // Clear if the tail no longer has matches OR has been grounded since the
+      // banner was raised (grounded planes don't need a hangar reminder).
+      if (!matchedTails.has(tail) || !airworthyTails.has(tail)) {
+        toClear.push(tail);
+      }
+    }
+    if (toRaise.length === 0 && toClear.length === 0) return;
+
+    let cancelled = false;
+    bookingReminderProcessing.current = true;
+    (async () => {
+      try {
+        await Promise.all([
+          ...toRaise.map(({ tail, matches }) =>
+            raiseNotification({
+              type: "booking-reminder",
+              tailNumber: tail,
+              message: `${tail}: ${formatEventList(
+                matches.map((m) => m.event.warning),
+              )} approaching expiry with no booking — book a hangar slot.`,
+            }),
+          ),
+          ...toClear.map((tail) => clearBookingReminder(tail)),
+        ]);
+        if (cancelled) return;
+      } catch (err) {
+        console.error("booking-reminder sweep failed", err);
+      } finally {
+        bookingReminderProcessing.current = false;
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isViewer, user, aircraft, needsBookingByTail, bookingReminders]);
 
   const summaries: AircraftSummary[] = useMemo(() => {
     if (!aircraft) return [];
@@ -707,6 +823,19 @@ export default function OverviewPage() {
             <CalendarClock className="h-4 w-4" />
             Upcoming events
           </Button>
+          <Button
+            onClick={() => setNeedsBookingOpen(true)}
+            size="sm"
+            variant="outline"
+          >
+            <CalendarPlus className="h-4 w-4" />
+            Needs booking
+            {needsBookingMatches.length > 0 && (
+              <span className="ml-1 inline-flex items-center justify-center rounded-full bg-amber-200 text-amber-900 px-1.5 min-w-[1.25rem] h-5 text-[11px] font-semibold tabular-nums">
+                {needsBookingMatches.length}
+              </span>
+            )}
+          </Button>
           {!isViewer && (
             <Button onClick={() => setImportOpen(true)} size="sm">
               <Upload className="h-4 w-4" />
@@ -919,6 +1048,13 @@ export default function OverviewPage() {
         onOpenChange={setUpcomingOpen}
         aircraft={aircraft ?? []}
         events={allEvents.filter((e) => !e.resolvedAt)}
+      />
+      <NeedsBookingDialog
+        open={needsBookingOpen}
+        onOpenChange={setNeedsBookingOpen}
+        matches={needsBookingMatches}
+        readOnly={isViewer}
+        onBook={openAddBooking}
       />
     </div>
   );

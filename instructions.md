@@ -237,6 +237,26 @@ const firebaseConfig = {
   - `active: boolean` — inactive locations are hidden from new-booking pickers but kept for legacy bookings; the picker re-introduces a currently-linked inactive location so it stays editable.
 - Service: `src/services/locations.ts` (subscribe / create / update / delete). Stored in Firestore collection `locations`. `firestore.rules` now permits read for any signed-in user, write for members. **Deploy needs `firebase deploy --only firestore:rules`** to take effect.
 
+### Notification banner stack
+- Sticky banner stack at the top of every page (`NotificationBannerStack.tsx`), mounted via `Layout.tsx`. Three notification types share the same component and ack flow:
+  - `auto-grounded` — red (severe), `ShieldOff` icon. Raised when an expired event auto-grounds an aircraft.
+  - `deferral-overdue` — sky-blue (gentle reminder), `Info` icon. Raised when a deferred defect crosses the 30-day review window.
+  - `booking-reminder` — sky-blue, `CalendarClock` icon. Raised per-tail when one or more events enter the booking window with no hangar slot linked (see *Needs booking* below).
+- Dismiss is a labeled **Acknowledge** outline button, not an X icon — explicit action language reads more deliberately for state-changing alerts. Global ack: once anyone dismisses, the banner is gone for everyone. View-only users never see banners and don't subscribe to the collection.
+- Message text is frozen at raise time so entity renames don't drift the banner copy. Banners come back fresh after `clearNotification` runs (event resolved, defect re-deferred, or all per-tail matches clear).
+
+### Needs booking — banner + dialog
+- Surfaces events that have entered the hangar-booking window so the planner can grab a slot before the plane flies through the deadline or hangars fill up.
+- **Trigger** (per event, all must hold; helper `getNeedsBookingMatches` in `src/lib/eventStatus.ts`):
+  - Event unresolved, on an airworthy aircraft, with no future/active booking linked (uses the same `buildBookedIdSets` result that drives plan status).
+  - When the event has a TTAF timer: ≤ 20 flight hours remaining and not yet expired. TTAF is the dominant scheduling constraint at CAT — calendar deadlines are too uncertain to plan against weeks ahead (utilization variance, weather), and scheduled maintenance almost always hits the hours threshold first.
+  - When the event is date-only (no TTAF timer): ≤ 14 days remaining and not yet expired.
+  - Already-expired events (negative remaining) are excluded — they're handled by the auto-ground sweep.
+- **Banner** (`booking-reminder` type): one per tail, info-style. Message lists up to three event titles inline (`OY-XYZ: "Annual" and "100h" approaching expiry with no booking — book a hangar slot.`); 4+ collapse to `"A", "B", "C" and N more` so a busy tail doesn't spam a paragraph. Frozen at raise time; live source of truth is the dialog.
+- **Reconciliation sweep** in `OverviewPage.tsx`: subscribes to existing booking-reminder docs (`subscribeBookingReminders` returns acked + unacked) and diffs them against the live match set per tail. Writes only when state actually changes — raises for newly-matched tails, clears for tails that lose all matches or get grounded. No per-render delete churn.
+- **Button + dialog** (`NeedsBookingDialog.tsx`): "Needs booking" button sits next to "Upcoming events" with an amber count badge when matches > 0. Dialog lists each qualifying event with tail, warning, due value, remaining hrs/days, and a per-row **Book** button that closes the dialog and opens the booking form prefilled with that tail.
+- Dismissing the banner does **not** re-raise as more events appear on the same tail — once acked, the cause-tail stays acked until all matches clear (booking linked or events resolved). A future occurrence raises a fresh banner. Live count is always visible via the dialog/button badge regardless of ack state.
+
 ### Bookings — location field
 - New `Booking.locationId: string | null`. The `BookingDialog` form has a Location selector below the defect list. Selecting `— No location —` stores `null`. The selected location is looked up at render time, so renaming a location updates everywhere live.
 - Location label is rendered in three places:

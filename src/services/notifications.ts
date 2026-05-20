@@ -69,13 +69,35 @@ type RaiseInput =
       tailNumber: string;
       defectId: string;
       message: string;
+    }
+  | {
+      // Per-tail aggregate banner reminding to book a hangar slot for events
+      // that have entered the booking window. One per tail (causeId fixed).
+      type: "booking-reminder";
+      tailNumber: string;
+      message: string;
     };
+
+// Fixed causeId for per-tail notifications — the tail itself is the cause, so
+// the doc id stays `${type}__${tail}__tail`.
+const PER_TAIL_CAUSE_ID = "tail";
+
+function causeIdFor(input: RaiseInput): string {
+  switch (input.type) {
+    case "auto-grounded":
+      return input.eventId;
+    case "deferral-overdue":
+      return input.defectId;
+    case "booking-reminder":
+      return PER_TAIL_CAUSE_ID;
+  }
+}
 
 // Creates the notification only if one doesn't already exist for this cause.
 // Preserves a previously-acked notification from re-raising on its own — only
 // `clearNotification` (called when the cause resolves) allows a fresh raise.
 export async function raiseNotification(input: RaiseInput): Promise<void> {
-  const causeId = input.type === "auto-grounded" ? input.eventId : input.defectId;
+  const causeId = causeIdFor(input);
   const id = notificationId(input.type, input.tailNumber, causeId);
   const ref = notificationDoc(id);
   const existing = await getDoc(ref);
@@ -90,6 +112,24 @@ export async function raiseNotification(input: RaiseInput): Promise<void> {
     acknowledgedAt: null,
     acknowledgedBy: null,
   });
+}
+
+// Per-tail subscription for the booking-reminder type — covers acked + unacked
+// so the reconciliation scan can decide whether to clear.
+export function subscribeBookingReminders(
+  callback: (notifications: Notification[]) => void,
+): () => void {
+  const q = query(
+    notificationsCol(),
+    where("type", "==", "booking-reminder"),
+  );
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map((d) => docToNotification(d.id, d.data())));
+  });
+}
+
+export async function clearBookingReminder(tailNumber: string): Promise<void> {
+  await clearNotification("booking-reminder", tailNumber, PER_TAIL_CAUSE_ID);
 }
 
 export async function acknowledgeNotification(

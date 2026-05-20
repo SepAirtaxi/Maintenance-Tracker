@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ShieldOff, Info, X } from "lucide-react";
+import { ShieldOff, Info, CalendarClock } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import {
   subscribeActiveNotifications,
@@ -57,7 +57,12 @@ function NotificationBanner({
   onDismiss: () => void;
 }) {
   const isGrounded = notification.type === "auto-grounded";
-  const Icon = isGrounded ? ShieldOff : Info;
+  const Icon =
+    notification.type === "auto-grounded"
+      ? ShieldOff
+      : notification.type === "booking-reminder"
+        ? CalendarClock
+        : Info;
   return (
     <div
       role="alert"
@@ -79,18 +84,17 @@ function NotificationBanner({
       </div>
       <Button
         type="button"
-        size="icon"
-        variant="ghost"
+        size="sm"
+        variant="outline"
         className={cn(
-          "h-6 w-6 shrink-0",
+          "h-7 shrink-0 px-2.5 text-xs font-medium",
           isGrounded
-            ? "text-rose-900 hover:bg-rose-100 hover:text-rose-950"
-            : "text-sky-900 hover:bg-sky-100 hover:text-sky-950",
+            ? "border-status-red/40 bg-white/60 text-rose-900 hover:bg-rose-100 hover:text-rose-950"
+            : "border-sky-300/60 bg-white/60 text-sky-900 hover:bg-sky-100 hover:text-sky-950",
         )}
         onClick={onDismiss}
-        title="Dismiss"
       >
-        <X className="h-3.5 w-3.5" />
+        Acknowledge
       </Button>
     </div>
   );

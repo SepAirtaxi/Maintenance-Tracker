@@ -124,6 +124,65 @@ export function getDeferralStatus(defect: Defect): DeferralStatus {
   return elapsed >= DEFERRAL_REVIEW_DAYS ? "overdue" : "within";
 }
 
+// "Needs hangar booking" thresholds. Surfaces events that have entered the
+// booking window so the planner can grab a slot before the plane flies through
+// it or the hangar fills up. TTAF dominates when present (events almost always
+// hit the hour timer before the calendar one and the calendar is too uncertain
+// to plan against weeks in advance); date-only events fall back to days.
+export const NEEDS_BOOKING_MINUTES_THRESHOLD = 20 * 60;
+export const NEEDS_BOOKING_DAYS_THRESHOLD = 14;
+
+export type NeedsBookingReason = "hours" | "days";
+
+export type NeedsBookingMatch = {
+  event: MaintenanceEvent;
+  reason: NeedsBookingReason;
+  // Minutes remaining when reason === "hours"; days remaining when "days".
+  remaining: number;
+};
+
+// Returns the events that should trigger the "needs booking" reminder. An
+// event qualifies when it's unresolved, on an airworthy aircraft, has no
+// future/active booking linked, and is within the threshold:
+//   • Hours-based (event has a TTAF timer): 0 ≤ minutes left ≤ 20 hours.
+//     If the aircraft has no current TTAF, the event is skipped (we can't tell
+//     how close it is).
+//   • Date-only (event has expiryDate but no TTAF timer): 0 ≤ days left ≤ 14.
+// Events already expired (negative remaining) are handled by the separate
+// auto-grounding sweep and intentionally excluded here.
+export function getNeedsBookingMatches(
+  events: ReadonlyArray<MaintenanceEvent>,
+  ttafByTail: ReadonlyMap<string, number | null>,
+  airworthyTails: ReadonlySet<string>,
+  bookedEventIds: ReadonlySet<string>,
+): NeedsBookingMatch[] {
+  const out: NeedsBookingMatch[] = [];
+  for (const e of events) {
+    if (e.resolvedAt) continue;
+    if (!airworthyTails.has(e.tailNumber)) continue;
+    if (bookedEventIds.has(e.id)) continue;
+
+    if (e.timerExpiryTimeMinutes != null) {
+      const minutes = computeMinutesLeft(
+        e,
+        ttafByTail.get(e.tailNumber) ?? null,
+      );
+      if (minutes == null) continue;
+      if (minutes < 0 || minutes > NEEDS_BOOKING_MINUTES_THRESHOLD) continue;
+      out.push({ event: e, reason: "hours", remaining: minutes });
+      continue;
+    }
+
+    if (e.expiryDate != null) {
+      const days = computeDaysLeft(e);
+      if (days == null) continue;
+      if (days < 0 || days > NEEDS_BOOKING_DAYS_THRESHOLD) continue;
+      out.push({ event: e, reason: "days", remaining: days });
+    }
+  }
+  return out;
+}
+
 // Builds two id-sets describing which events / defects appear on a booking.
 // Only bookings whose linked entity has a WO# count — without one, the entity
 // can't be in the "WO + booked" state. Past bookings (entirely before today)

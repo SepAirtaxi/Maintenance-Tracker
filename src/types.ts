@@ -190,7 +190,10 @@ export type Defect = {
   updatedAt: Timestamp;
 };
 
-export type NotificationType = "auto-grounded" | "deferral-overdue";
+export type NotificationType =
+  | "auto-grounded"
+  | "deferral-overdue"
+  | "booking-reminder";
 
 // Persistent banner notification. Global ack — once anyone dismisses it, the
 // banner disappears for everyone. View-only users never see banners and never
@@ -201,7 +204,7 @@ export type Notification = {
   type: NotificationType;
   tailNumber: string;
   // For `auto-grounded` this is the eventId; for `deferral-overdue` it's the
-  // defectId. The other field is null.
+  // defectId; both are null for `booking-reminder` (the tail is the cause).
   eventId: string | null;
   defectId: string | null;
   // Frozen message text captured when the notification was raised, so the
