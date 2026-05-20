@@ -126,15 +126,27 @@ export function getDeferralStatus(defect: Defect): DeferralStatus {
 
 // Builds two id-sets describing which events / defects appear on a booking.
 // Only bookings whose linked entity has a WO# count — without one, the entity
-// can't be in the "WO + booked" state.
+// can't be in the "WO + booked" state. Past bookings (entirely before today)
+// are skipped: the work is assumed resolved or rescheduled, so they shouldn't
+// keep the linked event/defect reading as "booked" once the calendar window
+// has elapsed. They remain in Firestore so they're still editable from the
+// timeline.
 export function buildBookedIdSets(
   bookings: Booking[],
   events: ReadonlyMap<string, MaintenanceEvent>,
   defects: ReadonlyMap<string, Defect>,
+  now: Date = new Date(),
 ): { eventIds: Set<string>; defectIds: Set<string> } {
+  const startOfToday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+  ).getTime();
   const eventIds = new Set<string>();
   const defectIds = new Set<string>();
   for (const b of bookings) {
+    const toMs = b.to ? b.to.toMillis() : Number.POSITIVE_INFINITY;
+    if (toMs < startOfToday) continue;
     if (b.eventId) {
       const e = events.get(b.eventId);
       if (e && e.workOrderNumber?.trim()) eventIds.add(e.id);

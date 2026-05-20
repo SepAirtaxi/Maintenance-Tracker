@@ -215,7 +215,7 @@ const firebaseConfig = {
 - Events and defects display a derived **PlanStatus**: `unplanned` / `planned` / `booked` (rendered as *no action* / *WO created* / *WO + booked*).
 - `unplanned` = no work-order number set.
 - `planned` = WO# set, no booking links this entity.
-- `booked` = WO# set **and** at least one booking links the entity (event via `eventId`, defect via `defectIds`). The booked-set is precomputed in `OverviewPage` via `buildBookedIdSets` (`src/lib/eventStatus.ts`) and passed down to the rows.
+- `booked` = WO# set **and** at least one **active or upcoming** booking links the entity (event via `eventId`, defect via `defectIds`). Past bookings (whose `to` date is before today) are skipped — the work is assumed resolved or rescheduled, so they no longer hold the entity in "booked" once the calendar window has elapsed. They stay in Firestore and remain editable from the timeline. The booked-set is precomputed in `OverviewPage` via `buildBookedIdSets` (`src/lib/eventStatus.ts`) and passed down to the rows.
 - **Pill colour hierarchy** signals progress toward booked: *no action* = red (rose), *WO created* = yellow (amber), *WO + booked* = green (emerald). Same `PLAN_STATUS_CLASS` map is used in `EventRow.tsx` and `DefectsList.tsx`.
 - The Firestore `event.status` field is still written (`statusFromWo`) for historical/audit continuity but the overview rendering uses the derived status. Defects had no status badge before — they now show one symmetric to events.
 
