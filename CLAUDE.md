@@ -2,7 +2,7 @@
 
 ## Design system (design-exp branch)
 
-The app uses a custom design system called **"Hangar / Aviation-precision Modernism"** — Swiss-modernist editorial language applied to aviation maintenance tooling. The system was introduced in a complete visual overhaul on 2026-05-21 and lives on the `design-exp` branch (not yet on `main`).
+The app uses a custom design system called **"Hangar / Aviation-precision Modernism"** — Swiss-modernist editorial language applied to aviation maintenance tooling. The system was introduced in a complete visual overhaul on 2026-05-21 and merged to `main` the same day (deployed live on Vercel).
 
 ### Hard rules — do not violate
 
