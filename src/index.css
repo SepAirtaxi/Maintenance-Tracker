@@ -7,7 +7,7 @@
 @layer base {
   :root {
     /* Modern-soft palette — clean cool neutrals with confident accents */
-    --background: 220 18% 96%;      /* clean light off-white, faint cool */
+    --background: 220 15% 89%;      /* clean light off-white, faint cool */
     --foreground: 220 24% 14%;      /* rich near-black with cool warmth */
     --card: 0 0% 100%;              /* pure white surface */
     --card-foreground: 220 24% 14%;

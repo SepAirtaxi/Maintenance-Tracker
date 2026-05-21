@@ -151,11 +151,11 @@ type SortKey = "severity" | "tail" | "model" | "ttaf" | "due";
 type SortDir = "asc" | "desc";
 
 const SORT_OPTIONS: { key: SortKey; label: string; defaultDir: SortDir }[] = [
-  { key: "severity", label: "Severity", defaultDir: "desc" },
   { key: "tail", label: "Tail", defaultDir: "asc" },
-  { key: "model", label: "Model", defaultDir: "asc" },
-  { key: "ttaf", label: "TTAF", defaultDir: "desc" },
   { key: "due", label: "Next due", defaultDir: "asc" },
+  { key: "severity", label: "Severity", defaultDir: "desc" },
+  { key: "ttaf", label: "TTAF", defaultDir: "desc" },
+  { key: "model", label: "Model", defaultDir: "asc" },
 ];
 
 const FLEET_SEVERITY_RANK: Record<Severity, number> = {
@@ -201,7 +201,7 @@ function TailPill({
       onClick={onClick}
       title={grounded ? `${tail} (grounded)` : tail}
       className={cn(
-        "inline-flex items-center gap-1 border px-1.5 py-0.5 font-mono text-[11px] font-semibold tracking-stamp transition-colors",
+        "inline-flex shrink-0 items-center gap-1 border px-1 py-0.5 font-mono text-[11px] font-semibold tracking-stamp transition-colors",
         active ? PILL_TINT_ACTIVE[severity] : PILL_TINT[severity],
         grounded && "opacity-60",
       )}
@@ -755,7 +755,7 @@ export default function OverviewPage() {
       key={s.aircraft.tailNumber}
       ref={setCardRef(s.aircraft.tailNumber)}
       data-tail={s.aircraft.tailNumber}
-      className="scroll-mt-24"
+      className="scroll-mt-36"
     >
     <AircraftCard
       aircraft={s.aircraft}
@@ -893,11 +893,11 @@ export default function OverviewPage() {
       </div>
 
       {summaries.length > 0 && (
-        <div className="sticky top-[68px] z-30 flex flex-wrap items-stretch border border-foreground/20 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/85">
-          <span className="inline-flex items-center px-3 text-[10px] font-bold uppercase tracking-spec text-muted-foreground bg-foreground/[0.04] border-r border-foreground/10">
+        <div className="sticky top-[90px] z-30 flex items-stretch border border-foreground/20 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/85">
+          <span className="inline-flex shrink-0 items-center px-3 text-[10px] font-bold uppercase tracking-spec text-muted-foreground bg-foreground/[0.04] border-r border-foreground/10">
             Jump
           </span>
-          <div className="flex flex-1 flex-wrap items-center gap-1 px-2 py-1.5">
+          <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto px-2 py-1.5 [scrollbar-width:thin]">
             {airworthyPills.map((s) => (
               <TailPill
                 key={s.aircraft.tailNumber}
@@ -910,7 +910,7 @@ export default function OverviewPage() {
             {groundedPills.length > 0 && (
               <>
                 <span
-                  className="mx-1 h-5 w-px bg-foreground/20"
+                  className="mx-1 h-5 w-px shrink-0 bg-foreground/20"
                   aria-hidden="true"
                 />
                 {groundedPills.map((s) => (
@@ -942,10 +942,10 @@ export default function OverviewPage() {
       )}
       {aircraft && aircraft.length > 0 && (
         <>
-          <div className="space-y-3">{airworthyList.map(renderCard)}</div>
+          <div className="space-y-4">{airworthyList.map(renderCard)}</div>
 
           {groundedList.length > 0 && (
-            <div className="pt-5 space-y-3">
+            <div className="pt-5 space-y-4">
               <div className="flex items-center gap-3">
                 <ShieldOff className="h-4 w-4 text-sev-red-fg" />
                 <h2 className="font-display text-sm font-bold uppercase tracking-spec text-sev-red-fg">
