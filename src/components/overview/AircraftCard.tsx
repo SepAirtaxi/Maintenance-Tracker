@@ -183,16 +183,6 @@ export default function AircraftCard({
       ? events.find((e) => e.id === aircraft.groundingCauseId) ?? null
       : null;
 
-  // TTAF delta — only render when we know the prior value and it's lower
-  // than the current one. Negative deltas (a correction) are hidden so the
-  // pill doesn't read "Last flight: -2:00".
-  const ttafDeltaMinutes =
-    aircraft.totalTimeMinutes != null &&
-    aircraft.previousTotalTimeMinutes != null &&
-    aircraft.totalTimeMinutes > aircraft.previousTotalTimeMinutes
-      ? aircraft.totalTimeMinutes - aircraft.previousTotalTimeMinutes
-      : null;
-
   const containerClass = airworthy
     ? cn("border-l-4", stripe[worstSeverity])
     : "border-l-4 border-l-destructive bg-muted";
@@ -202,14 +192,17 @@ export default function AircraftCard({
     <section
       ref={cardRef}
       className={cn(
-        "rounded-md border shadow-md overflow-hidden",
+        "border shadow-md overflow-hidden",
         containerClass,
       )}
     >
       <header className={cn("border-b", headerClass)}>
-        {/* Row 1: identity, status, actions */}
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 px-3 py-1.5">
-          <span className="inline-flex items-center rounded-md bg-primary text-primary-foreground px-2.5 py-1 font-mono text-base font-bold tracking-wide shadow-sm">
+        {/* Row 1: identity (cols 1-3, above WO/REQ/EVENT) | actions (cols
+            4-8, above STATUS..ACTIONS). Sharing EVENTS_GRID_COLS with rows
+            2 and 3+ gives the card a single vertical spine. */}
+        <div className={cn("grid items-center gap-2 px-3 py-1.5", EVENTS_GRID_COLS)}>
+          <div className="col-span-3 min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="inline-flex w-20 items-center justify-center bg-primary text-primary-foreground py-1 font-mono text-base font-bold tracking-wide shadow-sm">
             {aircraft.tailNumber}
           </span>
           <span className="text-xs text-muted-foreground">
@@ -220,7 +213,7 @@ export default function AircraftCard({
             <span
               title={airworthy ? "Aircraft is airworthy" : "Aircraft is grounded"}
               className={cn(
-                "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-semibold uppercase tracking-wider shadow-sm",
+                "inline-flex items-center gap-1 border px-2 py-1 text-[11px] font-semibold uppercase tracking-wider shadow-sm",
                 airworthy
                   ? "border-emerald-300 bg-emerald-100 text-emerald-800"
                   : "border-rose-300 bg-rose-100 text-rose-800",
@@ -244,7 +237,7 @@ export default function AircraftCard({
                   : "Click to mark as airworthy"
               }
               className={cn(
-                "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-semibold uppercase tracking-wider shadow-sm transition-colors disabled:opacity-50",
+                "inline-flex items-center gap-1 border px-2 py-1 text-[11px] font-semibold uppercase tracking-wider shadow-sm transition-colors disabled:opacity-50",
                 airworthy
                   ? "border-emerald-300 bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
                   : "border-rose-300 bg-rose-100 text-rose-800 hover:bg-rose-200",
@@ -261,13 +254,13 @@ export default function AircraftCard({
 
           {inHangar && (
             <span
-              className="inline-flex items-center gap-1 rounded-md bg-blue-600 text-white px-2 py-1 text-[11px] font-bold uppercase tracking-wider shadow-sm"
+              className="inline-flex items-center gap-1 bg-blue-600 text-white px-2 py-1 text-[11px] font-bold uppercase tracking-wider shadow-sm"
               title="Aircraft is currently in the maintenance hangar"
             >
               <Wrench className="h-3.5 w-3.5" />
               In maintenance
               {activeWo && (
-                <span className="ml-1 rounded bg-white/20 px-1 py-0.5 text-[10px] font-mono normal-case tracking-normal">
+                <span className="ml-1 bg-white/20 px-1 py-0.5 text-[10px] font-mono normal-case tracking-normal">
                   WO: {activeWo}
                 </span>
               )}
@@ -275,13 +268,14 @@ export default function AircraftCard({
           )}
 
           {defects.length > 0 && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-amber-200/70 text-amber-900 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider">
+            <span className="inline-flex items-center gap-1 bg-amber-200/70 text-amber-900 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider">
               <ShieldAlert className="h-3 w-3" />
               {defects.length} defect{defects.length === 1 ? "" : "s"}
             </span>
           )}
+          </div>
 
-          <div className="ml-auto flex items-center gap-2">
+          <div className="col-span-5 min-w-0 flex items-center justify-end gap-2">
             {aircraft.updatedAt && (
               <span
                 className="text-[10px] text-muted-foreground whitespace-nowrap"
@@ -296,7 +290,7 @@ export default function AircraftCard({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-7 px-2 text-xs"
+                    className="h-7 px-2 text-xs rounded-none"
                     onClick={onAddEvent}
                     title="Add event"
                   >
@@ -306,7 +300,7 @@ export default function AircraftCard({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-7 px-2 text-xs"
+                    className="h-7 px-2 text-xs rounded-none"
                     onClick={onAddDefect}
                     title="Report defect"
                   >
@@ -317,7 +311,7 @@ export default function AircraftCard({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-7 px-2 text-xs"
+                      className="h-7 px-2 text-xs rounded-none"
                       onClick={onEditNote}
                       title="Add note"
                     >
@@ -351,72 +345,65 @@ export default function AircraftCard({
           </div>
         </div>
 
-        {/* Row 2: TTAF (content-width) + Booked (fills remaining space). The
-            booking cell takes most of the row so multiple stacked bookings
-            have room to breathe; the event/defect titles live in the tables
-            below, so the booking rows only need date + location + WO chips. */}
-        <div className="grid grid-cols-1 md:grid-cols-[auto_minmax(0,1fr)] gap-2 px-3 pb-1.5">
-          <div className="grid grid-cols-[14px_3rem_auto_auto_auto_22px] items-center gap-x-2 rounded-md border bg-background px-2 py-1 shadow-sm">
-            <Gauge className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-              TTAF
-            </span>
-            <span className="font-mono font-semibold tabular-nums text-sm">
-              {formatMinutesAsDuration(aircraft.totalTimeMinutes)}
-            </span>
-            {ttafDeltaMinutes != null ? (
-              <span
-                className="text-[10px] text-muted-foreground whitespace-nowrap"
-                title="Increase since the previous TTAF reading on this aircraft"
-              >
-                Last flight:{" "}
-                <span className="font-mono tabular-nums text-foreground">
-                  {formatMinutesAsDuration(ttafDeltaMinutes)}
-                </span>
-              </span>
-            ) : (
-              <span />
-            )}
-            <span className="text-[10px] text-muted-foreground whitespace-nowrap justify-self-end">
-              {aircraft.totalTimeUpdatedAt
-                ? `Last updated: ${formatDate(aircraft.totalTimeUpdatedAt)}${
-                    aircraft.totalTimeSource
-                      ? ` · ${aircraft.totalTimeSource}`
-                      : ""
-                  }`
-                : ""}
-            </span>
-            {readOnly ? (
-              <span className="justify-self-end" />
-            ) : (
+        {/* Row 2: TTAF strip. Update button is a SIBLING of the bordered
+            content container (not nested inside it) so the container's
+            top/bottom border doesn't show above/below the button. The
+            button stays flush with the outer row edges. */}
+        <div className="px-3 pb-1.5">
+          <div className="flex items-stretch">
+            {!readOnly && (
               <button
                 type="button"
                 onClick={onUpdateTtaf}
-                title="Update TTAF manually"
-                className="rounded p-0.5 text-muted-foreground hover:bg-secondary hover:text-foreground justify-self-end"
+                title="Update TTAF"
+                className="inline-flex w-20 items-center justify-center gap-1 bg-primary hover:bg-primary/90 active:bg-primary/80 py-1 text-[10px] font-bold uppercase tracking-wider text-primary-foreground transition-colors"
               >
                 <Pencil className="h-3 w-3" />
+                Update
               </button>
             )}
-          </div>
-
-          {/* Bookings cell — single-line height regardless of how many bookings
-              the tail has. Compact pills (start date · type · WO) scroll
-              horizontally if they overflow, so the card header stays a
-              stable height. Full details (range, location, notes, item
-              titles) live on click in BookingViewDialog and in tooltips. */}
-          <div className="flex items-center gap-2 rounded-md border bg-background px-2 py-1 shadow-sm overflow-hidden">
-            <CalendarDays className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-            <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground shrink-0">
-              Bookings
-            </span>
-            {bookings.length === 0 ? (
-              <span className="text-xs italic text-muted-foreground shrink-0">
-                none scheduled
+            <div className="flex flex-1 items-center gap-2.5 border bg-background px-2.5 py-0.5 shadow-sm min-w-0">
+              <Gauge className="h-4 w-4 text-primary shrink-0" />
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground shrink-0">
+                TTAF
               </span>
-            ) : (
-              <div className="flex items-center gap-1.5 overflow-x-auto min-w-0">
-                {bookings.map((entry) => {
+              <span className="font-mono font-bold tabular-nums text-lg leading-none text-foreground shrink-0">
+                {formatMinutesAsDuration(aircraft.totalTimeMinutes)}
+              </span>
+              {aircraft.totalTimeUpdatedAt && (
+                <span
+                  className="flex items-baseline gap-1 border-l border-border pl-2.5 text-[10px] text-muted-foreground whitespace-nowrap shrink-0"
+                  title="Last TTAF update"
+                >
+                  <span className="font-semibold uppercase tracking-wider">
+                    Updated
+                  </span>
+                  <span className="font-mono tabular-nums text-foreground/80">
+                    {formatDate(aircraft.totalTimeUpdatedAt)}
+                  </span>
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Row 3: Hangar bookings strip — mirrors the TTAF row pattern.
+            Left anchor is a muted-bg label cell sitting as a SIBLING of
+            the bordered content container (not nested), same as the
+            Update button on the TTAF row above. */}
+        <div className="px-3 pb-1.5">
+          <div className="flex items-stretch">
+            <div className="inline-flex items-center gap-1.5 bg-muted/60 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground shrink-0">
+              <CalendarDays className="h-3.5 w-3.5" />
+              Hangar bookings:
+            </div>
+            <div className="flex flex-1 items-center gap-1.5 border bg-background px-2.5 py-0.5 shadow-sm min-w-0 overflow-x-auto">
+              {bookings.length === 0 ? (
+                <span className="text-xs italic text-muted-foreground shrink-0">
+                  none scheduled
+                </span>
+              ) : (
+                bookings.map((entry) => {
                   const b = entry.booking;
                   const active = isBookingActive(b);
                   const groups = buildBookingGroups(
@@ -462,7 +449,7 @@ export default function AircraftCard({
                       onClick={() => onViewBooking(b)}
                       title={titleAttr || "View booking"}
                       className={cn(
-                        "shrink-0 inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] transition-colors",
+                        "shrink-0 inline-flex items-center gap-1 border px-1.5 py-0.5 text-[10px] transition-colors",
                         active
                           ? "border-blue-400 bg-blue-100 hover:bg-blue-200 text-blue-950"
                           : "border-sky-300 bg-sky-50 hover:bg-sky-100 text-sky-900",
@@ -474,7 +461,7 @@ export default function AircraftCard({
                       {typeLabel && (
                         <span
                           className={cn(
-                            "rounded px-1 text-[9px] font-semibold uppercase tracking-wider",
+                            "px-1 text-[9px] font-semibold uppercase tracking-wider",
                             active
                               ? "bg-blue-200 text-blue-900"
                               : "bg-sky-200 text-sky-900",
@@ -486,7 +473,7 @@ export default function AircraftCard({
                       {primaryWo && (
                         <span
                           className={cn(
-                            "rounded px-1 font-mono font-semibold",
+                            "px-1 font-mono font-semibold",
                             active
                               ? "bg-blue-300 text-blue-950"
                               : "bg-sky-300 text-sky-950",
@@ -498,19 +485,20 @@ export default function AircraftCard({
                       )}
                     </button>
                   );
-                })}
-              </div>
-            )}
+                })
+              )}
             {!readOnly && (
               <button
                 type="button"
                 onClick={onAddBooking}
                 title="Add booking for this tail"
-                className="ml-auto shrink-0 rounded p-0.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                className="shrink-0 inline-flex items-center gap-1 border border-border/60 bg-background/60 hover:bg-background hover:border-border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Plus className="h-3 w-3" />
+                Add
               </button>
             )}
+            </div>
           </div>
         </div>
 
@@ -600,7 +588,7 @@ export default function AircraftCard({
                     ? { type: "button", onClick, title }
                     : {})}
                   className={cn(
-                    "w-full flex items-start gap-2 rounded-md border border-rose-300 bg-rose-50 px-2.5 py-1.5 shadow-sm text-left",
+                    "w-full flex items-start gap-2 border border-rose-300 bg-rose-50 px-2.5 py-1.5 shadow-sm text-left",
                     interactive &&
                       "transition-colors hover:bg-rose-100 cursor-pointer",
                   )}
@@ -617,7 +605,7 @@ export default function AircraftCard({
 
         {aircraft.note && (
           <div className="px-3 pb-2">
-            <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1.5 shadow-sm">
+            <div className="flex items-start gap-2 border border-amber-300 bg-amber-50 px-2.5 py-1.5 shadow-sm">
               <StickyNote className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-700" />
               <span className="flex-1 whitespace-pre-wrap break-words text-xs text-amber-900">
                 {aircraft.note}
@@ -627,7 +615,7 @@ export default function AircraftCard({
                   type="button"
                   onClick={onEditNote}
                   title="Edit note"
-                  className="rounded p-0.5 text-amber-800/70 hover:bg-amber-100 hover:text-amber-900"
+                  className="p-0.5 text-amber-800/70 hover:bg-amber-100 hover:text-amber-900"
                 >
                   <Pencil className="h-3 w-3" />
                 </button>
@@ -655,7 +643,7 @@ export default function AircraftCard({
             <span className="self-end pb-0.5">Event</span>
             <span className="self-end pb-0.5">Status</span>
             <span className="self-end pb-0.5">Estimate</span>
-            <div className="rounded-md border border-border overflow-hidden">
+            <div className="border border-border overflow-hidden">
               <div className="bg-muted/70 text-center text-[9px] font-bold tracking-wider py-0 border-b border-border text-foreground/80">
                 Due at
               </div>
@@ -664,7 +652,7 @@ export default function AircraftCard({
                 <span className="py-0.5">TTAF</span>
               </div>
             </div>
-            <div className="rounded-md border border-border overflow-hidden">
+            <div className="border border-border overflow-hidden">
               <div className="bg-muted/70 text-center text-[9px] font-bold tracking-wider py-0 border-b border-border text-foreground/80">
                 Time left
               </div>

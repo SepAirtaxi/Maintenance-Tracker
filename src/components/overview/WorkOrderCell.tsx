@@ -82,7 +82,7 @@ function EditableWorkOrderCell({
     // without disturbing neighbouring cells.
     return (
       <div className="relative min-w-0 h-6">
-        <div className="absolute left-0 top-0 z-20 flex flex-col rounded-md border bg-card shadow-md p-0.5">
+        <div className="absolute left-0 top-0 z-20 flex flex-col border bg-card shadow-md p-0.5">
           <div className="flex items-center gap-1">
             <Input
               ref={inputRef}
@@ -109,7 +109,7 @@ function EditableWorkOrderCell({
             />
             <button
               type="button"
-              className="rounded p-0.5 hover:bg-secondary"
+              className="p-0.5 hover:bg-secondary"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => void commit()}
               title="Save"
@@ -118,7 +118,7 @@ function EditableWorkOrderCell({
             </button>
             <button
               type="button"
-              className="rounded p-0.5 hover:bg-secondary"
+              className="p-0.5 hover:bg-secondary"
               onMouseDown={(e) => e.preventDefault()}
               onClick={cancel}
               title="Cancel"
@@ -138,7 +138,7 @@ function EditableWorkOrderCell({
     <button
       type="button"
       onClick={() => setEditing(true)}
-      className="text-left min-w-0 group rounded px-1 py-0.5 hover:bg-secondary"
+      className="text-left min-w-0 group px-1 py-0.5 hover:bg-secondary"
       title={editTitle}
     >
       <span

@@ -124,7 +124,7 @@ export default function EventRow({
       </span>
       <span
         className={cn(
-          "justify-self-start rounded-full px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider",
+          "justify-self-start px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider",
           PLAN_STATUS_CLASS[planStatus],
         )}
         title={
@@ -150,7 +150,7 @@ export default function EventRow({
           flags it so the original isn't silently rewritten. */}
       <div
         className={cn(
-          "grid grid-cols-2 divide-x divide-border rounded-md border shadow-sm overflow-hidden",
+          "grid grid-cols-2 divide-x divide-border border shadow-sm overflow-hidden",
           extHours != null
             ? "border-amber-400 bg-amber-50"
             : "border-border bg-background",
@@ -181,7 +181,7 @@ export default function EventRow({
         </span>
       </div>
       {/* Time left — days | hours compartment with per-half severity tint */}
-      <div className="grid grid-cols-2 divide-x divide-border rounded-md border border-border shadow-sm overflow-hidden">
+      <div className="grid grid-cols-2 divide-x divide-border border border-border shadow-sm overflow-hidden">
         <span
           className={cn(
             "px-1.5 py-0.5 text-center font-mono text-xs tabular-nums",
@@ -206,7 +206,7 @@ export default function EventRow({
               variant="ghost"
               size="icon"
               className={cn(
-                "h-6 w-6",
+                "h-6 w-6 rounded-none",
                 extHours != null &&
                   "text-amber-700 hover:bg-amber-100 hover:text-amber-800",
               )}
@@ -222,7 +222,7 @@ export default function EventRow({
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800"
+              className="h-6 w-6 rounded-none text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800"
               onClick={onResolve}
               title="Close event (mark complete)"
             >
@@ -231,7 +231,7 @@ export default function EventRow({
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6"
+              className="h-6 w-6 rounded-none"
               onClick={onEdit}
               title="Edit event"
             >
@@ -240,7 +240,7 @@ export default function EventRow({
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6"
+              className="h-6 w-6 rounded-none"
               onClick={onDelete}
               title="Delete event"
             >

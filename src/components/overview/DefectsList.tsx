@@ -67,7 +67,7 @@ function DeferralPill({
     ? `OVERDUE ${elapsed}d`
     : `Deferred ${elapsed}/${DEFERRAL_REVIEW_DAYS}d`;
   const className = cn(
-    "shrink-0 inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+    "shrink-0 inline-flex items-center gap-1 border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider",
     overdue
       ? "border-rose-500 bg-rose-200 text-rose-900 shadow-sm animate-pulse"
       : "border-amber-400 bg-amber-100 text-amber-900",
@@ -162,7 +162,7 @@ export default function DefectsList({
           </div>
           <span
             className={cn(
-              "justify-self-start rounded-full px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider",
+              "justify-self-start px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider",
               PLAN_STATUS_CLASS[planStatus],
             )}
             title={
@@ -196,7 +196,7 @@ export default function DefectsList({
                   variant="ghost"
                   size="icon"
                   className={cn(
-                    "h-6 w-6",
+                    "h-6 w-6 rounded-none",
                     deferralStatus !== "none" &&
                       "text-amber-700 hover:bg-amber-100 hover:text-amber-800",
                   )}
@@ -212,7 +212,7 @@ export default function DefectsList({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800"
+                  className="h-6 w-6 rounded-none text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800"
                   onClick={() => onResolve(d)}
                   title="Resolve defect"
                 >
@@ -221,7 +221,7 @@ export default function DefectsList({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6"
+                  className="h-6 w-6 rounded-none"
                   onClick={() => onEdit(d)}
                   title="Edit defect"
                 >
@@ -230,7 +230,7 @@ export default function DefectsList({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6"
+                  className="h-6 w-6 rounded-none"
                   onClick={() => onDelete(d)}
                   title="Delete defect"
                 >

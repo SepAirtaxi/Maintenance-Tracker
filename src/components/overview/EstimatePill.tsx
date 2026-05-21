@@ -26,7 +26,7 @@ export default function EstimatePill({
       : "Planner has reviewed this — no man-hour estimate yet · click to manage";
 
   const className = cn(
-    "inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider whitespace-nowrap",
+    "inline-flex items-center gap-1 border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider whitespace-nowrap",
     estimated
       ? "border-emerald-300 bg-emerald-100 text-emerald-800"
       : "border-border bg-muted text-muted-foreground",
