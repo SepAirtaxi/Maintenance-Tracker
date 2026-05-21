@@ -116,7 +116,7 @@ function RowItem({
       <span className="truncate" title={event.warning}>
         {event.warning}
         {event.status === "planned" && (
-          <span className="ml-1.5 rounded-full bg-emerald-100 text-emerald-700 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider align-middle">
+          <span className="ml-1.5 rounded-full bg-sev-green-bg/70 text-sev-green-fg/85 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider align-middle">
             planned
           </span>
         )}
@@ -127,7 +127,7 @@ function RowItem({
       <span
         className={cn(
           "inline-flex w-full items-center justify-center rounded border px-1.5 py-0.5 font-mono text-xs tabular-nums shadow-sm whitespace-nowrap",
-          "bg-amber-100 text-amber-900 border-amber-300",
+          "bg-sev-yellow-bg/70 text-sev-yellow-fg border-sev-yellow-edge/60",
         )}
       >
         {metric}

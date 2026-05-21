@@ -1,37 +1,120 @@
+@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700&family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 215 25% 92%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --primary: 204 80% 42%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 204 80% 42%;
-    --radius: 0.5rem;
+    /* Modern-soft palette — clean cool neutrals with confident accents */
+    --background: 220 18% 96%;      /* clean light off-white, faint cool */
+    --foreground: 220 24% 14%;      /* rich near-black with cool warmth */
+    --card: 0 0% 100%;              /* pure white surface */
+    --card-foreground: 220 24% 14%;
+    --primary: 218 45% 24%;         /* modern deep navy — clearly blue */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 90%;
+    --secondary-foreground: 220 24% 14%;
+    --muted: 220 14% 94%;
+    --muted-foreground: 220 9% 42%;
+    --accent: 28 90% 54%;           /* clean modern amber — singular focus */
+    --accent-foreground: 220 24% 14%;
+    --destructive: 0 65% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 18% 20%;          /* applied at low opacity throughout */
+    --input: 220 18% 20%;
+    --ring: 28 90% 54%;
+    --radius: 0px;
+
+    /* Severity — modern-soft pastels with dignified dark foregrounds */
+    --sev-red-fg: 0 60% 38%;        /* clear soft red */
+    --sev-red-bg: 0 75% 95%;        /* soft rose wash */
+    --sev-red-edge: 0 70% 55%;
+    --sev-yellow-fg: 32 78% 30%;    /* honey amber */
+    --sev-yellow-bg: 45 92% 92%;    /* soft cream */
+    --sev-yellow-edge: 38 85% 53%;
+    --sev-green-fg: 145 50% 26%;    /* modern forest */
+    --sev-green-bg: 140 52% 92%;    /* soft mint */
+    --sev-green-edge: 145 50% 42%;
   }
 }
 
 @layer base {
   * {
     @apply border-border;
+    border-color: hsl(var(--border) / 0.22);
+  }
+  html {
+    font-family: "Inter Tight", "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-feature-settings: "ss01", "cv11", "calt" 1;
   }
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    /* Graph-paper grid at 5% ink — only visible up close, evokes technical
+       drawing without becoming noise. */
+    background-image:
+      linear-gradient(to right, hsl(var(--foreground) / 0.04) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--foreground) / 0.04) 1px, transparent 1px);
+    background-size: 32px 32px;
+    background-position: -1px -1px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  /* Selection — accent amber on ink */
+  ::selection {
+    background: hsl(var(--accent) / 0.35);
+    color: hsl(var(--foreground));
+  }
+}
+
+@layer components {
+  /* Small-caps editorial label — used as zone marker on cards, page sections */
+  .label-eyebrow {
+    font-family: "Inter Tight", sans-serif;
+    font-weight: 600;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .label-eyebrow-strong {
+    font-family: "Inter Tight", sans-serif;
+    font-weight: 700;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: hsl(var(--foreground));
+  }
+
+  /* Section break — hairline rule that bookends a label */
+  .section-rule {
+    flex: 1;
+    height: 1px;
+    background: hsl(var(--foreground) / 0.18);
+  }
+
+  /* Heavyweight registration stamp — the aircraft tail block */
+  .tail-stamp {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+  }
+
+  /* Display heading — used for h1's */
+  .font-display {
+    font-family: "Bricolage Grotesque", "Inter Tight", sans-serif;
+    font-optical-sizing: auto;
+    letter-spacing: -0.01em;
+  }
+
+  /* Instrument readout — large mono number with subtle baseline shift */
+  .readout {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "ss01", "zero";
   }
 }
 
@@ -41,15 +124,15 @@
     margin: 0.5cm;
   }
 
-  /* Hide everything outside the target card's lineage. Using display:none
-     (not visibility:hidden) so collapsed layout doesn't generate blank pages. */
+  body {
+    background-image: none !important;
+  }
+
   body.printing-card
     *:not(:has(.print-target)):not(.print-target):not(.print-target *) {
     display: none !important;
   }
 
-  /* Strip ancestor layout (grid/flex/padding) so the card flows from the
-     page origin instead of inheriting Layout/grid offsets. */
   body.printing-card *:has(.print-target) {
     display: block !important;
     margin: 0 !important;
@@ -57,7 +140,6 @@
     background: transparent !important;
   }
 
-  /* Force the browser to render background colors and borders accurately. */
   body.printing-card .print-target,
   body.printing-card .print-target *,
   body.printing-card *:has(.print-target) {
@@ -67,10 +149,6 @@
 
   body.printing-card .print-target {
     box-shadow: none !important;
-    /* Zoom shrinks the rendered card while letting it lay out at a wider
-       logical width, so the Event column gets enough room to show full
-       titles ("Engine Vibration Isolator Replacement") instead of
-       truncating. Tweak this factor if columns still feel cramped. */
     zoom: 0.85;
   }
 }

@@ -148,8 +148,8 @@ export default function EstimateDialog({ target, onClose }: Props) {
                 className={cn(
                   "flex-1 rounded-md border px-3 py-2 text-sm transition-colors",
                   estimated
-                    ? "border-emerald-400 bg-emerald-50 text-emerald-900 ring-1 ring-emerald-300"
-                    : "border-border bg-card text-muted-foreground hover:bg-secondary/60",
+                    ? "border-sev-green-edge bg-sev-green-bg/60 text-sev-green-fg"
+                    : "border-foreground/25 bg-card text-muted-foreground hover:bg-foreground/[0.04]",
                 )}
               >
                 Estimated
@@ -207,7 +207,7 @@ export default function EstimateDialog({ target, onClose }: Props) {
                 variant="ghost"
                 onClick={onClear}
                 disabled={busy}
-                className="text-rose-700 hover:bg-rose-100 hover:text-rose-800"
+                className="text-sev-red-fg/85 hover:bg-sev-red-bg/70 hover:text-sev-red-fg"
               >
                 {saving === "clear" ? "Clearing…" : "Clear estimate"}
               </Button>

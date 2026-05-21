@@ -21,9 +21,7 @@ export default function ProfilePage() {
   }, [profile]);
 
   if (!user || !profile) {
-    return (
-      <p className="text-sm text-muted-foreground">Loading profile…</p>
-    );
+    return <p className="text-sm text-muted-foreground italic">Loading profile…</p>;
   }
 
   const onSubmit = async (e: FormEvent) => {
@@ -55,14 +53,22 @@ export default function ProfilePage() {
   return (
     <div className="max-w-md space-y-6">
       <div className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Profile</h1>
+        <div className="flex items-center gap-3">
+          <span className="font-mono text-[10px] uppercase tracking-spec text-muted-foreground">
+            05 / Profile
+          </span>
+          <span className="h-px flex-1 bg-foreground/15 w-12" />
+        </div>
+        <h1 className="font-display text-2xl font-semibold tracking-tight leading-none">
+          Profile
+        </h1>
         <p className="text-sm text-muted-foreground">
           Signed in as{" "}
-          <span className="font-mono">{profile.email}</span>
+          <span className="font-mono text-foreground">{profile.email}</span>
         </p>
       </div>
 
-      <form onSubmit={onSubmit} className="space-y-4">
+      <form onSubmit={onSubmit} className="space-y-4 border border-foreground/20 bg-card p-5">
         <div className="space-y-2">
           <Label htmlFor="initials">Initials</Label>
           <Input
@@ -70,7 +76,7 @@ export default function ProfilePage() {
             value={initials}
             onChange={(e) => setInitials(e.target.value.toUpperCase())}
             maxLength={5}
-            className="font-mono uppercase tracking-wider"
+            className="font-mono uppercase tracking-stamp"
           />
           <p className="text-xs text-muted-foreground">
             Shown next to all your actions in transaction logs.
@@ -87,12 +93,12 @@ export default function ProfilePage() {
         </div>
 
         {status === "error" && errorMsg && (
-          <p className="text-sm text-destructive" role="alert">
+          <p className="text-sm text-sev-red-fg" role="alert">
             {errorMsg}
           </p>
         )}
         {status === "saved" && (
-          <p className="text-sm text-emerald-600">Saved.</p>
+          <p className="text-sm text-sev-green-fg">Saved.</p>
         )}
 
         <Button type="submit" disabled={saving}>

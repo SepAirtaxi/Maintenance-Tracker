@@ -32,9 +32,9 @@ type Props = {
 };
 
 const actionColor: Record<string, string> = {
-  create: "bg-emerald-100 text-emerald-700",
-  update: "bg-sky-100 text-sky-700",
-  delete: "bg-rose-100 text-rose-700",
+  create: "bg-sev-green-bg/70 text-sev-green-fg/85",
+  update: "bg-foreground/[0.06] text-foreground/80",
+  delete: "bg-sev-red-bg/70 text-sev-red-fg/85",
 };
 
 const ENTITY_OPTIONS: { value: AuditEntity; label: string }[] = [
@@ -167,8 +167,8 @@ function groupDefects(defects: Defect[]): DefectGroup[] {
 
 const defectRowStyle: Record<DefectGroupKey, string> = {
   open: "border-border bg-card",
-  fixed: "border-emerald-200 bg-emerald-50/60",
-  nff: "border-amber-300 bg-amber-50",
+  fixed: "border-sev-green-edge/40 bg-sev-green-bg/40/60",
+  nff: "border-sev-yellow-edge/60 bg-sev-yellow-bg/40",
 };
 
 function DefectRow({
@@ -227,7 +227,7 @@ function DefectRow({
             <div
               className={cn(
                 "mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px]",
-                group === "nff" ? "text-amber-900" : "text-emerald-900",
+                group === "nff" ? "text-sev-yellow-fg" : "text-sev-green-fg",
               )}
             >
               <span className="font-medium uppercase tracking-wider">
@@ -350,7 +350,7 @@ function groupEvents(events: MaintenanceEvent[]): EventGroup[] {
 
 const eventRowStyle: Record<EventGroupKey, string> = {
   open: "border-border bg-card",
-  closed: "border-emerald-200 bg-emerald-50/60",
+  closed: "border-sev-green-edge/40 bg-sev-green-bg/40/60",
 };
 
 function EventRow({
@@ -398,7 +398,7 @@ function EventRow({
         )}
       </div>
       {event.resolvedAt && event.resolvedDate && (
-        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-emerald-900">
+        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-sev-green-fg">
           <span className="font-medium uppercase tracking-wider">Closed</span>
           <span>· {formatDate(event.resolvedDate)}</span>
           {event.resolutionWorkOrder && (

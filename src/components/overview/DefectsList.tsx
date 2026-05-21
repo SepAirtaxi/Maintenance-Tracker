@@ -1,5 +1,4 @@
 import { AlertTriangle, Check, Clock, Pencil, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
 import { formatMinutesAsDuration } from "@/lib/time";
@@ -22,15 +21,15 @@ import type { Defect } from "@/types";
 const DEFECTS_GRID_COLS = EVENTS_GRID_COLS;
 
 const PLAN_STATUS_LABEL: Record<PlanStatus, string> = {
-  unplanned: "no action",
+  unplanned: "No action",
   planned: "WO created",
   booked: "WO + booked",
 };
 
 const PLAN_STATUS_CLASS: Record<PlanStatus, string> = {
-  unplanned: "bg-rose-100 text-rose-800",
-  planned: "bg-amber-100/70 text-amber-800",
-  booked: "bg-emerald-100 text-emerald-700",
+  unplanned: "border-sev-red-edge/40 bg-sev-red-bg/70 text-sev-red-fg",
+  planned: "border-sev-yellow-edge/50 bg-sev-yellow-bg/60 text-sev-yellow-fg",
+  booked: "border-sev-green-edge/50 bg-sev-green-bg/70 text-sev-green-fg",
 };
 
 type Props = {
@@ -67,15 +66,12 @@ function DeferralPill({
     ? `OVERDUE ${elapsed}d`
     : `Deferred ${elapsed}/${DEFERRAL_REVIEW_DAYS}d`;
   const className = cn(
-    "shrink-0 inline-flex items-center gap-1 border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+    "shrink-0 inline-flex items-center gap-1 border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-spec",
     overdue
-      ? "border-rose-500 bg-rose-200 text-rose-900 shadow-sm animate-pulse"
-      : "border-amber-400 bg-amber-100 text-amber-900",
+      ? "border-sev-red-edge bg-sev-red-bg text-sev-red-fg animate-pulse"
+      : "border-sev-yellow-edge/70 bg-sev-yellow-bg text-sev-yellow-fg",
   );
 
-  // The pill is always clickable (members and viewers) — it opens a read-only
-  // history popup. Write actions (defer / re-defer / lift) live on the Clock
-  // icon in the row's action column and remain hidden for viewers.
   return (
     <button
       type="button"
@@ -107,139 +103,165 @@ export default function DefectsList({
   if (defects.length === 0) return null;
 
   return (
-    <div className="border-t bg-amber-50/40">
+    <div className="bg-sev-yellow-bg/15">
+      {/* Section break — small-caps zone marker between events and defects */}
+      <div className="flex items-center gap-3 border-t border-foreground/20 bg-card px-3 py-1.5">
+        <span className="label-eyebrow-strong text-sev-yellow-fg">
+          Defects · {defects.length} open
+        </span>
+        <span className="section-rule" />
+      </div>
+      {/* Column header — sub-titles for the swapped final columns
+          (Reported / TTAF replace Due-date / TTAF / Days / Hours) */}
       <div
         className={cn(
-          "grid items-center gap-2 px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-amber-800/80",
+          "grid items-end gap-0 px-3 py-1 text-[9px] font-semibold uppercase tracking-spec text-muted-foreground border-b border-foreground/10",
           DEFECTS_GRID_COLS,
         )}
       >
         <span className="px-1">WO</span>
         <span className="px-1">REQ</span>
-        <span>Defect ({defects.length})</span>
+        <span className="pl-3.5">Defect</span>
         <span>Status</span>
         <span>Estimate</span>
-        <span>Reported</span>
-        <span>TTAF</span>
-        <span className="text-right">{readOnly ? "" : "Actions"}</span>
+        <span className="border-l border-foreground/15 px-2 text-center">
+          Reported
+        </span>
+        <span className="border-l border-foreground/15 px-2 text-center">
+          TTAF
+        </span>
+        <span className="border-l border-foreground/15 px-1 text-center"></span>
+        <span className="border-l border-r border-foreground/15 px-1 text-center"></span>
+        <span className="text-right pl-2">{readOnly ? "" : "Actions"}</span>
       </div>
       {defects.map((d) => {
         const planStatus = getDefectPlanStatus(d, bookedDefectIds);
         const deferralStatus = getDeferralStatus(d);
         return (
-        <div
-          key={d.id}
-          className={cn(
-            "grid items-center gap-2 px-3 py-1 border-t border-amber-200/60 text-xs hover:bg-amber-100/40",
-            DEFECTS_GRID_COLS,
-            // Highlight the entire row when a deferral has hit the review
-            // limit so it can't be missed when scanning the overview.
-            deferralStatus === "overdue" &&
-              "bg-rose-50/60 hover:bg-rose-100/60",
-          )}
-        >
-          <WorkOrderCell
-            value={d.workOrderNumber}
-            readOnly={readOnly}
-            onSave={(wo) => updateDefect(d.id, { workOrderNumber: wo })}
-          />
-          <WorkOrderCell
-            value={d.requisitionNumber}
-            readOnly={readOnly}
-            onSave={(req) => updateDefect(d.id, { requisitionNumber: req })}
-            placeholder="REQ number"
-            editTitle="Click to edit requisition number"
-          />
-          <div className="flex items-center gap-1.5 min-w-0">
-            <DeferralPill
-              status={deferralStatus}
-              defect={d}
-              onClick={() => onViewDeferralHistory(d)}
-            />
-            <span className="truncate" title={d.title}>
-              {d.title}
-            </span>
-          </div>
-          <span
+          <div
+            key={d.id}
             className={cn(
-              "justify-self-start px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider",
-              PLAN_STATUS_CLASS[planStatus],
+              "grid items-center gap-0 px-3 py-1 border-t border-foreground/10 text-xs hover:bg-foreground/[0.025]",
+              DEFECTS_GRID_COLS,
+              deferralStatus === "overdue" &&
+                "bg-sev-red-bg/30 hover:bg-sev-red-bg/40",
             )}
-            title={
-              planStatus === "booked"
-                ? "WO assigned and a calendar block is linked to this defect"
-                : planStatus === "planned"
-                  ? "Work order assigned — no hangar slot booked yet"
-                  : "No work order assigned yet"
-            }
           >
-            {PLAN_STATUS_LABEL[planStatus]}
-          </span>
-          <div className="justify-self-start">
-            <EstimatePill
-              estimated={d.estimated}
-              estimatedManHours={d.estimatedManHours}
-              readOnly={readOnly}
-              onClick={() => onEstimate(d)}
-            />
+            <div className="pr-2">
+              <WorkOrderCell
+                value={d.workOrderNumber}
+                readOnly={readOnly}
+                onSave={(wo) => updateDefect(d.id, { workOrderNumber: wo })}
+              />
+            </div>
+            <div className="pr-2">
+              <WorkOrderCell
+                value={d.requisitionNumber}
+                readOnly={readOnly}
+                onSave={(req) =>
+                  updateDefect(d.id, { requisitionNumber: req })
+                }
+                placeholder="REQ number"
+                editTitle="Click to edit requisition number"
+              />
+            </div>
+            <div className="flex items-center gap-2 min-w-0 pl-3.5 pr-2">
+              <DeferralPill
+                status={deferralStatus}
+                defect={d}
+                onClick={() => onViewDeferralHistory(d)}
+              />
+              <span className="truncate" title={d.title}>
+                {d.title}
+              </span>
+            </div>
+            <div className="pr-2">
+              <span
+                className={cn(
+                  "inline-flex items-center border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-spec",
+                  PLAN_STATUS_CLASS[planStatus],
+                )}
+                title={
+                  planStatus === "booked"
+                    ? "WO assigned and a calendar block is linked to this defect"
+                    : planStatus === "planned"
+                      ? "Work order assigned — no hangar slot booked yet"
+                      : "No work order assigned yet"
+                }
+              >
+                {PLAN_STATUS_LABEL[planStatus]}
+              </span>
+            </div>
+            <div className="pr-2">
+              <EstimatePill
+                estimated={d.estimated}
+                estimatedManHours={d.estimatedManHours}
+                readOnly={readOnly}
+                onClick={() => onEstimate(d)}
+              />
+            </div>
+            <div className="border-l border-foreground/15 px-2 py-0.5 text-center font-mono text-[11px] tabular-nums">
+              {formatDate(d.reportedDate)}
+            </div>
+            <div className="border-l border-foreground/15 px-2 py-0.5 text-center font-mono text-[11px] tabular-nums">
+              {formatMinutesAsDuration(d.reportedTtafMinutes)}
+            </div>
+            {/* Two unused cells to align with the events grid (Days/Hours
+                cells don't apply to defects). Render hairline dividers
+                so the column rhythm is preserved. */}
+            <div className="border-l border-foreground/15 px-1 py-0.5 text-center text-muted-foreground/60">
+              —
+            </div>
+            <div className="border-l border-r border-foreground/15 px-1 py-0.5 text-center text-muted-foreground/60">
+              —
+            </div>
+            <div className="flex items-center justify-end gap-px pl-2">
+              {!readOnly && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => onDefer(d)}
+                    title={
+                      deferralStatus === "none"
+                        ? "Defer defect (start 30-day review)"
+                        : "Manage deferral"
+                    }
+                    className={cn(
+                      "inline-flex h-6 w-6 items-center justify-center border border-transparent transition-colors hover:border-foreground/20 hover:bg-foreground/[0.06]",
+                      deferralStatus !== "none" &&
+                        "text-sev-yellow-fg hover:bg-sev-yellow-bg/60",
+                    )}
+                  >
+                    <Clock className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onResolve(d)}
+                    title="Resolve defect"
+                    className="inline-flex h-6 w-6 items-center justify-center border border-transparent text-sev-green-fg transition-colors hover:border-sev-green-edge/40 hover:bg-sev-green-bg/60"
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onEdit(d)}
+                    title="Edit defect"
+                    className="inline-flex h-6 w-6 items-center justify-center border border-transparent text-muted-foreground transition-colors hover:border-foreground/20 hover:bg-foreground/[0.06] hover:text-foreground"
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onDelete(d)}
+                    title="Delete defect"
+                    className="inline-flex h-6 w-6 items-center justify-center border border-transparent text-muted-foreground transition-colors hover:border-sev-red-edge/40 hover:bg-sev-red-bg/60 hover:text-sev-red-fg"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </>
+              )}
+            </div>
           </div>
-          <div className="font-mono tabular-nums">
-            {formatDate(d.reportedDate)}
-          </div>
-          <div className="font-mono tabular-nums">
-            {formatMinutesAsDuration(d.reportedTtafMinutes)}
-          </div>
-          <div className="flex items-center justify-end gap-0.5">
-            {!readOnly && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={cn(
-                    "h-6 w-6 rounded-none",
-                    deferralStatus !== "none" &&
-                      "text-amber-700 hover:bg-amber-100 hover:text-amber-800",
-                  )}
-                  onClick={() => onDefer(d)}
-                  title={
-                    deferralStatus === "none"
-                      ? "Defer defect (start 30-day review)"
-                      : "Manage deferral"
-                  }
-                >
-                  <Clock className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 rounded-none text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800"
-                  onClick={() => onResolve(d)}
-                  title="Resolve defect"
-                >
-                  <Check className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 rounded-none"
-                  onClick={() => onEdit(d)}
-                  title="Edit defect"
-                >
-                  <Pencil className="h-3 w-3" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 rounded-none"
-                  onClick={() => onDelete(d)}
-                  title="Delete defect"
-                >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              </>
-            )}
-          </div>
-        </div>
         );
       })}
     </div>

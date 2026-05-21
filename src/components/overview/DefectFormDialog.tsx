@@ -189,7 +189,7 @@ export default function DefectFormDialog({
                 placeholder="Short description of the defect"
               />
               {linkedIds.size > 0 && (
-                <p className="text-[11px] text-amber-900">
+                <p className="text-[11px] text-sev-yellow-fg">
                   Linked to {linkedIds.size} prior NFF closure
                   {linkedIds.size === 1 ? "" : "s"}.
                 </p>
@@ -247,28 +247,28 @@ export default function DefectFormDialog({
             </div>
 
             {priorNffDefects.length > 0 && (
-              <div className="rounded-md border border-amber-300 bg-amber-50/60">
+              <div className="rounded-md border border-sev-yellow-edge/60 bg-sev-yellow-bg/40/60">
                 <button
                   type="button"
                   onClick={() => setRecurrenceOpen((v) => !v)}
-                  className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs hover:bg-amber-100/60 transition-colors"
+                  className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs hover:bg-sev-yellow-bg/70/60 transition-colors"
                 >
                   {recurrenceOpen ? (
-                    <ChevronDown className="h-3.5 w-3.5 text-amber-900" />
+                    <ChevronDown className="h-3.5 w-3.5 text-sev-yellow-fg" />
                   ) : (
-                    <ChevronRight className="h-3.5 w-3.5 text-amber-900" />
+                    <ChevronRight className="h-3.5 w-3.5 text-sev-yellow-fg" />
                   )}
-                  <span className="font-semibold uppercase tracking-wider text-amber-900">
+                  <span className="font-semibold uppercase tracking-wider text-sev-yellow-fg">
                     Prior NFF closures on this tail ({priorNffDefects.length})
                   </span>
                   {linkedIds.size > 0 && (
-                    <span className="ml-auto text-[10px] text-amber-900">
+                    <span className="ml-auto text-[10px] text-sev-yellow-fg">
                       {linkedIds.size} linked
                     </span>
                   )}
                 </button>
                 {recurrenceOpen && (
-                  <div className="space-y-1 border-t border-amber-200 px-2 py-1.5">
+                  <div className="space-y-1 border-t border-sev-yellow-edge/40 px-2 py-1.5">
                     {priorNffDefects.map((p) => {
                       const checked = linkedIds.has(p.id);
                       return (
@@ -276,7 +276,7 @@ export default function DefectFormDialog({
                           key={p.id}
                           className="flex items-start gap-2 rounded px-1 py-1"
                         >
-                          <label className="mt-0.5 flex shrink-0 cursor-pointer items-center gap-1.5 text-[11px] text-amber-900">
+                          <label className="mt-0.5 flex shrink-0 cursor-pointer items-center gap-1.5 text-[11px] text-sev-yellow-fg">
                             <input
                               type="checkbox"
                               checked={checked}
@@ -289,7 +289,7 @@ export default function DefectFormDialog({
                             <div className="text-xs font-medium text-foreground break-words">
                               {p.title}
                             </div>
-                            <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-amber-900">
+                            <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-sev-yellow-fg">
                               {p.resolvedDate && (
                                 <span>Closed {formatDate(p.resolvedDate)}</span>
                               )}
@@ -306,7 +306,7 @@ export default function DefectFormDialog({
                           <button
                             type="button"
                             onClick={() => useTitleFrom(p.title)}
-                            className="shrink-0 rounded border border-amber-300 bg-amber-100/60 px-1.5 py-0.5 text-[10px] font-medium text-amber-900 hover:bg-amber-200/70 transition-colors"
+                            className="shrink-0 rounded border border-sev-yellow-edge/60 bg-sev-yellow-bg/70/60 px-1.5 py-0.5 text-[10px] font-medium text-sev-yellow-fg hover:bg-sev-yellow-bg/70 transition-colors"
                           >
                             Use title
                           </button>

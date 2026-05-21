@@ -17,7 +17,7 @@ export default function EstimatePill({
   const label = !estimated
     ? "Not estimated"
     : estimatedManHours != null
-      ? `Estimated · ${estimatedManHours} MH`
+      ? `${estimatedManHours} MH`
       : "Estimated";
   const title = !estimated
     ? "Planner has not reviewed this — click to set an estimate"
@@ -26,10 +26,10 @@ export default function EstimatePill({
       : "Planner has reviewed this — no man-hour estimate yet · click to manage";
 
   const className = cn(
-    "inline-flex items-center gap-1 border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider whitespace-nowrap",
+    "inline-flex items-center gap-1 border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-spec whitespace-nowrap",
     estimated
-      ? "border-emerald-300 bg-emerald-100 text-emerald-800"
-      : "border-border bg-muted text-muted-foreground",
+      ? "border-sev-green-edge/60 bg-sev-green-bg text-sev-green-fg"
+      : "border-foreground/25 bg-card text-muted-foreground",
   );
 
   if (readOnly || !onClick) {

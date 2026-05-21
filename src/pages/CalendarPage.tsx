@@ -180,49 +180,54 @@ export default function CalendarPage() {
   return (
     <div className="space-y-3">
       <div className="flex items-end justify-between gap-4">
-        <div className="space-y-0.5">
-          <h1 className="text-xl font-semibold tracking-tight">
+        <div className="space-y-1">
+          <div className="flex items-center gap-3">
+            <span className="font-mono text-[10px] uppercase tracking-spec text-muted-foreground">
+              02 / Calendar
+            </span>
+            <span className="h-px flex-1 bg-foreground/15 w-12" />
+          </div>
+          <h1 className="font-display text-2xl font-semibold tracking-tight leading-none">
             Maintenance Calendar
           </h1>
           <p className="text-xs text-muted-foreground">
-            Hangar bookings, one row per tail. Click an empty cell to book.
+            Hangar bookings, one row per tail · click an empty cell to book.
           </p>
         </div>
         {!isViewer && (
           <Button size="sm" onClick={() => openCreate()}>
-            <Plus className="h-4 w-4" />
+            <Plus className="h-3.5 w-3.5" />
             New booking
           </Button>
         )}
       </div>
 
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-md border bg-card shadow-sm px-2 py-1.5">
-        <div className="justify-self-start">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 px-2 text-xs"
+      <div className="grid grid-cols-[1fr_auto_1fr] items-stretch border border-foreground/20 bg-card">
+        <div className="justify-self-start flex items-stretch">
+          <button
+            type="button"
             onClick={goToday}
+            className="inline-flex items-center gap-1.5 border-r border-foreground/15 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-spec text-foreground/80 hover:bg-foreground/[0.06] hover:text-foreground transition-colors"
           >
             <CalendarDays className="h-3.5 w-3.5" />
             Today
-          </Button>
+          </button>
         </div>
-        <div className="flex items-center gap-2 justify-self-center">
+        <div className="flex items-stretch justify-self-center divide-x divide-foreground/15 border-l border-r border-foreground/15">
           <button
             type="button"
             onClick={goPrev}
             title={viewMode === "week" ? "Previous week" : "Previous month"}
-            className="group inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-gradient-to-b from-secondary to-muted text-foreground shadow-sm transition-all hover:from-primary hover:to-primary hover:text-primary-foreground hover:shadow-md hover:scale-105 active:scale-95"
+            className="inline-flex h-9 w-10 items-center justify-center text-foreground/80 hover:bg-foreground/[0.06] hover:text-foreground transition-colors"
           >
-            <ChevronLeft className="h-5 w-5 transition-transform group-hover:-translate-x-0.5" />
+            <ChevronLeft className="h-4 w-4" />
           </button>
-          <div className="flex w-64 flex-col items-center text-center leading-tight">
-            <span className="text-sm font-medium tabular-nums">
+          <div className="flex w-64 flex-col items-center justify-center text-center leading-tight px-3">
+            <span className="font-mono text-sm font-semibold tabular-nums">
               {rangeLabel.range}
             </span>
             {rangeLabel.week && (
-              <span className="text-xs text-muted-foreground tabular-nums">
+              <span className="text-[10px] uppercase tracking-spec text-muted-foreground tabular-nums">
                 {rangeLabel.week}
               </span>
             )}
@@ -231,21 +236,21 @@ export default function CalendarPage() {
             type="button"
             onClick={goNext}
             title={viewMode === "week" ? "Next week" : "Next month"}
-            className="group inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-gradient-to-b from-secondary to-muted text-foreground shadow-sm transition-all hover:from-primary hover:to-primary hover:text-primary-foreground hover:shadow-md hover:scale-105 active:scale-95"
+            className="inline-flex h-9 w-10 items-center justify-center text-foreground/80 hover:bg-foreground/[0.06] hover:text-foreground transition-colors"
           >
-            <ChevronRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
+            <ChevronRight className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="inline-flex justify-self-end rounded-md border bg-card p-0.5 text-[11px]">
+        <div className="inline-flex justify-self-end items-stretch border-l border-foreground/15 divide-x divide-foreground/15">
           <button
             type="button"
             onClick={() => switchViewMode("week")}
             className={cn(
-              "rounded px-2 py-0.5 transition-colors",
+              "px-3 py-1.5 text-[11px] font-semibold uppercase tracking-spec transition-colors",
               viewMode === "week"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground",
+                ? "bg-foreground text-background"
+                : "text-muted-foreground hover:bg-foreground/[0.04] hover:text-foreground",
             )}
           >
             Week
@@ -254,10 +259,10 @@ export default function CalendarPage() {
             type="button"
             onClick={() => switchViewMode("month")}
             className={cn(
-              "rounded px-2 py-0.5 transition-colors",
+              "px-3 py-1.5 text-[11px] font-semibold uppercase tracking-spec transition-colors",
               viewMode === "month"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground",
+                ? "bg-foreground text-background"
+                : "text-muted-foreground hover:bg-foreground/[0.04] hover:text-foreground",
             )}
           >
             Month

@@ -166,22 +166,20 @@ const FLEET_SEVERITY_RANK: Record<Severity, number> = {
 };
 
 const PILL_TINT: Record<Severity, string> = {
-  red: "border-status-red/50 bg-rose-50 text-rose-900 hover:bg-rose-100",
+  red: "border-sev-red-edge/60 bg-sev-red-bg/70 text-sev-red-fg hover:bg-sev-red-bg",
   yellow:
-    "border-status-yellow/60 bg-amber-50 text-amber-900 hover:bg-amber-100",
+    "border-sev-yellow-edge/60 bg-sev-yellow-bg/70 text-sev-yellow-fg hover:bg-sev-yellow-bg",
   green:
-    "border-status-green/50 bg-emerald-50 text-emerald-900 hover:bg-emerald-100",
+    "border-sev-green-edge/60 bg-sev-green-bg/70 text-sev-green-fg hover:bg-sev-green-bg",
   unknown:
-    "border-border bg-card text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
+    "border-foreground/25 bg-card text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground",
 };
 
 const PILL_TINT_ACTIVE: Record<Severity, string> = {
-  red: "border-status-red bg-rose-100 text-rose-950 ring-2 ring-status-red/40",
-  yellow:
-    "border-status-yellow bg-amber-100 text-amber-950 ring-2 ring-status-yellow/40",
-  green:
-    "border-status-green bg-emerald-100 text-emerald-950 ring-2 ring-status-green/40",
-  unknown: "border-primary bg-primary/10 text-foreground ring-2 ring-primary/30",
+  red: "border-sev-red-fg bg-sev-red-fg text-card",
+  yellow: "border-sev-yellow-fg bg-sev-yellow-fg text-card",
+  green: "border-sev-green-fg bg-sev-green-fg text-card",
+  unknown: "border-foreground bg-foreground text-background",
 };
 
 function TailPill({
@@ -203,7 +201,7 @@ function TailPill({
       onClick={onClick}
       title={grounded ? `${tail} (grounded)` : tail}
       className={cn(
-        "inline-flex items-center gap-0.5 rounded-md border px-1.5 py-0.5 font-mono text-xs transition-colors",
+        "inline-flex items-center gap-1 border px-1.5 py-0.5 font-mono text-[11px] font-semibold tracking-stamp transition-colors",
         active ? PILL_TINT_ACTIVE[severity] : PILL_TINT[severity],
         grounded && "opacity-60",
       )}
@@ -806,21 +804,40 @@ export default function OverviewPage() {
   return (
     <div className="space-y-3">
       <div className="flex items-end justify-between gap-4">
-        <div className="space-y-0.5">
-          <h1 className="text-xl font-semibold tracking-tight">
+        <div className="space-y-1">
+          <div className="flex items-center gap-3">
+            <span className="font-mono text-[10px] uppercase tracking-spec text-muted-foreground">
+              01 / Overview
+            </span>
+            <span className="h-px flex-1 bg-foreground/15 w-12" />
+          </div>
+          <h1 className="font-display text-2xl font-semibold tracking-tight leading-none">
             Maintenance Overview
           </h1>
           <p className="text-xs text-muted-foreground">
-            Fleet status, grouped by tail number.
+            Fleet status, grouped by tail number ·{" "}
+            <span className="font-semibold text-foreground">
+              {airworthyList.length}
+            </span>{" "}
+            airworthy
+            {groundedList.length > 0 && (
+              <>
+                {" · "}
+                <span className="font-semibold text-sev-red-fg">
+                  {groundedList.length}
+                </span>{" "}
+                grounded
+              </>
+            )}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <Button
             onClick={() => setUpcomingOpen(true)}
             size="sm"
             variant="outline"
           >
-            <CalendarClock className="h-4 w-4" />
+            <CalendarClock className="h-3.5 w-3.5" />
             Upcoming events
           </Button>
           <Button
@@ -828,25 +845,27 @@ export default function OverviewPage() {
             size="sm"
             variant="outline"
           >
-            <CalendarPlus className="h-4 w-4" />
+            <CalendarPlus className="h-3.5 w-3.5" />
             Needs booking
             {needsBookingMatches.length > 0 && (
-              <span className="ml-1 inline-flex items-center justify-center rounded-full bg-amber-200 text-amber-900 px-1.5 min-w-[1.25rem] h-5 text-[11px] font-semibold tabular-nums">
+              <span className="ml-1 inline-flex items-center justify-center bg-accent text-accent-foreground px-1.5 min-w-[1.25rem] h-5 text-[10px] font-bold tabular-nums">
                 {needsBookingMatches.length}
               </span>
             )}
           </Button>
           {!isViewer && (
             <Button onClick={() => setImportOpen(true)} size="sm">
-              <Upload className="h-4 w-4" />
+              <Upload className="h-3.5 w-3.5" />
               Import flight data
             </Button>
           )}
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-1.5 rounded-md border bg-card shadow-sm px-2 py-1.5">
-        <span className="text-xs text-muted-foreground mr-1">Sort:</span>
+      <div className="flex flex-wrap items-stretch border border-foreground/20 bg-card divide-x divide-foreground/10">
+        <span className="inline-flex items-center px-3 text-[10px] font-bold uppercase tracking-spec text-muted-foreground bg-foreground/[0.04]">
+          Sort
+        </span>
         {SORT_OPTIONS.map((opt) => {
           const active = opt.key === sortKey;
           return (
@@ -855,10 +874,10 @@ export default function OverviewPage() {
               type="button"
               onClick={() => onSortClick(opt.key)}
               className={cn(
-                "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs transition-colors",
+                "inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-spec transition-colors",
                 active
-                  ? "border-primary bg-primary/5 text-foreground"
-                  : "border-border bg-card text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:bg-foreground/[0.04] hover:text-foreground",
               )}
             >
               {opt.label}
@@ -871,51 +890,50 @@ export default function OverviewPage() {
             </button>
           );
         })}
-
-        <span className="ml-auto text-xs text-muted-foreground">
-          {airworthyList.length} airworthy
-          {groundedList.length > 0 && ` · ${groundedList.length} grounded`}
-        </span>
       </div>
 
       {summaries.length > 0 && (
-        <div className="sticky top-14 z-30 flex flex-wrap items-center gap-1 rounded-md border bg-card/95 px-2 py-1.5 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
-          <span className="text-xs text-muted-foreground mr-1">Jump to:</span>
-          {airworthyPills.map((s) => (
-            <TailPill
-              key={s.aircraft.tailNumber}
-              tail={s.aircraft.tailNumber}
-              severity={s.worst}
-              active={s.aircraft.tailNumber === activeTail}
-              onClick={() => jumpToTail(s.aircraft.tailNumber)}
-            />
-          ))}
-          {groundedPills.length > 0 && (
-            <>
-              <span
-                className="mx-1 h-4 w-px bg-border"
-                aria-hidden="true"
+        <div className="sticky top-[68px] z-30 flex flex-wrap items-stretch border border-foreground/20 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/85">
+          <span className="inline-flex items-center px-3 text-[10px] font-bold uppercase tracking-spec text-muted-foreground bg-foreground/[0.04] border-r border-foreground/10">
+            Jump
+          </span>
+          <div className="flex flex-1 flex-wrap items-center gap-1 px-2 py-1.5">
+            {airworthyPills.map((s) => (
+              <TailPill
+                key={s.aircraft.tailNumber}
+                tail={s.aircraft.tailNumber}
+                severity={s.worst}
+                active={s.aircraft.tailNumber === activeTail}
+                onClick={() => jumpToTail(s.aircraft.tailNumber)}
               />
-              {groundedPills.map((s) => (
-                <TailPill
-                  key={s.aircraft.tailNumber}
-                  tail={s.aircraft.tailNumber}
-                  severity={s.worst}
-                  grounded
-                  active={s.aircraft.tailNumber === activeTail}
-                  onClick={() => jumpToTail(s.aircraft.tailNumber)}
+            ))}
+            {groundedPills.length > 0 && (
+              <>
+                <span
+                  className="mx-1 h-5 w-px bg-foreground/20"
+                  aria-hidden="true"
                 />
-              ))}
-            </>
-          )}
+                {groundedPills.map((s) => (
+                  <TailPill
+                    key={s.aircraft.tailNumber}
+                    tail={s.aircraft.tailNumber}
+                    severity={s.worst}
+                    grounded
+                    active={s.aircraft.tailNumber === activeTail}
+                    onClick={() => jumpToTail(s.aircraft.tailNumber)}
+                  />
+                ))}
+              </>
+            )}
+          </div>
         </div>
       )}
 
       {aircraft === null && (
-        <p className="text-sm text-muted-foreground">Loading fleet…</p>
+        <p className="text-sm text-muted-foreground italic">Loading fleet…</p>
       )}
       {aircraft !== null && aircraft.length === 0 && (
-        <div className="rounded-md border border-dashed p-8 text-center">
+        <div className="border border-dashed border-foreground/25 bg-card p-8 text-center">
           <p className="text-sm text-muted-foreground">
             No aircraft yet. Head over to the <b>Aircraft</b> tab and click{" "}
             <b>Seed fleet</b> to get started.
@@ -924,16 +942,16 @@ export default function OverviewPage() {
       )}
       {aircraft && aircraft.length > 0 && (
         <>
-          <div className="space-y-2">{airworthyList.map(renderCard)}</div>
+          <div className="space-y-3">{airworthyList.map(renderCard)}</div>
 
           {groundedList.length > 0 && (
-            <div className="pt-4 space-y-2">
-              <div className="flex items-center gap-2 px-1">
-                <ShieldOff className="h-4 w-4 text-destructive" />
-                <h2 className="text-sm font-semibold uppercase tracking-wider text-destructive">
-                  Grounded ({groundedList.length})
+            <div className="pt-5 space-y-3">
+              <div className="flex items-center gap-3">
+                <ShieldOff className="h-4 w-4 text-sev-red-fg" />
+                <h2 className="font-display text-sm font-bold uppercase tracking-spec text-sev-red-fg">
+                  Grounded · {groundedList.length}
                 </h2>
-                <div className="flex-1 border-t border-destructive/30 ml-2" />
+                <span className="h-px flex-1 bg-sev-red-edge/40" />
               </div>
               {groundedList.map(renderCard)}
             </div>

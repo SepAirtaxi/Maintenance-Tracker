@@ -160,7 +160,7 @@ export default function BookingViewDialog({
                     className="flex items-start gap-2 text-sm leading-snug"
                   >
                     {g.wo ? (
-                      <span className="shrink-0 rounded bg-sky-100 text-sky-900 px-1.5 py-0.5 font-mono text-[11px] font-bold">
+                      <span className="shrink-0 rounded bg-foreground/[0.06] text-foreground px-1.5 py-0.5 font-mono text-[11px] font-bold">
                         WO: {g.wo}
                       </span>
                     ) : (
@@ -188,7 +188,7 @@ export default function BookingViewDialog({
                               )}
                             >
                               {strike && (
-                                <Check className="h-3 w-3 text-emerald-600" />
+                                <Check className="h-3 w-3 text-sev-green-fg/80" />
                               )}
                               <span
                                 className={cn(
@@ -244,7 +244,7 @@ export default function BookingViewDialog({
 function ResolutionBadge({ resolution }: { resolution: BookingItemResolution }) {
   if (resolution.kind === "resolved") {
     return (
-      <span className="ml-1 inline-flex items-center rounded bg-emerald-100 text-emerald-900 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider">
+      <span className="ml-1 inline-flex items-center rounded bg-sev-green-bg/70 text-sev-green-fg px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider">
         {resolution.workOrder
           ? `Resolved · WO ${resolution.workOrder}`
           : "Resolved"}
@@ -253,7 +253,7 @@ function ResolutionBadge({ resolution }: { resolution: BookingItemResolution }) 
   }
   if (resolution.kind === "nff") {
     return (
-      <span className="ml-1 inline-flex items-center rounded bg-sky-100 text-sky-900 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider">
+      <span className="ml-1 inline-flex items-center rounded bg-foreground/[0.06] text-foreground px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider">
         {resolution.workOrder
           ? `NFF · WO ${resolution.workOrder}`
           : "NFF"}
@@ -262,7 +262,7 @@ function ResolutionBadge({ resolution }: { resolution: BookingItemResolution }) 
   }
   return (
     <span
-      className="ml-1 inline-flex items-center rounded bg-amber-100 text-amber-900 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
+      className="ml-1 inline-flex items-center rounded bg-sev-yellow-bg/70 text-sev-yellow-fg px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
       title={resolution.reason ?? undefined}
     >
       Deferred

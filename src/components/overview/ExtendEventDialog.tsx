@@ -103,7 +103,7 @@ export default function ExtendEventDialog({ event, onClose }: Props) {
           </DialogHeader>
 
           {baseExpiry == null ? (
-            <p className="mt-3 rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-xs text-rose-900">
+            <p className="mt-3 rounded-md border border-sev-red-edge/60 bg-sev-red-bg/40 px-3 py-2 text-xs text-sev-red-fg">
               This event has no TTAF expiry — extensions only apply to
               hours-based events.
             </p>
@@ -117,7 +117,7 @@ export default function ExtendEventDialog({ event, onClose }: Props) {
               </div>
               {wasExtended && (
                 <>
-                  <div className="flex items-center justify-between text-amber-800">
+                  <div className="flex items-center justify-between text-sev-yellow-fg">
                     <span>Current extension</span>
                     <span className="font-mono tabular-nums">
                       +{prevHours}h
@@ -172,7 +172,7 @@ export default function ExtendEventDialog({ event, onClose }: Props) {
                 variant="ghost"
                 onClick={onClear}
                 disabled={busy}
-                className="text-rose-700 hover:bg-rose-100 hover:text-rose-800"
+                className="text-sev-red-fg/85 hover:bg-sev-red-bg/70 hover:text-sev-red-fg"
               >
                 {saving === "clear" ? "Removing…" : "Remove extension"}
               </Button>

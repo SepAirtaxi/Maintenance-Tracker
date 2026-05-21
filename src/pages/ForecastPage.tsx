@@ -109,32 +109,38 @@ export default function ForecastPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
+      <header className="flex items-end justify-between gap-3">
+        <div className="space-y-1">
+          <div className="flex items-center gap-3">
+            <span className="font-mono text-[10px] uppercase tracking-spec text-muted-foreground">
+              03 / Forecast
+            </span>
+            <span className="h-px flex-1 bg-foreground/15 w-12" />
+          </div>
+          <h1 className="flex items-center gap-2 font-display text-2xl font-semibold tracking-tight leading-none">
             <Telescope className="h-5 w-5 text-muted-foreground" />
             Forecast
           </h1>
           <p className="text-sm text-muted-foreground">
-            Upload a CAMO Projection List <code>.docx</code> to render an
+            Upload a CAMO Projection List <code className="font-mono text-foreground">.docx</code> to render an
             opinionated cheat sheet for the next maintenance work order.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {loaded && (
             <Button variant="ghost" size="sm" onClick={reset}>
               Clear
             </Button>
           )}
-          <Button onClick={onPickClick} disabled={stage === "parsing"}>
+          <Button onClick={onPickClick} disabled={stage === "parsing"} size="sm">
             {stage === "parsing" ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
                 Parsing…
               </>
             ) : (
               <>
-                <Upload className="mr-2 h-4 w-4" />
+                <Upload className="mr-1 h-3.5 w-3.5" />
                 {loaded ? "Upload another" : "Upload forecast"}
               </>
             )}
@@ -153,20 +159,20 @@ export default function ForecastPage() {
       </header>
 
       {stage === "error" && error && (
-        <div className="flex items-start gap-3 rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">
+        <div className="flex items-start gap-3 border border-sev-red-edge/50 bg-sev-red-bg p-3 text-sm text-sev-red-fg">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <div className="space-y-1">
-            <div className="font-medium">Couldn't parse the file.</div>
-            <div className="text-rose-800/90">{error}</div>
+            <div className="font-semibold">Couldn't parse the file.</div>
+            <div className="text-sev-red-fg/90">{error}</div>
           </div>
         </div>
       )}
 
       {stage === "idle" && !loaded && (
-        <div className="rounded-md border border-dashed bg-muted/30 p-8 text-center text-sm text-muted-foreground">
+        <div className="border border-dashed border-foreground/25 bg-foreground/[0.02] p-10 text-center text-sm text-muted-foreground">
           <FileText className="mx-auto mb-2 h-6 w-6" />
           <div>
-            Drop a CAMO Projection List <code>.docx</code> via the upload
+            Drop a CAMO Projection List <code className="font-mono text-foreground">.docx</code> via the upload
             button to get started.
           </div>
         </div>
@@ -186,33 +192,31 @@ function ForecastResult({ loaded }: { loaded: LoadedForecast }) {
   return (
     <div className="space-y-4">
       {/* Header summary */}
-      <section className="rounded-md border bg-card p-4">
-        <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 text-sm">
-          <div>
-            <span className="text-muted-foreground">Tail</span>{" "}
-            <span className="font-semibold">{header.tailNumber}</span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Model</span>{" "}
-            <span className="font-medium">{aircraft?.model ?? "—"}</span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Current TTAF</span>{" "}
-            <span className="font-medium">
+      <section className="border border-foreground/20 bg-card">
+        <div className="border-b border-foreground/15 bg-foreground/[0.04] px-3 py-1.5">
+          <span className="label-eyebrow-strong">Forecast file</span>
+        </div>
+        <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 p-4 text-sm">
+          <Datum label="Tail">
+            <span className="font-mono font-bold tracking-stamp">
+              {header.tailNumber}
+            </span>
+          </Datum>
+          <Datum label="Model">{aircraft?.model ?? "—"}</Datum>
+          <Datum label="Current TTAF">
+            <span className="font-mono tabular-nums">
               {consolidation.currentTtafHours != null
                 ? formatHours(consolidation.currentTtafHours)
                 : "—"}
             </span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Today</span>{" "}
-            <span className="font-medium">
+          </Datum>
+          <Datum label="Today">
+            <span className="font-mono tabular-nums">
               {format(consolidation.today, "dd.MM.yyyy")}
             </span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Forecast end</span>{" "}
-            <span className="font-medium">
+          </Datum>
+          <Datum label="Forecast end">
+            <span className="font-mono tabular-nums">
               {header.forecastEndDate
                 ? format(header.forecastEndDate, "dd.MM.yyyy")
                 : "—"}
@@ -223,13 +227,13 @@ function ForecastResult({ loaded }: { loaded: LoadedForecast }) {
                 @ {formatHours(header.forecastEndTtafHours)}
               </span>
             )}
-          </div>
-          <div className="ml-auto text-xs text-muted-foreground">
+          </Datum>
+          <div className="ml-auto font-mono text-xs text-muted-foreground italic">
             {fileName}
           </div>
         </div>
         {!modelKnown && (
-          <div className="mt-3 flex items-start gap-2 rounded border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
+          <div className="mx-4 mb-3 flex items-start gap-2 border border-sev-yellow-edge/50 bg-sev-yellow-bg/70 p-2 text-xs text-sev-yellow-fg">
             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             <div>
               Model <strong>{aircraft?.model}</strong> isn't in the canonical
@@ -239,7 +243,7 @@ function ForecastResult({ loaded }: { loaded: LoadedForecast }) {
           </div>
         )}
         {modelKnown && needsReview > 0 && (
-          <div className="mt-3 flex items-start gap-2 rounded border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
+          <div className="mx-4 mb-3 flex items-start gap-2 border border-sev-yellow-edge/50 bg-sev-yellow-bg/70 p-2 text-xs text-sev-yellow-fg">
             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             <div>
               {needsReview} row{needsReview === 1 ? "" : "s"} couldn't be
@@ -250,7 +254,7 @@ function ForecastResult({ loaded }: { loaded: LoadedForecast }) {
         {consolidation.warnings.map((w, i) => (
           <div
             key={i}
-            className="mt-3 flex items-start gap-2 rounded border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900"
+            className="mx-4 mb-3 flex items-start gap-2 border border-sev-yellow-edge/50 bg-sev-yellow-bg/70 p-2 text-xs text-sev-yellow-fg"
           >
             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             <div>{w}</div>
@@ -304,11 +308,11 @@ function AnchorCard({ consolidation }: { consolidation: ForecastConsolidation })
   const { anchor } = consolidation;
   if (!anchor.anchorRow) {
     return (
-      <section className="rounded-md border-2 border-rose-200 bg-rose-50/50 p-4">
-        <div className="text-sm font-semibold text-rose-900">
+      <section className="border border-sev-red-edge/60 bg-sev-red-bg/40 p-4">
+        <div className="label-eyebrow-strong text-sev-red-fg">
           No 50 hr anchor found
         </div>
-        <div className="text-xs text-rose-800/90 mt-1">
+        <div className="text-xs text-sev-red-fg/85 mt-1">
           This forecast didn't contain a 50 hr inspection row. Without an
           anchor the consolidation can't run — every row is shown below as
           unclassified.
@@ -319,48 +323,52 @@ function AnchorCard({ consolidation }: { consolidation: ForecastConsolidation })
   const hoursToAnchor = anchor.hoursToAnchor;
   const daysToAnchor = anchor.daysToAnchor;
   return (
-    <section className="rounded-md border-2 border-emerald-300 bg-emerald-50/50 p-4">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <div>
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-emerald-800">
-            Next 50 hr anchor{anchor.is50Plus100 && " · 50 + 100 hr visit"}
-          </div>
-          <div className="text-base font-semibold text-emerald-950 mt-0.5">
-            {anchor.anchorRow.canonicalName}
-          </div>
+    <section className="border border-foreground/25 bg-card border-l-4 border-l-sev-green-edge">
+      <div className="border-b border-foreground/15 bg-sev-green-bg/40 px-4 py-2">
+        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-spec text-sev-green-fg">
+          <span>Next 50 hr anchor</span>
+          {anchor.is50Plus100 && (
+            <>
+              <span className="opacity-50">·</span>
+              <span>50 + 100 hr visit</span>
+            </>
+          )}
         </div>
-        <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1 text-sm">
-          <Stat
-            label="Due TTAF"
-            value={
-              anchor.anchorTtafHours != null
-                ? formatHours(anchor.anchorTtafHours)
-                : "—"
-            }
-          />
-          <Stat
-            label="Due date"
-            value={anchor.anchorDate ? format(anchor.anchorDate, "dd.MM.yyyy") : "—"}
-          />
-          <Stat
-            label="Hours to anchor"
-            value={
-              hoursToAnchor != null
-                ? `${hoursToAnchor >= 0 ? "+" : ""}${hoursToAnchor.toFixed(1)} h`
-                : "—"
-            }
-            tone={hoursToAnchor != null && hoursToAnchor < 0 ? "rose" : "default"}
-          />
-          <Stat
-            label="Days to anchor"
-            value={
-              daysToAnchor != null
-                ? `${daysToAnchor >= 0 ? "+" : ""}${daysToAnchor} d`
-                : "—"
-            }
-            tone={daysToAnchor != null && daysToAnchor < 0 ? "rose" : "default"}
-          />
+        <div className="font-display text-lg font-semibold leading-tight mt-1 text-foreground">
+          {anchor.anchorRow.canonicalName}
         </div>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-foreground/15 border-t border-foreground/10">
+        <Stat
+          label="Due TTAF"
+          value={
+            anchor.anchorTtafHours != null
+              ? formatHours(anchor.anchorTtafHours)
+              : "—"
+          }
+        />
+        <Stat
+          label="Due date"
+          value={anchor.anchorDate ? format(anchor.anchorDate, "dd.MM.yyyy") : "—"}
+        />
+        <Stat
+          label="Hours to anchor"
+          value={
+            hoursToAnchor != null
+              ? `${hoursToAnchor >= 0 ? "+" : ""}${hoursToAnchor.toFixed(1)} h`
+              : "—"
+          }
+          tone={hoursToAnchor != null && hoursToAnchor < 0 ? "rose" : "default"}
+        />
+        <Stat
+          label="Days to anchor"
+          value={
+            daysToAnchor != null
+              ? `${daysToAnchor >= 0 ? "+" : ""}${daysToAnchor} d`
+              : "—"
+          }
+          tone={daysToAnchor != null && daysToAnchor < 0 ? "rose" : "default"}
+        />
       </div>
     </section>
   );
@@ -376,18 +384,35 @@ function Stat({
   tone?: "default" | "rose";
 }) {
   return (
-    <div className="flex flex-col">
-      <span className="text-[10px] uppercase tracking-wider text-emerald-700/80">
+    <div className="flex flex-col gap-1 px-4 py-3">
+      <span className="text-[9px] font-bold uppercase tracking-spec text-muted-foreground">
         {label}
       </span>
       <span
         className={cn(
-          "font-semibold",
-          tone === "rose" ? "text-rose-700" : "text-emerald-950",
+          "font-mono text-base font-bold tabular-nums",
+          tone === "rose" ? "text-sev-red-fg" : "text-foreground",
         )}
       >
         {value}
       </span>
+    </div>
+  );
+}
+
+function Datum({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-[9px] font-bold uppercase tracking-spec text-muted-foreground">
+        {label}
+      </span>
+      <span className="text-sm text-foreground">{children}</span>
     </div>
   );
 }
@@ -406,25 +431,26 @@ function LeadTimePlanningPanel({
   currentTtafHours: number | null;
 }) {
   return (
-    <section className="rounded-md border-2 border-sky-200 bg-sky-50/40">
-      <header className="flex items-baseline justify-between gap-2 border-b border-sky-200 bg-sky-50 px-3 py-2">
-        <h2 className="flex items-center gap-2 text-sm font-semibold text-sky-900">
-          <PackageOpen className="h-4 w-4" />
-          Lead-time planning — retire &amp; overhaul
+    <section className="border border-foreground/20 bg-card border-l-4 border-l-accent">
+      <header className="flex items-baseline justify-between gap-2 border-b border-foreground/15 bg-accent/15 px-3 py-2">
+        <h2 className="flex items-center gap-2 label-eyebrow-strong text-accent-foreground">
+          <PackageOpen className="h-3.5 w-3.5" />
+          Lead-time planning · retire &amp; overhaul
         </h2>
-        <span className="text-xs text-sky-800/80">
+        <span className="text-[10px] uppercase tracking-spec text-accent-foreground/80">
           {rows.length} item{rows.length === 1 ? "" : "s"} · horizon{" "}
-          {horizon.hoursAhead} h / {horizon.monthsAhead} mo
+          {horizon.hoursAhead}h / {horizon.monthsAhead}mo
         </span>
       </header>
-      <div className="px-3 py-2 text-xs text-sky-900/80">
-        Components due for retire (<code>Ret</code>) or overhaul (<code>Ove</code>)
-        within the lead-time horizon. Order swap units or schedule the overhaul
-        slot now — items here are also shown in their natural band panel below,
-        so this is a procurement-planning surface, not a re-classification.
+      <div className="px-3 py-2 text-xs text-foreground/75 border-b border-foreground/10">
+        Components due for retire (<code className="font-mono">Ret</code>) or overhaul
+        (<code className="font-mono">Ove</code>) within the lead-time horizon.
+        Order swap units or schedule the overhaul slot now — items here are also
+        shown in their natural band panel below, so this is a procurement-planning
+        surface, not a re-classification.
       </div>
       <ColumnHeader />
-      <ul className="divide-y">
+      <ul className="divide-y divide-foreground/10">
         {rows.map((r, i) => (
           <ConsolidatedRowItem
             key={`lead-${i}`}
@@ -451,16 +477,16 @@ function DraftWorkOrderPanel({
 }) {
   const grouped = useMemo(() => groupBySection(rows), [rows]);
   return (
-    <section className="rounded-md border bg-card">
-      <header className="flex items-baseline justify-between gap-2 border-b bg-muted/40 px-3 py-2">
-        <h2 className="text-sm font-semibold">Draft Work Order</h2>
-        <span className="text-xs text-muted-foreground">
+    <section className="border border-foreground/20 bg-card">
+      <header className="flex items-baseline justify-between gap-2 border-b border-foreground/15 bg-foreground/[0.04] px-3 py-2">
+        <h2 className="label-eyebrow-strong">Draft work order</h2>
+        <span className="text-[10px] uppercase tracking-spec text-muted-foreground">
           {rows.length} item{rows.length === 1 ? "" : "s"} · greens, ambers, and
           cat-practice auto-includes
         </span>
       </header>
       {rows.length === 0 ? (
-        <div className="px-3 py-4 text-sm text-muted-foreground">
+        <div className="px-3 py-4 text-sm text-muted-foreground italic">
           No items land in the green or amber bands. Check the flagged panel
           below — or the anchor itself may sit at an unusual offset.
         </div>
@@ -500,16 +526,16 @@ function FlaggedForReviewPanel({
 }) {
   const grouped = useMemo(() => groupBySection(rows), [rows]);
   return (
-    <section className="rounded-md border-2 border-rose-200 bg-rose-50/30">
-      <header className="flex items-baseline justify-between gap-2 border-b border-rose-200 bg-rose-50 px-3 py-2">
-        <h2 className="text-sm font-semibold text-rose-900">
-          Forced but awkward — needs human decision
+    <section className="border border-foreground/20 border-l-4 border-l-sev-red-edge bg-card">
+      <header className="flex items-baseline justify-between gap-2 border-b border-foreground/15 bg-sev-red-bg/40 px-3 py-2">
+        <h2 className="label-eyebrow-strong text-sev-red-fg">
+          Forced but awkward · needs human decision
         </h2>
-        <span className="text-xs text-rose-800/80">
+        <span className="text-[10px] uppercase tracking-spec text-sev-red-fg/80">
           {rows.length} item{rows.length === 1 ? "" : "s"}
         </span>
       </header>
-      <div className="px-3 py-2 text-xs text-rose-900/80">
+      <div className="px-3 py-2 text-xs text-foreground/75 border-b border-foreground/10">
         Beyond the ±10 h tolerance but inside the next 50 hr cycle. Rule #1
         requires they be addressed before the cycle runs out; the human picks
         whether to pull forward, shift the anchor, or schedule a separate visit.
@@ -547,22 +573,22 @@ function NextCyclePreview({
   const [open, setOpen] = useState(false);
   const grouped = useMemo(() => groupBySection(rows), [rows]);
   return (
-    <section className="rounded-md border bg-card">
+    <section className="border border-foreground/20 bg-card">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-baseline justify-between gap-2 border-b bg-muted/30 px-3 py-2 text-left hover:bg-muted/50"
+        className="flex w-full items-baseline justify-between gap-2 border-b border-foreground/15 bg-foreground/[0.04] px-3 py-2 text-left hover:bg-foreground/[0.06]"
       >
-        <span className="flex items-center gap-2 text-sm font-semibold">
+        <span className="flex items-center gap-2 label-eyebrow-strong">
           {open ? (
-            <ChevronDown className="h-4 w-4" />
+            <ChevronDown className="h-3.5 w-3.5" />
           ) : (
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight className="h-3.5 w-3.5" />
           )}
           Next-cycle preview (defer)
         </span>
-        <span className="text-xs text-muted-foreground">
-          {rows.length} item{rows.length === 1 ? "" : "s"} · beyond anchor + 50 h
+        <span className="text-[10px] uppercase tracking-spec text-muted-foreground">
+          {rows.length} item{rows.length === 1 ? "" : "s"} · beyond anchor + 50h
         </span>
       </button>
       {open && <ColumnHeader />}
@@ -590,27 +616,25 @@ function NextCyclePreview({
 
 function UnclassifiedPanel({ rows }: { rows: ForecastRow[] }) {
   return (
-    <section className="rounded-md border bg-card">
-      <header className="flex items-baseline justify-between gap-2 border-b bg-muted/30 px-3 py-2">
-        <h2 className="text-sm font-semibold text-muted-foreground">
-          Unclassified
-        </h2>
-        <span className="text-xs text-muted-foreground">
+    <section className="border border-foreground/20 bg-card">
+      <header className="flex items-baseline justify-between gap-2 border-b border-foreground/15 bg-foreground/[0.04] px-3 py-2">
+        <h2 className="label-eyebrow-strong">Unclassified</h2>
+        <span className="text-[10px] uppercase tracking-spec text-muted-foreground">
           {rows.length} item{rows.length === 1 ? "" : "s"} · no usable deadline
         </span>
       </header>
-      <ul className="divide-y">
+      <ul className="divide-y divide-foreground/10">
         {rows.map((r, i) => (
           <li key={i} className="grid grid-cols-12 items-center gap-3 px-3 py-2 text-sm">
             <div className="col-span-8 truncate">
               <span className="font-medium">{r.canonicalName}</span>
               {r.needsReview && (
-                <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900">
+                <span className="ml-2 border border-sev-yellow-edge/50 bg-sev-yellow-bg px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-spec text-sev-yellow-fg">
                   needs review
                 </span>
               )}
             </div>
-            <div className="col-span-4 text-right text-xs text-muted-foreground">
+            <div className="col-span-4 text-right text-[10px] uppercase tracking-spec text-muted-foreground">
               {r.section}
             </div>
           </li>
@@ -633,31 +657,30 @@ function SectionBlock({
 }) {
   return (
     <div>
-      <div className="flex items-baseline justify-between gap-2 border-b bg-muted/20 px-3 py-1.5">
-        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          {section}
-        </span>
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+      <div className="flex items-center gap-3 border-b border-t border-foreground/10 bg-foreground/[0.03] px-3 py-1">
+        <span className="label-eyebrow-strong">{section}</span>
+        <span className="section-rule" />
+        <span className="text-[10px] uppercase tracking-spec text-muted-foreground">
           {count}
         </span>
       </div>
-      <ul className="divide-y">{children}</ul>
+      <ul className="divide-y divide-foreground/10">{children}</ul>
     </div>
   );
 }
 
 const BAND_STYLES: Record<ForecastBand, string> = {
-  green: "bg-emerald-50/40 hover:bg-emerald-50/70",
-  amber: "bg-amber-50/60 hover:bg-amber-100/60",
-  forced_awkward: "bg-rose-50/40 hover:bg-rose-50/70",
-  defer: "bg-card hover:bg-muted/30",
+  green: "bg-sev-green-bg/30 hover:bg-sev-green-bg/50",
+  amber: "bg-sev-yellow-bg/40 hover:bg-sev-yellow-bg/60",
+  forced_awkward: "bg-sev-red-bg/30 hover:bg-sev-red-bg/50",
+  defer: "bg-card hover:bg-foreground/[0.03]",
 };
 
 const BAND_BADGE: Record<ForecastBand, string> = {
-  green: "bg-emerald-100 text-emerald-800 border-emerald-300",
-  amber: "bg-amber-100 text-amber-900 border-amber-300",
-  forced_awkward: "bg-rose-100 text-rose-900 border-rose-300",
-  defer: "bg-slate-100 text-slate-700 border-slate-300",
+  green: "border-sev-green-edge/60 bg-sev-green-bg text-sev-green-fg",
+  amber: "border-sev-yellow-edge/60 bg-sev-yellow-bg text-sev-yellow-fg",
+  forced_awkward: "border-sev-red-edge/60 bg-sev-red-bg text-sev-red-fg",
+  defer: "border-foreground/25 bg-foreground/[0.05] text-muted-foreground",
 };
 
 const BAND_LABEL: Record<ForecastBand, string> = {
@@ -691,34 +714,34 @@ function ConsolidatedRowItem({
       )}
     >
       <div className="col-span-5 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-1.5 flex-wrap">
           <span className="truncate font-medium" title={row.canonicalName}>
             {row.canonicalName}
           </span>
           <BandChip band={row.band} />
           {row.catPracticeAutoInclude && (
-            <span className="rounded border border-sky-300 bg-sky-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-800">
+            <span className="border border-accent/50 bg-accent/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-spec text-accent-foreground">
               cat practice
             </span>
           )}
           {row.needsReview && (
-            <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900">
+            <span className="border border-sev-yellow-edge/50 bg-sev-yellow-bg px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-spec text-sev-yellow-fg">
               needs review
             </span>
           )}
           {row.engineSide && (
-            <span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-secondary-foreground">
+            <span className="border border-foreground/25 bg-foreground/[0.05] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-spec text-foreground">
               {row.engineSide}
             </span>
           )}
           {row.adType && (
-            <span className="rounded border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <span className="border border-foreground/25 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-spec text-muted-foreground">
               {row.adType}
             </span>
           )}
           {row.tolerancePct != null && row.tolerancePct > 0 && (
             <span
-              className="rounded border bg-muted px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-muted-foreground"
+              className="border border-foreground/25 bg-foreground/[0.05] px-1.5 py-0.5 text-[9px] font-bold tracking-spec text-muted-foreground"
               title="Tolerance window"
             >
               ±{row.tolerancePct}%
@@ -726,22 +749,24 @@ function ConsolidatedRowItem({
           )}
         </div>
         {row.adNumberCanonical && (
-          <div className="text-xs text-muted-foreground">
+          <div className="text-[11px] font-mono text-muted-foreground mt-0.5">
             {row.adNumberCanonical}
           </div>
         )}
         {!row.adNumberCanonical && row.section === "Components" && row.serialNo && (
-          <div className="text-xs text-muted-foreground">S/N {row.serialNo}</div>
+          <div className="text-[11px] font-mono text-muted-foreground mt-0.5">
+            S/N {row.serialNo}
+          </div>
         )}
         {row.section === "Tasks" && row.taskNum && (
-          <div className="text-xs text-muted-foreground">
+          <div className="text-[11px] font-mono text-muted-foreground mt-0.5">
             Task {row.taskNum}
             {row.ataCode ? ` · ATA ${row.ataCode}` : ""}
           </div>
         )}
       </div>
       {/* Due on — date | TTAF compartment */}
-      <div className="col-span-2 grid grid-cols-2 divide-x divide-border rounded-md border border-border bg-background shadow-sm overflow-hidden">
+      <div className="col-span-2 grid grid-cols-2 divide-x divide-foreground/15 border border-foreground/20 bg-card overflow-hidden">
         <span
           className="px-1.5 py-0.5 text-center font-mono text-[11px] tabular-nums"
           title="Due date"
@@ -756,7 +781,7 @@ function ConsolidatedRowItem({
         </span>
       </div>
       {/* Time until — days | hours compartment with per-half severity tint */}
-      <div className="col-span-2 grid grid-cols-2 divide-x divide-border rounded-md border border-border shadow-sm overflow-hidden">
+      <div className="col-span-2 grid grid-cols-2 divide-x divide-foreground/15 border border-foreground/20 overflow-hidden">
         <span
           className={cn(
             "px-1.5 py-0.5 text-center font-mono text-[11px] tabular-nums",
@@ -781,7 +806,7 @@ function ConsolidatedRowItem({
       <div className="col-span-3 text-right text-xs">
         <DirectionBadge direction={row.direction} gapHours={row.gapHours} />
         {row.gapEstimated && (
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+          <div className="text-[9px] uppercase tracking-spec text-muted-foreground mt-0.5">
             estimated
           </div>
         )}
@@ -791,22 +816,22 @@ function ConsolidatedRowItem({
 }
 
 const severityHalf: Record<Severity, string> = {
-  green: "bg-emerald-100 text-emerald-800",
-  yellow: "bg-amber-100 text-amber-900",
-  red: "bg-rose-200 text-rose-900 font-semibold",
-  unknown: "bg-background text-muted-foreground",
+  green: "bg-sev-green-bg text-sev-green-fg",
+  yellow: "bg-sev-yellow-bg text-sev-yellow-fg",
+  red: "bg-sev-red-bg text-sev-red-fg font-semibold",
+  unknown: "bg-card text-muted-foreground",
 };
 
 function ColumnHeader() {
   return (
-    <div className="border-b bg-muted/30">
-      <div className="grid grid-cols-12 items-end gap-3 px-3 pt-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+    <div className="border-b border-foreground/15 bg-foreground/[0.04]">
+      <div className="grid grid-cols-12 items-end gap-3 px-3 pt-1 text-[9px] font-bold uppercase tracking-spec text-muted-foreground/80">
         <div className="col-span-5">Event</div>
         <div className="col-span-2 text-center">Due at</div>
         <div className="col-span-2 text-center">Time left</div>
         <div className="col-span-3 text-right">Status</div>
       </div>
-      <div className="grid grid-cols-12 items-center gap-3 px-3 pb-1 text-[9px] uppercase tracking-wider text-muted-foreground/70">
+      <div className="grid grid-cols-12 items-center gap-3 px-3 pb-1 text-[8px] uppercase tracking-spec text-muted-foreground/70">
         <div className="col-span-5"></div>
         <div className="col-span-2 grid grid-cols-2 text-center">
           <span>Date</span>
@@ -826,7 +851,7 @@ function BandChip({ band }: { band: ForecastBand }) {
   return (
     <span
       className={cn(
-        "rounded border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+        "border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-spec",
         BAND_BADGE[band],
       )}
     >
@@ -846,26 +871,26 @@ function DirectionBadge({
   switch (direction) {
     case "at_anchor":
       return (
-        <span className="inline-block rounded-full border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800">
+        <span className="inline-block border border-sev-green-edge/60 bg-sev-green-bg px-2 py-0.5 text-[9px] font-bold uppercase tracking-spec text-sev-green-fg">
           at anchor
         </span>
       );
     case "pulls_forward":
       return (
         <span className="text-foreground">
-          pulls forward <span className="font-semibold">{abs} h</span>
+          pulls forward <span className="font-mono font-semibold">{abs}h</span>
         </span>
       );
     case "anchor_moves":
       return (
-        <span className="text-amber-800">
-          anchor moves earlier <span className="font-semibold">{abs} h</span>
+        <span className="text-sev-yellow-fg">
+          anchor moves earlier <span className="font-mono font-semibold">{abs}h</span>
         </span>
       );
     case "needs_earlier_visit":
       return (
-        <span className="text-rose-800">
-          needs earlier visit (<span className="font-semibold">{abs} h</span>{" "}
+        <span className="text-sev-red-fg">
+          needs earlier visit (<span className="font-mono font-semibold">{abs}h</span>{" "}
           before anchor)
         </span>
       );

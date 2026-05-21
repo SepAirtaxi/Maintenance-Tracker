@@ -7,10 +7,15 @@ export default {
       center: true,
       padding: "1rem",
       screens: {
-        "2xl": "1400px",
+        "2xl": "1440px",
       },
     },
     extend: {
+      fontFamily: {
+        sans: ['"Inter Tight"', "Inter", "system-ui", "sans-serif"],
+        display: ['"Bricolage Grotesque"', '"Inter Tight"', "sans-serif"],
+        mono: ['"JetBrains Mono"', "ui-monospace", "SFMono-Regular", "monospace"],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -42,15 +47,55 @@ export default {
           foreground: "hsl(var(--card-foreground))",
         },
         status: {
-          green: "hsl(142 71% 45%)",
-          yellow: "hsl(43 96% 56%)",
-          red: "hsl(0 84% 60%)",
+          green: "hsl(var(--sev-green-edge))",
+          yellow: "hsl(var(--sev-yellow-edge))",
+          red: "hsl(var(--sev-red-edge))",
+        },
+        sev: {
+          "red-fg": "hsl(var(--sev-red-fg))",
+          "red-bg": "hsl(var(--sev-red-bg))",
+          "red-edge": "hsl(var(--sev-red-edge))",
+          "yellow-fg": "hsl(var(--sev-yellow-fg))",
+          "yellow-bg": "hsl(var(--sev-yellow-bg))",
+          "yellow-edge": "hsl(var(--sev-yellow-edge))",
+          "green-fg": "hsl(var(--sev-green-fg))",
+          "green-bg": "hsl(var(--sev-green-bg))",
+          "green-edge": "hsl(var(--sev-green-edge))",
         },
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        none: "0",
+        sm: "0",
+        DEFAULT: "0",
+        md: "0",
+        lg: "0",
+        xl: "0",
+        "2xl": "0",
+        "3xl": "0",
+        full: "9999px",
+      },
+      boxShadow: {
+        // Default shadows muted to near-nothing — the aesthetic is flat
+        sm: "0 0 0 1px hsl(var(--foreground) / 0.04)",
+        DEFAULT: "0 1px 0 hsl(var(--foreground) / 0.06)",
+        md: "0 2px 0 hsl(var(--foreground) / 0.06)",
+        lg: "0 4px 0 hsl(var(--foreground) / 0.08)",
+        // A single intentional elevation for dialogs only
+        dialog: "0 24px 60px -20px hsl(var(--foreground) / 0.35), 0 0 0 1px hsl(var(--foreground) / 0.3)",
+      },
+      letterSpacing: {
+        spec: "0.14em",
+        stamp: "0.05em",
+      },
+      keyframes: {
+        "accordion-down": {
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
+        },
+        "accordion-up": {
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
+        },
       },
     },
   },

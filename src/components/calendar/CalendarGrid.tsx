@@ -156,7 +156,7 @@ export default function CalendarGrid({
 
   if (fleet.length === 0) {
     return (
-      <div className="rounded-md border border-dashed p-8 text-center">
+      <div className="border border-dashed border-foreground/25 bg-card p-8 text-center">
         <p className="text-sm text-muted-foreground">
           No aircraft in the fleet yet.
         </p>
@@ -167,47 +167,45 @@ export default function CalendarGrid({
   const gridTemplate = `${TAIL_COL_PX}px repeat(${dayCount}, minmax(0, 1fr))`;
 
   return (
-    <div className="rounded-md border bg-card shadow-sm overflow-hidden">
+    <div className="border border-foreground/20 bg-card overflow-hidden">
       {/* Header row */}
       <div
-        className="grid border-b bg-muted/40"
+        className="grid border-b border-foreground/15 bg-foreground/[0.04]"
         style={{ gridTemplateColumns: gridTemplate, height: HEADER_HEIGHT_PX }}
       >
-        <div className="border-r px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-end">
+        <div className="border-r border-foreground/15 px-2 py-1 text-[10px] font-bold uppercase tracking-spec text-muted-foreground flex items-end">
           Tail
         </div>
         {days.map((d, i) => {
           const today = i === todayIdx;
           const weekend = d.getDay() === 0 || d.getDay() === 6;
-          // Show ISO week number above Mondays — gives a per-week marker that
-          // works for both week (one Monday) and month (several) views.
           const isMonday = d.getDay() === 1;
           return (
             <div
               key={d.toISOString()}
               className={cn(
-                "border-r last:border-r-0 px-1 py-1 text-center flex flex-col justify-end",
-                weekend && "bg-muted/30",
-                today && "bg-amber-100/80",
+                "border-r last:border-r-0 border-foreground/10 px-1 py-1 text-center flex flex-col justify-end",
+                weekend && "bg-foreground/[0.03]",
+                today && "bg-accent/25",
               )}
             >
               {today ? (
-                <span className="text-[8px] font-bold uppercase tracking-wider text-amber-800">
+                <span className="text-[8px] font-bold uppercase tracking-spec text-accent-foreground">
                   Today
                 </span>
               ) : isMonday ? (
-                <span className="text-[8px] font-bold uppercase tracking-wider text-sky-700">
+                <span className="text-[8px] font-bold uppercase tracking-spec text-muted-foreground">
                   W{getISOWeek(d)}
                 </span>
               ) : null}
               <div className="flex items-baseline justify-center gap-1 leading-none">
-                <span className="text-[9px] uppercase text-muted-foreground">
+                <span className="text-[9px] uppercase tracking-spec text-muted-foreground">
                   {viewMode === "week" ? format(d, "EEE") : format(d, "EEEEE")}
                 </span>
                 <span
                   className={cn(
                     "font-mono text-xs tabular-nums",
-                    today ? "font-bold text-amber-900" : "font-semibold",
+                    today ? "font-bold text-foreground" : "font-semibold",
                   )}
                 >
                   {format(d, "d")}
@@ -226,22 +224,22 @@ export default function CalendarGrid({
           <div
             key={a.tailNumber}
             className={cn(
-              "relative grid border-b last:border-b-0",
+              "relative grid border-b last:border-b-0 border-foreground/10",
               grounded
-                ? "bg-slate-300/50"
-                : rowIdx % 2 === 1 && "bg-muted/20",
+                ? "bg-sev-red-bg/30"
+                : rowIdx % 2 === 1 && "bg-foreground/[0.02]",
             )}
             style={{ gridTemplateColumns: gridTemplate, height: ROW_HEIGHT_PX }}
           >
             <div
               className={cn(
-                "border-r px-2 flex flex-col justify-center font-mono text-xs font-semibold tabular-nums",
-                grounded && "text-slate-700",
+                "border-r border-foreground/15 px-2 flex flex-col justify-center font-mono text-xs font-bold tabular-nums tracking-stamp",
+                grounded && "text-sev-red-fg",
               )}
             >
               <span className="truncate leading-tight">{a.tailNumber}</span>
               {grounded && (
-                <span className="text-[8px] font-bold uppercase tracking-wider text-slate-600 leading-none">
+                <span className="text-[8px] font-bold uppercase tracking-spec text-sev-red-fg/80 leading-none">
                   Grounded
                 </span>
               )}
@@ -256,11 +254,14 @@ export default function CalendarGrid({
                   disabled={readOnly}
                   onClick={() => onCreateForCell(a.tailNumber, d)}
                   className={cn(
-                    "border-r last:border-r-0 transition-colors",
+                    "border-r last:border-r-0 border-foreground/[0.07] transition-colors",
                     !readOnly &&
-                      (grounded ? "hover:bg-slate-400/40" : "hover:bg-sky-50"),
-                    weekend && (grounded ? "bg-slate-400/20" : "bg-muted/20"),
-                    today && !grounded && "bg-amber-50/60",
+                      (grounded
+                        ? "hover:bg-sev-red-bg/50"
+                        : "hover:bg-accent/15"),
+                    weekend &&
+                      (grounded ? "bg-sev-red-bg/40" : "bg-foreground/[0.03]"),
+                    today && !grounded && "bg-accent/10",
                     readOnly && "cursor-default",
                   )}
                   aria-label={`Book ${a.tailNumber} on ${format(d, "PP")}`}
@@ -307,10 +308,10 @@ export default function CalendarGrid({
                 .join(" · ");
 
               const woBadgeClass = active
-                ? "bg-blue-200 text-blue-900"
+                ? "bg-background/20 text-background"
                 : past
-                  ? "bg-zinc-200 text-zinc-700"
-                  : "bg-sky-200 text-sky-900";
+                  ? "bg-foreground/[0.08] text-muted-foreground"
+                  : "bg-foreground/10 text-foreground";
 
               return (
                 <button
@@ -322,15 +323,14 @@ export default function CalendarGrid({
                   }}
                   title={titleAttr}
                   className={cn(
-                    "absolute top-1 bottom-1 rounded-md border text-left px-1.5 flex items-center gap-1 overflow-hidden text-[11px] font-medium shadow-sm transition-shadow",
-                    "hover:shadow-md focus:outline-none focus:ring-2 focus:ring-sky-400",
+                    "absolute top-1 bottom-1 border text-left px-1.5 flex items-center gap-1 overflow-hidden text-[11px] font-medium transition-colors",
+                    "focus:outline-none focus:ring-1 focus:ring-accent focus:ring-offset-0",
                     active
-                      ? "border-blue-400 bg-blue-100 text-blue-900"
+                      ? "border-foreground bg-foreground text-background hover:bg-foreground/85"
                       : past
-                        ? "border-zinc-300 bg-zinc-100 text-zinc-600"
-                        : "border-sky-300 bg-sky-100 text-sky-900",
-                    cols.clippedLeft && "rounded-l-none border-l-0",
-                    cols.openEnded && "rounded-r-none",
+                        ? "border-foreground/20 bg-foreground/[0.05] text-muted-foreground hover:bg-foreground/[0.08]"
+                        : "border-foreground/40 bg-card text-foreground hover:bg-foreground/[0.06]",
+                    cols.clippedLeft && "border-l-0",
                   )}
                   style={{
                     left,
@@ -348,12 +348,12 @@ export default function CalendarGrid({
                   {linkedLocation && (
                     <span
                       className={cn(
-                        "shrink-0 inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[9px] font-medium",
+                        "shrink-0 inline-flex items-center gap-0.5 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-spec",
                         active
-                          ? "bg-blue-200 text-blue-900"
+                          ? "bg-background/20 text-background"
                           : past
-                            ? "bg-zinc-200 text-zinc-700"
-                            : "bg-sky-200 text-sky-900",
+                            ? "bg-foreground/[0.08] text-muted-foreground"
+                            : "bg-foreground/10 text-foreground",
                       )}
                       title={`Location: ${linkedLocation.name}`}
                     >
@@ -378,11 +378,11 @@ export default function CalendarGrid({
                         {g.wo && (
                           <span
                             className={cn(
-                              "shrink-0 rounded px-1 py-0.5 text-[10px] font-mono font-bold",
+                              "shrink-0 px-1 py-0.5 text-[10px] font-mono font-bold tracking-stamp",
                               woBadgeClass,
                             )}
                           >
-                            WO: {g.wo}
+                            WO {g.wo}
                           </span>
                         )}
                         <span className="truncate shrink min-w-0">
@@ -413,11 +413,7 @@ export default function CalendarGrid({
                     <StickyNote
                       className={cn(
                         "h-3 w-3 shrink-0 ml-auto",
-                        active
-                          ? "text-blue-700/80"
-                          : past
-                            ? "text-zinc-500"
-                            : "text-sky-700/80",
+                        active ? "text-background/70" : "text-muted-foreground",
                       )}
                     />
                   )}

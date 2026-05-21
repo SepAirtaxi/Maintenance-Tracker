@@ -22,9 +22,9 @@ import type { Aircraft, MaintenanceEvent } from "@/types";
 const ROW_LIMIT = 25;
 
 const severityPill: Record<Severity, string> = {
-  green: "bg-emerald-100 text-emerald-800 border-emerald-200",
-  yellow: "bg-amber-100 text-amber-900 border-amber-300",
-  red: "bg-rose-200 text-rose-900 border-rose-300 font-semibold",
+  green: "bg-sev-green-bg/70 text-sev-green-fg border-sev-green-edge/40",
+  yellow: "bg-sev-yellow-bg/70 text-sev-yellow-fg border-sev-yellow-edge/60",
+  red: "bg-sev-red-bg text-sev-red-fg border-sev-red-edge/60 font-semibold",
   unknown: "bg-muted/60 text-muted-foreground border-border",
 };
 
@@ -215,7 +215,7 @@ function Row({
       <span className="truncate" title={warning}>
         {warning}
         {planned && (
-          <span className="ml-1.5 rounded-full bg-emerald-100 text-emerald-700 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider align-middle">
+          <span className="ml-1.5 rounded-full bg-sev-green-bg/70 text-sev-green-fg/85 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider align-middle">
             planned
           </span>
         )}

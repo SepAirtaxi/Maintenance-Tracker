@@ -255,7 +255,7 @@ function ReviewPane({
       )}
 
       {parseResult.invalidRows.length > 0 && (
-        <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+        <div className="rounded-md border border-sev-yellow-edge/60 bg-sev-yellow-bg/40 p-3 text-sm text-sev-yellow-fg">
           <div className="flex items-center gap-2 font-medium">
             <AlertTriangle className="h-4 w-4" />
             {parseResult.invalidRows.length} invalid row(s) will be skipped
@@ -418,9 +418,9 @@ function Stat({
 }) {
   const intentClass =
     intent === "warn"
-      ? "text-amber-700 bg-amber-50 border-amber-200"
+      ? "text-sev-yellow-fg/85 bg-sev-yellow-bg/40 border-sev-yellow-edge/40"
       : intent === "ok"
-        ? "text-emerald-700 bg-emerald-50 border-emerald-200"
+        ? "text-sev-green-fg/85 bg-sev-green-bg/40 border-sev-green-edge/40"
         : "bg-muted/50";
   return (
     <div className={`rounded-md border p-3 ${intentClass}`}>

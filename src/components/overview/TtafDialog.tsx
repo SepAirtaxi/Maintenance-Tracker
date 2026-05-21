@@ -135,7 +135,7 @@ export default function TtafDialog({ aircraft, onClose }: Props) {
             </div>
 
             {isDecrement && (
-              <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              <p className="rounded-md border border-sev-yellow-edge/60 bg-sev-yellow-bg/40 px-3 py-2 text-sm text-sev-yellow-fg">
                 You're <b>decreasing</b> TTAF. Make sure this is intentional —
                 the transaction log will record it.
               </p>

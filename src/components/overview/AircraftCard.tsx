@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import {
   CalendarDays,
+  ChevronRight,
   Gauge,
   History,
   Pencil,
@@ -12,7 +13,6 @@ import {
   StickyNote,
   Wrench,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatBookingRange, formatDate } from "@/lib/format";
 import { formatMinutesAsDuration } from "@/lib/time";
@@ -57,9 +57,6 @@ type Props = {
   onUpdateTtaf: () => void;
   onAddBooking: () => void;
   onViewBooking: (booking: Booking) => void;
-  // Open the grounding dialog (cause picker). Called when toggling
-  // airworthy → grounded; un-grounding is handled inline here via
-  // liftGrounding because it carries no extra data.
   onGround: () => void;
   onAddEvent: () => void;
   onEditEvent: (event: MaintenanceEvent) => void;
@@ -75,24 +72,19 @@ type Props = {
   onViewDeferralHistory: (defect: Defect) => void;
   onEstimateDefect: (defect: Defect) => void;
   onEditNote: () => void;
-  // Jump to the defect/event card section for a click-through on the
-  // grounding-cause banner. The cause lives on the same tail by construction.
   onOpenLinkedDefect?: (defect: Defect) => void;
   onOpenLinkedEvent?: (event: MaintenanceEvent) => void;
 };
 
+// Left stripe color — communicates the aircraft's worst severity at a glance.
+// Severity wash on the whole card is intentionally dropped so the surface
+// stays paper-white — severity is data (stripe + dot + cell tint), not
+// atmosphere.
 const stripe: Record<Severity, string> = {
-  red: "border-l-status-red bg-rose-50",
-  yellow: "border-l-status-yellow bg-amber-50",
-  green: "border-l-status-green bg-emerald-50/70",
-  unknown: "border-l-muted-foreground/30 bg-card",
-};
-
-const headerBg: Record<Severity, string> = {
-  red: "bg-rose-100",
-  yellow: "bg-amber-100",
-  green: "bg-emerald-100/70",
-  unknown: "bg-secondary",
+  red: "border-l-sev-red-edge",
+  yellow: "border-l-sev-yellow-edge",
+  green: "border-l-sev-green-edge",
+  unknown: "border-l-foreground/25",
 };
 
 export default function AircraftCard({
@@ -144,8 +136,7 @@ export default function AircraftCard({
     window.addEventListener("afterprint", cleanup);
     window.print();
   };
-  // The first entry is the currently-active booking when one exists (sorted
-  // active-first upstream), so the "In maintenance" header pill mirrors that.
+
   const activeBooking = bookings[0]?.booking ?? null;
   const inHangar = isBookingActive(activeBooking);
   const activeWo = inHangar
@@ -158,7 +149,6 @@ export default function AircraftCard({
 
   const onToggleAirworthy = async () => {
     if (airworthy) {
-      // Grounding requires a cause — defer to the parent's dialog.
       onGround();
       return;
     }
@@ -170,10 +160,6 @@ export default function AircraftCard({
     }
   };
 
-  // Resolve the linked defect/event on this tail so the grounding-cause
-  // banner can render a meaningful label and click-through. Missing refs
-  // (e.g. the linked item was deleted before lifting) fall back to the
-  // stored reason; "other" groundings carry their own free text.
   const linkedDefect =
     aircraft.groundingCauseType === "defect" && aircraft.groundingCauseId
       ? defects.find((d) => d.id === aircraft.groundingCauseId) ?? null
@@ -183,516 +169,616 @@ export default function AircraftCard({
       ? events.find((e) => e.id === aircraft.groundingCauseId) ?? null
       : null;
 
-  const containerClass = airworthy
-    ? cn("border-l-4", stripe[worstSeverity])
-    : "border-l-4 border-l-destructive bg-muted";
-  const headerClass = airworthy ? headerBg[worstSeverity] : "bg-muted/80";
+  const stripeClass = airworthy
+    ? stripe[worstSeverity]
+    : "border-l-destructive";
 
   return (
     <section
       ref={cardRef}
       className={cn(
-        "border shadow-md overflow-hidden",
-        containerClass,
+        "border border-foreground/20 border-l-4 bg-card overflow-hidden",
+        stripeClass,
       )}
     >
-      <header className={cn("border-b", headerClass)}>
-        {/* Row 1: identity (cols 1-3, above WO/REQ/EVENT) | actions (cols
-            4-8, above STATUS..ACTIONS). Sharing EVENTS_GRID_COLS with rows
-            2 and 3+ gives the card a single vertical spine. */}
-        <div className={cn("grid items-center gap-2 px-3 py-1.5", EVENTS_GRID_COLS)}>
-          <div className="col-span-3 min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span className="inline-flex w-20 items-center justify-center bg-primary text-primary-foreground py-1 font-mono text-base font-bold tracking-wide shadow-sm">
-            {aircraft.tailNumber}
-          </span>
-          <span className="text-xs text-muted-foreground">
-            {aircraft.model}
-          </span>
-
-          {readOnly ? (
-            <span
-              title={airworthy ? "Aircraft is airworthy" : "Aircraft is grounded"}
-              className={cn(
-                "inline-flex items-center gap-1 border px-2 py-1 text-[11px] font-semibold uppercase tracking-wider shadow-sm",
-                airworthy
-                  ? "border-emerald-300 bg-emerald-100 text-emerald-800"
-                  : "border-rose-300 bg-rose-100 text-rose-800",
-              )}
-            >
-              {airworthy ? (
-                <ShieldCheck className="h-3.5 w-3.5" />
-              ) : (
-                <ShieldOff className="h-3.5 w-3.5" />
-              )}
-              {airworthy ? "Airworthy" : "Grounded"}
+      {/* ─── MASTHEAD ────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-[160px_minmax(0,1fr)]">
+        {/* Tail-stamp left rail — full masthead height, anchors the card */}
+        <div className="tail-stamp relative flex flex-col">
+          <div className="border-b border-background/15 px-3 pt-2 pb-1">
+            <span className="text-[8px] font-semibold uppercase tracking-spec text-background/70">
+              Registration
             </span>
-          ) : (
-            <button
-              type="button"
-              onClick={onToggleAirworthy}
-              disabled={togglingAirworthy}
-              title={
-                airworthy
-                  ? "Click to mark as grounded"
-                  : "Click to mark as airworthy"
-              }
-              className={cn(
-                "inline-flex items-center gap-1 border px-2 py-1 text-[11px] font-semibold uppercase tracking-wider shadow-sm transition-colors disabled:opacity-50",
-                airworthy
-                  ? "border-emerald-300 bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
-                  : "border-rose-300 bg-rose-100 text-rose-800 hover:bg-rose-200",
-              )}
-            >
-              {airworthy ? (
-                <ShieldCheck className="h-3.5 w-3.5" />
-              ) : (
-                <ShieldOff className="h-3.5 w-3.5" />
-              )}
-              {airworthy ? "Airworthy" : "Grounded"}
-            </button>
-          )}
-
-          {inHangar && (
-            <span
-              className="inline-flex items-center gap-1 bg-blue-600 text-white px-2 py-1 text-[11px] font-bold uppercase tracking-wider shadow-sm"
-              title="Aircraft is currently in the maintenance hangar"
-            >
-              <Wrench className="h-3.5 w-3.5" />
-              In maintenance
-              {activeWo && (
-                <span className="ml-1 bg-white/20 px-1 py-0.5 text-[10px] font-mono normal-case tracking-normal">
-                  WO: {activeWo}
-                </span>
-              )}
+          </div>
+          <div className="flex-1 flex items-center justify-center px-3 py-2">
+            <span className="font-mono text-[26px] font-bold tracking-stamp leading-none">
+              {aircraft.tailNumber}
             </span>
-          )}
-
+          </div>
           {defects.length > 0 && (
-            <span className="inline-flex items-center gap-1 bg-amber-200/70 text-amber-900 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider">
+            <div className="border-t border-background/15 px-3 py-1 text-[9px] font-semibold uppercase tracking-spec text-background/85 flex items-center gap-1.5">
               <ShieldAlert className="h-3 w-3" />
               {defects.length} defect{defects.length === 1 ? "" : "s"}
-            </span>
-          )}
-          </div>
-
-          <div className="col-span-5 min-w-0 flex items-center justify-end gap-2">
-            {aircraft.updatedAt && (
-              <span
-                className="text-[10px] text-muted-foreground whitespace-nowrap"
-                title="Last update to any data on this aircraft"
-              >
-                Last updated: {formatDate(aircraft.updatedAt)}
-              </span>
-            )}
-            <div className="flex items-center gap-0.5">
-              {!readOnly && (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2 text-xs rounded-none"
-                    onClick={onAddEvent}
-                    title="Add event"
-                  >
-                    <Plus className="h-3 w-3" />
-                    Event
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2 text-xs rounded-none"
-                    onClick={onAddDefect}
-                    title="Report defect"
-                  >
-                    <Plus className="h-3 w-3" />
-                    Defect
-                  </Button>
-                  {!aircraft.note && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-xs rounded-none"
-                      onClick={onEditNote}
-                      title="Add note"
-                    >
-                      <StickyNote className="h-3 w-3" />
-                      Note
-                    </Button>
-                  )}
-                </>
-              )}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 px-2 text-xs"
-                onClick={onOpenEditLog}
-                title="Show history"
-              >
-                <History className="h-3 w-3" />
-                History
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 px-2 text-xs"
-                onClick={onPrint}
-                title="Print this aircraft card"
-              >
-                <Printer className="h-3 w-3" />
-                Print
-              </Button>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Row 2: TTAF strip. Update button is a SIBLING of the bordered
-            content container (not nested inside it) so the container's
-            top/bottom border doesn't show above/below the button. The
-            button stays flush with the outer row edges. */}
-        <div className="px-3 pb-1.5">
-          <div className="flex items-stretch">
-            {!readOnly && (
-              <button
-                type="button"
-                onClick={onUpdateTtaf}
-                title="Update TTAF"
-                className="inline-flex w-20 items-center justify-center gap-1 bg-primary hover:bg-primary/90 active:bg-primary/80 py-1 text-[10px] font-bold uppercase tracking-wider text-primary-foreground transition-colors"
-              >
-                <Pencil className="h-3 w-3" />
-                Update
-              </button>
-            )}
-            <div className="flex flex-1 items-center gap-2.5 border bg-background px-2.5 py-0.5 shadow-sm min-w-0">
-              <Gauge className="h-4 w-4 text-primary shrink-0" />
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground shrink-0">
-                TTAF
-              </span>
-              <span className="font-mono font-bold tabular-nums text-lg leading-none text-foreground shrink-0">
+        {/* Right region — identity, status, actions, TTAF, bookings */}
+        <div className="flex flex-col">
+          {/* Identity row */}
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 px-4 pt-2 pb-2 border-b border-foreground/10">
+            <div className="min-w-0 space-y-1">
+              <h3 className="font-display text-lg font-semibold leading-tight tracking-tight text-foreground truncate">
+                {aircraft.model}
+              </h3>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {readOnly ? (
+                  <AirworthyChip airworthy={airworthy} />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={onToggleAirworthy}
+                    disabled={togglingAirworthy}
+                    title={
+                      airworthy
+                        ? "Click to mark as grounded"
+                        : "Click to mark as airworthy"
+                    }
+                    className="disabled:opacity-50"
+                  >
+                    <AirworthyChip airworthy={airworthy} />
+                  </button>
+                )}
+                {inHangar && (
+                  <span
+                    className="inline-flex items-center gap-1 bg-accent text-accent-foreground px-2 py-1 text-[10px] font-bold uppercase tracking-spec"
+                    title="Aircraft is currently in the maintenance hangar"
+                  >
+                    <Wrench className="h-3 w-3" />
+                    In maintenance
+                    {activeWo && (
+                      <span className="ml-0.5 bg-foreground/15 px-1 py-0.5 font-mono text-[9px] normal-case tracking-stamp">
+                        WO {activeWo}
+                      </span>
+                    )}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-col items-end gap-1.5">
+              {aircraft.updatedAt && (
+                <span
+                  className="font-mono text-[9px] uppercase tracking-spec text-muted-foreground tabular-nums whitespace-nowrap"
+                  title="Last update to any data on this aircraft"
+                >
+                  Last upd · {formatDate(aircraft.updatedAt)}
+                </span>
+              )}
+              <ActionToolbar
+                readOnly={readOnly}
+                noteExists={!!aircraft.note}
+                onAddEvent={onAddEvent}
+                onAddDefect={onAddDefect}
+                onEditNote={onEditNote}
+                onOpenEditLog={onOpenEditLog}
+                onPrint={onPrint}
+              />
+            </div>
+          </div>
+
+          {/* TTAF instrument strip */}
+          <div className="flex items-stretch border-b border-foreground/10">
+            <StripLabel icon={Gauge}>TTAF</StripLabel>
+            <div className="flex flex-1 items-baseline gap-3 px-3 py-1.5 min-w-0">
+              <span className="readout text-xl font-bold leading-none text-foreground">
                 {formatMinutesAsDuration(aircraft.totalTimeMinutes)}
               </span>
               {aircraft.totalTimeUpdatedAt && (
                 <span
-                  className="flex items-baseline gap-1 border-l border-border pl-2.5 text-[10px] text-muted-foreground whitespace-nowrap shrink-0"
+                  className="ml-auto flex items-baseline gap-1.5 text-[10px] uppercase tracking-spec text-muted-foreground whitespace-nowrap"
                   title="Last TTAF update"
                 >
-                  <span className="font-semibold uppercase tracking-wider">
-                    Updated
-                  </span>
-                  <span className="font-mono tabular-nums text-foreground/80">
+                  <span>Updated</span>
+                  <span className="font-mono normal-case tabular-nums text-foreground/80">
                     {formatDate(aircraft.totalTimeUpdatedAt)}
                   </span>
                 </span>
               )}
             </div>
+            {!readOnly && (
+              <button
+                type="button"
+                onClick={onUpdateTtaf}
+                title="Update TTAF"
+                className="inline-flex items-center gap-1.5 border-l border-foreground/15 px-3 text-[10px] font-bold uppercase tracking-spec text-foreground/80 hover:bg-foreground/[0.06] hover:text-foreground transition-colors"
+              >
+                <Pencil className="h-3 w-3" />
+                Update
+              </button>
+            )}
           </div>
-        </div>
 
-        {/* Row 3: Hangar bookings strip — mirrors the TTAF row pattern.
-            Left anchor is a muted-bg label cell sitting as a SIBLING of
-            the bordered content container (not nested), same as the
-            Update button on the TTAF row above. */}
-        <div className="px-3 pb-1.5">
+          {/* Bookings instrument strip */}
           <div className="flex items-stretch">
-            <div className="inline-flex items-center gap-1.5 bg-muted/60 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground shrink-0">
-              <CalendarDays className="h-3.5 w-3.5" />
-              Hangar bookings:
-            </div>
-            <div className="flex flex-1 items-center gap-1.5 border bg-background px-2.5 py-0.5 shadow-sm min-w-0 overflow-x-auto">
+            <StripLabel icon={CalendarDays}>Bookings</StripLabel>
+            <div className="flex flex-1 items-center gap-1.5 px-3 py-1.5 min-w-0 overflow-x-auto">
               {bookings.length === 0 ? (
-                <span className="text-xs italic text-muted-foreground shrink-0">
+                <span className="text-[11px] italic text-muted-foreground shrink-0">
                   none scheduled
                 </span>
               ) : (
-                bookings.map((entry) => {
-                  const b = entry.booking;
-                  const active = isBookingActive(b);
-                  const groups = buildBookingGroups(
-                    entry.event,
-                    entry.defects,
-                    b,
-                  );
-                  const wos = groups
-                    .map((g) => g.wo)
-                    .filter((w): w is string => !!w);
-                  const primaryWo = wos[0] ?? null;
-                  const extraWoCount = Math.max(0, wos.length - 1);
-                  const hasEvent = !!entry.event;
-                  const hasDefect = entry.defects.length > 0;
-                  const typeLabel =
-                    hasEvent && hasDefect
-                      ? "Event+Defect"
-                      : hasEvent
-                        ? "Event"
-                        : hasDefect
-                          ? "Defect"
-                          : null;
-
-                  const range = formatBookingRange(b.from, b.to);
-                  const notes = b.notes?.trim() || null;
-                  const description = describeBookingGroups(groups);
-                  const location = b.locationId
-                    ? locationsById.get(b.locationId) ?? null
-                    : null;
-                  const titleAttr = [
-                    active ? `In hangar ${range}` : `Booked ${range}`,
-                    location ? `at ${location.name}` : null,
-                    description,
-                    notes,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ");
-
-                  return (
-                    <button
-                      key={b.id}
-                      type="button"
-                      onClick={() => onViewBooking(b)}
-                      title={titleAttr || "View booking"}
-                      className={cn(
-                        "shrink-0 inline-flex items-center gap-1 border px-1.5 py-0.5 text-[10px] transition-colors",
-                        active
-                          ? "border-blue-400 bg-blue-100 hover:bg-blue-200 text-blue-950"
-                          : "border-sky-300 bg-sky-50 hover:bg-sky-100 text-sky-900",
-                      )}
-                    >
-                      <span className="font-mono tabular-nums">
-                        {formatDate(b.from)}
-                      </span>
-                      {typeLabel && (
-                        <span
-                          className={cn(
-                            "px-1 text-[9px] font-semibold uppercase tracking-wider",
-                            active
-                              ? "bg-blue-200 text-blue-900"
-                              : "bg-sky-200 text-sky-900",
-                          )}
-                        >
-                          {typeLabel}
-                        </span>
-                      )}
-                      {primaryWo && (
-                        <span
-                          className={cn(
-                            "px-1 font-mono font-semibold",
-                            active
-                              ? "bg-blue-300 text-blue-950"
-                              : "bg-sky-300 text-sky-950",
-                          )}
-                        >
-                          WO: {primaryWo}
-                          {extraWoCount > 0 ? ` +${extraWoCount}` : ""}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })
+                bookings.map((entry) => (
+                  <BookingChip
+                    key={entry.booking.id}
+                    entry={entry}
+                    locationsById={locationsById}
+                    onClick={() => onViewBooking(entry.booking)}
+                  />
+                ))
               )}
+            </div>
             {!readOnly && (
               <button
                 type="button"
                 onClick={onAddBooking}
                 title="Add booking for this tail"
-                className="shrink-0 inline-flex items-center gap-1 border border-border/60 bg-background/60 hover:bg-background hover:border-border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors"
+                className="inline-flex items-center gap-1.5 border-l border-foreground/15 px-3 text-[10px] font-bold uppercase tracking-spec text-foreground/80 hover:bg-foreground/[0.06] hover:text-foreground transition-colors"
               >
                 <Plus className="h-3 w-3" />
                 Add
               </button>
             )}
-            </div>
           </div>
         </div>
+      </div>
 
-        {!airworthy && aircraft.groundingCauseType && (
-          <div className="px-3 pb-2">
-            {(() => {
-              // Three render paths share the same banner shell. Linked
-              // defect/event variants are click-through (open the related
-              // dialog); "other" is plain text. We resolve the live linked
-              // item up at the top of the component so the title here
-              // tracks edits made after grounding.
-              const causeType = aircraft.groundingCauseType;
-              let label: React.ReactNode = null;
-              let onClick: (() => void) | undefined;
-              let title = "Grounding cause";
-
-              if (causeType === "defect") {
-                if (linkedDefect) {
-                  label = (
-                    <>
-                      <span className="font-semibold uppercase tracking-wider text-[10px]">
-                        Grounded — Defect:
-                      </span>{" "}
-                      <span className="font-medium">"{linkedDefect.title}"</span>
-                      {linkedDefect.workOrderNumber && (
-                        <span className="ml-1 font-mono text-[11px]">
-                          (WO {linkedDefect.workOrderNumber})
-                        </span>
-                      )}
-                    </>
-                  );
-                  if (onOpenLinkedDefect) {
-                    onClick = () => onOpenLinkedDefect(linkedDefect);
-                    title = "Open linked defect";
-                  }
-                } else {
-                  label = (
-                    <span className="italic">
-                      Grounded — linked defect no longer exists. Manually
-                      lift to clear the cause.
-                    </span>
-                  );
-                }
-              } else if (causeType === "event") {
-                if (linkedEvent) {
-                  const wo = linkedEvent.workOrderNumber?.trim();
-                  label = (
-                    <>
-                      <span className="font-semibold uppercase tracking-wider text-[10px]">
-                        Grounded — {wo ? `WO ${wo}:` : "Event:"}
-                      </span>{" "}
-                      <span className="font-medium">"{linkedEvent.warning}"</span>
-                    </>
-                  );
-                  if (onOpenLinkedEvent) {
-                    onClick = () => onOpenLinkedEvent(linkedEvent);
-                    title = "Open linked event";
-                  }
-                } else {
-                  label = (
-                    <span className="italic">
-                      Grounded — linked event no longer exists. Manually
-                      lift to clear the cause.
-                    </span>
-                  );
-                }
-              } else {
-                label = (
-                  <>
-                    <span className="font-semibold uppercase tracking-wider text-[10px]">
-                      Grounded —
-                    </span>{" "}
-                    <span className="whitespace-pre-wrap break-words">
-                      {aircraft.groundingReason ?? "(no reason recorded)"}
-                    </span>
-                  </>
-                );
-              }
-
-              const interactive = !!onClick;
-              const Wrap: keyof React.JSX.IntrinsicElements = interactive
-                ? "button"
-                : "div";
-              return (
-                <Wrap
-                  {...(interactive
-                    ? { type: "button", onClick, title }
-                    : {})}
-                  className={cn(
-                    "w-full flex items-start gap-2 border border-rose-300 bg-rose-50 px-2.5 py-1.5 shadow-sm text-left",
-                    interactive &&
-                      "transition-colors hover:bg-rose-100 cursor-pointer",
-                  )}
-                >
-                  <ShieldOff className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-700" />
-                  <span className="flex-1 text-xs text-rose-900">
-                    {label}
-                  </span>
-                </Wrap>
-              );
-            })()}
-          </div>
-        )}
-
-        {aircraft.note && (
-          <div className="px-3 pb-2">
-            <div className="flex items-start gap-2 border border-amber-300 bg-amber-50 px-2.5 py-1.5 shadow-sm">
-              <StickyNote className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-700" />
-              <span className="flex-1 whitespace-pre-wrap break-words text-xs text-amber-900">
-                {aircraft.note}
-              </span>
-              {!readOnly && (
-                <button
-                  type="button"
-                  onClick={onEditNote}
-                  title="Edit note"
-                  className="p-0.5 text-amber-800/70 hover:bg-amber-100 hover:text-amber-900"
-                >
-                  <Pencil className="h-3 w-3" />
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-      </header>
-
-      {events.length === 0 ? (
-        <p className="px-3 py-2 text-xs italic text-muted-foreground bg-card">
-          No events. Import flight data or add one manually.
-        </p>
-      ) : (
-        <div className="bg-card">
-          {/* Header row — supergroup labels live inside the compartments */}
-          <div
-            className={cn(
-              "grid items-end gap-2 px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground bg-muted/40",
-              EVENTS_GRID_COLS,
-            )}
-          >
-            <span className="self-end pb-0.5 px-1">WO</span>
-            <span className="self-end pb-0.5 px-1">REQ</span>
-            <span className="self-end pb-0.5">Event</span>
-            <span className="self-end pb-0.5">Status</span>
-            <span className="self-end pb-0.5">Estimate</span>
-            <div className="border border-border overflow-hidden">
-              <div className="bg-muted/70 text-center text-[9px] font-bold tracking-wider py-0 border-b border-border text-foreground/80">
-                Due at
-              </div>
-              <div className="grid grid-cols-2 divide-x divide-border text-[9px] text-center">
-                <span className="py-0.5">Date</span>
-                <span className="py-0.5">TTAF</span>
-              </div>
-            </div>
-            <div className="border border-border overflow-hidden">
-              <div className="bg-muted/70 text-center text-[9px] font-bold tracking-wider py-0 border-b border-border text-foreground/80">
-                Time left
-              </div>
-              <div className="grid grid-cols-2 divide-x divide-border text-[9px] text-center">
-                <span className="py-0.5">Days</span>
-                <span className="py-0.5">Hours</span>
-              </div>
-            </div>
-            <span className="self-end pb-0.5 text-right">
-              {readOnly ? "" : "Actions"}
-            </span>
-          </div>
-          {events.map((event) => (
-            <EventRow
-              key={event.id}
-              event={event}
-              currentTtafMinutes={aircraft.totalTimeMinutes}
-              booked={bookedEventIds.has(event.id)}
-              readOnly={readOnly}
-              onEdit={() => onEditEvent(event)}
-              onDelete={() => onDeleteEvent(event)}
-              onResolve={() => onResolveEvent(event)}
-              onExtend={() => onExtendEvent(event)}
-              onEstimate={() => onEstimateEvent(event)}
-            />
-          ))}
-        </div>
+      {/* ─── ALERTS (conditional) ────────────────────────────────────────── */}
+      {!airworthy && aircraft.groundingCauseType && (
+        <GroundingBanner
+          causeType={aircraft.groundingCauseType}
+          reason={aircraft.groundingReason ?? null}
+          linkedDefect={linkedDefect}
+          linkedEvent={linkedEvent}
+          onOpenLinkedDefect={onOpenLinkedDefect}
+          onOpenLinkedEvent={onOpenLinkedEvent}
+        />
+      )}
+      {aircraft.note && (
+        <NoteBanner
+          note={aircraft.note}
+          readOnly={readOnly}
+          onEdit={onEditNote}
+        />
       )}
 
-      <DefectsList
-        defects={defects}
-        bookedDefectIds={bookedDefectIds}
-        readOnly={readOnly}
-        onEdit={onEditDefect}
-        onDelete={onDeleteDefect}
-        onResolve={onResolveDefect}
-        onDefer={onDeferDefect}
-        onViewDeferralHistory={onViewDeferralHistory}
-        onEstimate={onEstimateDefect}
-      />
+      {/* ─── LEDGER ──────────────────────────────────────────────────────── */}
+      <div className="border-t border-foreground/15 bg-card">
+        {/* Events section */}
+        <SectionBreak label={`Events · ${events.length} ${events.length === 1 ? "active" : "active"}`} />
+        {events.length === 0 ? (
+          <p className="px-3 py-2 text-xs italic text-muted-foreground">
+            No events. Import flight data or add one manually.
+          </p>
+        ) : (
+          <>
+            <EventsColumnHeader readOnly={readOnly} />
+            {events.map((event) => (
+              <EventRow
+                key={event.id}
+                event={event}
+                currentTtafMinutes={aircraft.totalTimeMinutes}
+                booked={bookedEventIds.has(event.id)}
+                readOnly={readOnly}
+                onEdit={() => onEditEvent(event)}
+                onDelete={() => onDeleteEvent(event)}
+                onResolve={() => onResolveEvent(event)}
+                onExtend={() => onExtendEvent(event)}
+                onEstimate={() => onEstimateEvent(event)}
+              />
+            ))}
+          </>
+        )}
+
+        {/* Defects section — DefectsList renders its own section break */}
+        <DefectsList
+          defects={defects}
+          bookedDefectIds={bookedDefectIds}
+          readOnly={readOnly}
+          onEdit={onEditDefect}
+          onDelete={onDeleteDefect}
+          onResolve={onResolveDefect}
+          onDefer={onDeferDefect}
+          onViewDeferralHistory={onViewDeferralHistory}
+          onEstimate={onEstimateDefect}
+        />
+      </div>
     </section>
+  );
+}
+
+// ─── Sub-components ──────────────────────────────────────────────────────
+
+function AirworthyChip({ airworthy }: { airworthy: boolean }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 border px-2 py-1 text-[10px] font-bold uppercase tracking-spec transition-colors",
+        airworthy
+          ? "border-sev-green-edge/60 bg-sev-green-bg text-sev-green-fg hover:bg-sev-green-bg/80"
+          : "border-sev-red-edge/60 bg-sev-red-bg text-sev-red-fg hover:bg-sev-red-bg/80",
+      )}
+      title={airworthy ? "Aircraft is airworthy" : "Aircraft is grounded"}
+    >
+      {airworthy ? (
+        <ShieldCheck className="h-3.5 w-3.5" />
+      ) : (
+        <ShieldOff className="h-3.5 w-3.5" />
+      )}
+      {airworthy ? "Airworthy" : "Grounded"}
+    </span>
+  );
+}
+
+function StripLabel({
+  icon: Icon,
+  children,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="inline-flex w-[160px] items-center gap-1.5 border-r border-foreground/15 bg-foreground/[0.05] px-4 py-1.5 text-[10px] font-bold uppercase tracking-spec text-foreground/85 shrink-0 whitespace-nowrap">
+      <Icon className="h-3 w-3 shrink-0" />
+      <span className="truncate">{children}</span>
+    </div>
+  );
+}
+
+function ActionToolbar({
+  readOnly,
+  noteExists,
+  onAddEvent,
+  onAddDefect,
+  onEditNote,
+  onOpenEditLog,
+  onPrint,
+}: {
+  readOnly: boolean;
+  noteExists: boolean;
+  onAddEvent: () => void;
+  onAddDefect: () => void;
+  onEditNote: () => void;
+  onOpenEditLog: () => void;
+  onPrint: () => void;
+}) {
+  return (
+    <div className="inline-flex items-stretch border border-foreground/25 divide-x divide-foreground/15 bg-card">
+      {!readOnly && (
+        <>
+          <ActionBtn icon={Plus} label="Event" onClick={onAddEvent} />
+          <ActionBtn icon={Plus} label="Defect" onClick={onAddDefect} />
+          {!noteExists && (
+            <ActionBtn icon={StickyNote} label="Note" onClick={onEditNote} />
+          )}
+        </>
+      )}
+      <ActionBtn icon={History} label="History" onClick={onOpenEditLog} />
+      <ActionBtn icon={Printer} label="Print" onClick={onPrint} />
+    </div>
+  );
+}
+
+function ActionBtn({
+  icon: Icon,
+  label,
+  onClick,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={label}
+      className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-spec text-foreground/70 transition-colors hover:bg-foreground hover:text-background"
+    >
+      <Icon className="h-3 w-3" />
+      {label}
+    </button>
+  );
+}
+
+function BookingChip({
+  entry,
+  locationsById,
+  onClick,
+}: {
+  entry: BookingWithLinks;
+  locationsById: ReadonlyMap<string, Location>;
+  onClick: () => void;
+}) {
+  const b = entry.booking;
+  const active = isBookingActive(b);
+  const groups = buildBookingGroups(entry.event, entry.defects, b);
+  const wos = groups.map((g) => g.wo).filter((w): w is string => !!w);
+  const primaryWo = wos[0] ?? null;
+  const extraWoCount = Math.max(0, wos.length - 1);
+  const hasEvent = !!entry.event;
+  const hasDefect = entry.defects.length > 0;
+  const typeLabel =
+    hasEvent && hasDefect
+      ? "EVT+DEF"
+      : hasEvent
+        ? "EVT"
+        : hasDefect
+          ? "DEF"
+          : null;
+
+  const range = formatBookingRange(b.from, b.to);
+  const notes = b.notes?.trim() || null;
+  const description = describeBookingGroups(groups);
+  const location = b.locationId ? locationsById.get(b.locationId) ?? null : null;
+  const titleAttr = [
+    active ? `In hangar ${range}` : `Booked ${range}`,
+    location ? `at ${location.name}` : null,
+    description,
+    notes,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={titleAttr || "View booking"}
+      className={cn(
+        "shrink-0 inline-flex items-stretch border text-[10px] transition-colors",
+        active
+          ? "border-foreground bg-foreground text-background hover:bg-foreground/85"
+          : "border-foreground/40 bg-card text-foreground hover:bg-foreground/[0.06]",
+      )}
+    >
+      <span className="px-1.5 py-0.5 font-mono tabular-nums">
+        {formatDate(b.from)}
+      </span>
+      {typeLabel && (
+        <span
+          className={cn(
+            "border-l px-1 py-0.5 text-[9px] font-bold uppercase tracking-spec flex items-center",
+            active
+              ? "border-background/30 bg-background/15"
+              : "border-foreground/20 bg-foreground/[0.06]",
+          )}
+        >
+          {typeLabel}
+        </span>
+      )}
+      {primaryWo && (
+        <span
+          className={cn(
+            "border-l px-1 py-0.5 font-mono font-bold flex items-center",
+            active
+              ? "border-background/30 bg-background/15"
+              : "border-foreground/20 bg-foreground/[0.06]",
+          )}
+        >
+          WO {primaryWo}
+          {extraWoCount > 0 ? ` +${extraWoCount}` : ""}
+        </span>
+      )}
+    </button>
+  );
+}
+
+function SectionBreak({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3 border-b border-foreground/10 bg-card px-3 py-1.5">
+      <span className="label-eyebrow-strong">{label}</span>
+      <span className="section-rule" />
+    </div>
+  );
+}
+
+function EventsColumnHeader({ readOnly }: { readOnly: boolean }) {
+  return (
+    <div className="border-b border-foreground/10 bg-foreground/[0.03]">
+      {/* Top row: column-group labels spanning the compartment columns */}
+      <div
+        className={cn(
+          "grid items-end px-3 pt-1 text-[9px] uppercase tracking-spec text-muted-foreground/70",
+          EVENTS_GRID_COLS,
+        )}
+      >
+        <span />
+        <span />
+        <span />
+        <span />
+        <span />
+        <span className="border-l border-foreground/15 col-span-2 text-center py-0.5 font-semibold text-foreground/60">
+          Due at
+        </span>
+        <span className="border-l border-foreground/15 col-span-2 text-center py-0.5 font-semibold text-foreground/60">
+          Time left
+        </span>
+        <span />
+      </div>
+      {/* Bottom row: per-column subtitle */}
+      <div
+        className={cn(
+          "grid items-end px-3 pb-1 text-[9px] font-semibold uppercase tracking-spec text-muted-foreground",
+          EVENTS_GRID_COLS,
+        )}
+      >
+        <span className="px-1">WO</span>
+        <span className="px-1">REQ</span>
+        <span className="pl-3.5">Event</span>
+        <span>Status</span>
+        <span>Estimate</span>
+        <span className="border-l border-foreground/15 px-2 text-center">
+          Date
+        </span>
+        <span className="border-l border-foreground/15 px-2 text-center">
+          TTAF
+        </span>
+        <span className="border-l border-foreground/15 px-1 text-center">
+          Days
+        </span>
+        <span className="border-l border-r border-foreground/15 px-1 text-center">
+          Hours
+        </span>
+        <span className="text-right pl-2">{readOnly ? "" : "Actions"}</span>
+      </div>
+    </div>
+  );
+}
+
+function GroundingBanner({
+  causeType,
+  reason,
+  linkedDefect,
+  linkedEvent,
+  onOpenLinkedDefect,
+  onOpenLinkedEvent,
+}: {
+  causeType: "defect" | "event" | "other";
+  reason: string | null;
+  linkedDefect: Defect | null;
+  linkedEvent: MaintenanceEvent | null;
+  onOpenLinkedDefect?: (d: Defect) => void;
+  onOpenLinkedEvent?: (e: MaintenanceEvent) => void;
+}) {
+  let body: React.ReactNode = null;
+  let onClick: (() => void) | undefined;
+  let title = "Grounding cause";
+  let interactive = false;
+
+  if (causeType === "defect") {
+    if (linkedDefect) {
+      body = (
+        <>
+          <span className="font-medium">"{linkedDefect.title}"</span>
+          {linkedDefect.workOrderNumber && (
+            <span className="ml-1.5 font-mono text-[11px] opacity-80">
+              WO {linkedDefect.workOrderNumber}
+            </span>
+          )}
+        </>
+      );
+      if (onOpenLinkedDefect) {
+        onClick = () => onOpenLinkedDefect(linkedDefect);
+        title = "Open linked defect";
+        interactive = true;
+      }
+    } else {
+      body = (
+        <span className="italic">
+          Linked defect no longer exists — manually lift to clear.
+        </span>
+      );
+    }
+  } else if (causeType === "event") {
+    if (linkedEvent) {
+      const wo = linkedEvent.workOrderNumber?.trim();
+      body = (
+        <>
+          {wo && (
+            <span className="font-mono text-[11px] opacity-80 mr-1.5">
+              WO {wo}
+            </span>
+          )}
+          <span className="font-medium">"{linkedEvent.warning}"</span>
+        </>
+      );
+      if (onOpenLinkedEvent) {
+        onClick = () => onOpenLinkedEvent(linkedEvent);
+        title = "Open linked event";
+        interactive = true;
+      }
+    } else {
+      body = (
+        <span className="italic">
+          Linked event no longer exists — manually lift to clear.
+        </span>
+      );
+    }
+  } else {
+    body = (
+      <span className="whitespace-pre-wrap break-words">
+        {reason ?? "(no reason recorded)"}
+      </span>
+    );
+  }
+
+  const kicker =
+    causeType === "defect"
+      ? "Defect"
+      : causeType === "event"
+        ? "Event"
+        : "Reason";
+
+  const Wrap: keyof React.JSX.IntrinsicElements = interactive ? "button" : "div";
+  return (
+    <Wrap
+      {...(interactive ? { type: "button", onClick, title } : {})}
+      className={cn(
+        "w-full flex items-stretch border-t border-foreground/10 bg-sev-red-bg text-sev-red-fg text-left",
+        interactive && "transition-colors hover:bg-sev-red-bg/75 cursor-pointer",
+      )}
+    >
+      <div className="flex flex-col items-center justify-center border-r border-sev-red-edge/30 px-2.5 py-1.5">
+        <ShieldOff className="h-3.5 w-3.5 mb-0.5" />
+        <span className="text-[8px] font-bold uppercase tracking-spec">
+          Ground
+        </span>
+      </div>
+      <div className="flex flex-1 items-center gap-2 px-3 py-1.5 min-w-0">
+        <span className="text-[10px] font-bold uppercase tracking-spec shrink-0">
+          {kicker}:
+        </span>
+        <span className="text-xs min-w-0 truncate">{body}</span>
+      </div>
+      {interactive && (
+        <div className="flex items-center px-2 text-sev-red-fg/60">
+          <ChevronRight className="h-3.5 w-3.5" />
+        </div>
+      )}
+    </Wrap>
+  );
+}
+
+function NoteBanner({
+  note,
+  readOnly,
+  onEdit,
+}: {
+  note: string;
+  readOnly: boolean;
+  onEdit: () => void;
+}) {
+  return (
+    <div className="flex items-stretch border-t border-foreground/10 bg-sev-yellow-bg text-sev-yellow-fg">
+      <div className="flex flex-col items-center justify-center border-r border-sev-yellow-edge/30 px-2.5 py-1.5">
+        <StickyNote className="h-3.5 w-3.5 mb-0.5" />
+        <span className="text-[8px] font-bold uppercase tracking-spec">
+          Note
+        </span>
+      </div>
+      <span className="flex-1 px-3 py-1.5 whitespace-pre-wrap break-words text-xs">
+        {note}
+      </span>
+      {!readOnly && (
+        <button
+          type="button"
+          onClick={onEdit}
+          title="Edit note"
+          className="px-2 text-sev-yellow-fg/70 transition-colors hover:bg-sev-yellow-bg/70 hover:text-sev-yellow-fg"
+        >
+          <Pencil className="h-3 w-3" />
+        </button>
+      )}
+    </div>
   );
 }

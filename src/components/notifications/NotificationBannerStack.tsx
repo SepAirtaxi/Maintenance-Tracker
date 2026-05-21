@@ -56,46 +56,75 @@ function NotificationBanner({
   notification: Notification;
   onDismiss: () => void;
 }) {
-  const isGrounded = notification.type === "auto-grounded";
+  const tone =
+    notification.type === "auto-grounded"
+      ? "red"
+      : notification.type === "booking-reminder"
+        ? "amber"
+        : "neutral";
   const Icon =
     notification.type === "auto-grounded"
       ? ShieldOff
       : notification.type === "booking-reminder"
         ? CalendarClock
         : Info;
+  const wrap =
+    tone === "red"
+      ? "border-sev-red-edge bg-sev-red-bg text-sev-red-fg"
+      : tone === "amber"
+        ? "border-sev-yellow-edge bg-sev-yellow-bg text-sev-yellow-fg"
+        : "border-foreground/25 bg-card text-foreground";
+  const iconColor =
+    tone === "red"
+      ? "text-sev-red-fg"
+      : tone === "amber"
+        ? "text-sev-yellow-fg"
+        : "text-muted-foreground";
+  const ackVariant =
+    tone === "red"
+      ? "border-sev-red-edge/50 bg-card text-sev-red-fg hover:bg-card/70"
+      : tone === "amber"
+        ? "border-sev-yellow-edge/60 bg-card text-sev-yellow-fg hover:bg-card/70"
+        : "border-foreground/30 bg-card text-foreground hover:bg-card/70";
+  const label =
+    tone === "red"
+      ? "ALERT"
+      : tone === "amber"
+        ? "REMINDER"
+        : "NOTICE";
+
   return (
     <div
       role="alert"
       className={cn(
-        "flex items-start gap-2.5 rounded-md border px-3 py-2 shadow-sm",
-        isGrounded
-          ? "border-status-red/50 bg-rose-50 text-rose-900"
-          : "border-sky-300/60 bg-sky-50 text-sky-900",
+        "flex items-stretch border shadow-sm",
+        wrap,
       )}
     >
-      <Icon
-        className={cn(
-          "mt-0.5 h-4 w-4 shrink-0",
-          isGrounded ? "text-status-red" : "text-sky-600",
-        )}
-      />
-      <div className="min-w-0 flex-1 text-sm leading-snug">
-        {notification.message}
+      {/* Severity left rail with all-caps label — like a publication kicker */}
+      <div className="flex flex-col items-center justify-center border-r border-current/30 px-2.5 py-2">
+        <Icon className={cn("h-4 w-4 mb-1", iconColor)} />
+        <span className="text-[8px] font-bold uppercase tracking-spec">
+          {label}
+        </span>
       </div>
-      <Button
-        type="button"
-        size="sm"
-        variant="outline"
-        className={cn(
-          "h-7 shrink-0 px-2.5 text-xs font-medium",
-          isGrounded
-            ? "border-status-red/40 bg-white/60 text-rose-900 hover:bg-rose-100 hover:text-rose-950"
-            : "border-sky-300/60 bg-white/60 text-sky-900 hover:bg-sky-100 hover:text-sky-950",
-        )}
-        onClick={onDismiss}
-      >
-        Acknowledge
-      </Button>
+      <div className="flex flex-1 items-center gap-3 px-3 py-2">
+        <div className="min-w-0 flex-1 text-sm leading-snug">
+          {notification.message}
+        </div>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className={cn(
+            "h-7 shrink-0 border px-2.5 text-[10px] font-semibold uppercase tracking-spec",
+            ackVariant,
+          )}
+          onClick={onDismiss}
+        >
+          Acknowledge
+        </Button>
+      </div>
     </div>
   );
 }

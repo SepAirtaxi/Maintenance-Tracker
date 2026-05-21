@@ -72,17 +72,17 @@ const KIND_META: Record<
 > = {
   deferred: {
     label: "Deferred",
-    badgeClass: "border-amber-400 bg-amber-100 text-amber-900",
+    badgeClass: "border-sev-yellow-edge/80 bg-sev-yellow-bg/70 text-sev-yellow-fg",
     Icon: Clock,
   },
   "re-deferred": {
     label: "Re-deferred",
-    badgeClass: "border-amber-500 bg-amber-200 text-amber-950",
+    badgeClass: "border-sev-yellow-edge bg-sev-yellow-bg text-sev-yellow-fg",
     Icon: RotateCcw,
   },
   lifted: {
     label: "Lifted",
-    badgeClass: "border-emerald-400 bg-emerald-100 text-emerald-900",
+    badgeClass: "border-sev-green-edge bg-sev-green-bg/70 text-sev-green-fg",
     Icon: Undo2,
   },
 };
@@ -151,8 +151,8 @@ export default function DeferralHistoryDialog({ defect, onClose }: Props) {
             className={cn(
               "mt-2 rounded-md border px-3 py-2 text-xs",
               status === "overdue"
-                ? "border-rose-300 bg-rose-50 text-rose-900"
-                : "border-amber-300 bg-amber-50 text-amber-900",
+                ? "border-sev-red-edge/60 bg-sev-red-bg/40 text-sev-red-fg"
+                : "border-sev-yellow-edge/60 bg-sev-yellow-bg/40 text-sev-yellow-fg",
             )}
           >
             <p className="font-medium flex items-center gap-1.5">

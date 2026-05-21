@@ -100,8 +100,8 @@ export default function DeferDefectDialog({ defect, onClose }: Props) {
             <div
               className={
                 status === "overdue"
-                  ? "mt-3 rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-xs text-rose-900"
-                  : "mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900"
+                  ? "mt-3 rounded-md border border-sev-red-edge/60 bg-sev-red-bg/40 px-3 py-2 text-xs text-sev-red-fg"
+                  : "mt-3 rounded-md border border-sev-yellow-edge/60 bg-sev-yellow-bg/40 px-3 py-2 text-xs text-sev-yellow-fg"
               }
             >
               <p className="font-medium">
@@ -153,7 +153,7 @@ export default function DeferDefectDialog({ defect, onClose }: Props) {
                 variant="ghost"
                 onClick={onLift}
                 disabled={busy}
-                className="text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800"
+                className="text-sev-green-fg/85 hover:bg-sev-green-bg/70 hover:text-sev-green-fg"
               >
                 {saving === "lift" ? "Lifting…" : "Lift deferral"}
               </Button>

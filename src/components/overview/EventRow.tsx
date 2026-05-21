@@ -1,5 +1,4 @@
 import { CheckCircle2, Hourglass, Pencil, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
 import { formatHoursLeft, formatMinutesAsDuration } from "@/lib/time";
@@ -22,27 +21,27 @@ import type { MaintenanceEvent } from "@/types";
 // Shared grid template — header row in AircraftCard and the defects list must
 // use the same one so the Status / Estimate columns line up across event /
 // defect rows.
-// Columns: WO | REQ | Event(dot+name) | Status | Estimate | Due-at(date|TTAF) | Time-left(days|hours) | Actions
-// Actions is 108px to fit the defect row's 4 buttons (defer + resolve + edit +
-// delete). Events only render 3 buttons there but the extra slack is harmless.
-// Event titles are typically very short ("100 Hour Inspection", "AMP Review")
-// so the 1fr column gives back the slack to a dedicated Estimate column.
+// Columns: WO | REQ | Event(square+name) | Status | Estimate | Due-date | Due-TTAF | Days-left | Hours-left | Actions
+// The compartments that used to be nested mini-grids are now flat cells with
+// hairline dividers — the table reads like a ledger instead of a UI.
+// Estimate column is 160px — wide enough for the "Not estimated" pill with
+// its icon + tracking-spec letter-spacing; Status is 130px for "WO + booked".
 export const EVENTS_GRID_COLS =
-  "grid-cols-[72px_72px_minmax(0,1fr)_120px_130px_200px_140px_108px]";
+  "grid-cols-[72px_72px_minmax(0,1fr)_130px_160px_100px_104px_70px_70px_112px]";
 
-const dotClass: Record<Severity, string> = {
-  green: "bg-status-green",
-  yellow: "bg-status-yellow",
-  red: "bg-status-red",
-  unknown: "bg-muted-foreground/40",
+const sevSquare: Record<Severity, string> = {
+  green: "bg-sev-green-edge",
+  yellow: "bg-sev-yellow-edge",
+  red: "bg-sev-red-edge",
+  unknown: "bg-foreground/25",
 };
 
-// Severity tints applied per-half inside the Time Left compartment.
+// Severity tints for the days/hours cells — restrained, no candy washes.
 const severityHalf: Record<Severity, string> = {
-  green: "bg-emerald-100 text-emerald-800",
-  yellow: "bg-amber-100 text-amber-900",
-  red: "bg-rose-200 text-rose-900 font-semibold",
-  unknown: "bg-background text-muted-foreground",
+  green: "bg-sev-green-bg text-sev-green-fg",
+  yellow: "bg-sev-yellow-bg text-sev-yellow-fg",
+  red: "bg-sev-red-bg text-sev-red-fg font-semibold",
+  unknown: "bg-transparent text-muted-foreground",
 };
 
 type Props = {
@@ -59,15 +58,15 @@ type Props = {
 };
 
 const PLAN_STATUS_LABEL: Record<PlanStatus, string> = {
-  unplanned: "no action",
+  unplanned: "No action",
   planned: "WO created",
   booked: "WO + booked",
 };
 
 const PLAN_STATUS_CLASS: Record<PlanStatus, string> = {
-  unplanned: "bg-rose-100 text-rose-800",
-  planned: "bg-amber-100/70 text-amber-800",
-  booked: "bg-emerald-100 text-emerald-700",
+  unplanned: "border-sev-red-edge/40 bg-sev-red-bg/70 text-sev-red-fg",
+  planned: "border-sev-yellow-edge/50 bg-sev-yellow-bg/60 text-sev-yellow-fg",
+  booked: "border-sev-green-edge/50 bg-sev-green-bg/70 text-sev-green-fg",
 };
 
 export default function EventRow({
@@ -97,47 +96,53 @@ export default function EventRow({
   return (
     <div
       className={cn(
-        "grid items-center gap-2 px-3 py-1 border-t text-xs hover:bg-muted/30",
+        "grid items-center gap-0 px-3 py-1 border-t border-foreground/10 text-xs hover:bg-foreground/[0.025]",
         EVENTS_GRID_COLS,
       )}
     >
-      <WorkOrderCell
-        value={event.workOrderNumber}
-        readOnly={readOnly}
-        onSave={(wo) => updateEvent(event.id, { workOrderNumber: wo })}
-      />
-      <WorkOrderCell
-        value={event.requisitionNumber}
-        readOnly={readOnly}
-        onSave={(req) => updateEvent(event.id, { requisitionNumber: req })}
-        placeholder="REQ number"
-        editTitle="Click to edit requisition number"
-      />
-      <span className="flex items-center gap-1.5 min-w-0">
+      <div className="pr-2">
+        <WorkOrderCell
+          value={event.workOrderNumber}
+          readOnly={readOnly}
+          onSave={(wo) => updateEvent(event.id, { workOrderNumber: wo })}
+        />
+      </div>
+      <div className="pr-2">
+        <WorkOrderCell
+          value={event.requisitionNumber}
+          readOnly={readOnly}
+          onSave={(req) => updateEvent(event.id, { requisitionNumber: req })}
+          placeholder="REQ number"
+          editTitle="Click to edit requisition number"
+        />
+      </div>
+      <span className="flex items-center gap-2 min-w-0 pr-2">
         <span
-          className={cn("h-2.5 w-2.5 rounded-full shrink-0", dotClass[severity])}
+          className={cn("h-2 w-2 shrink-0", sevSquare[severity])}
           title={severity}
         />
         <span className="truncate" title={event.warning}>
           {event.warning}
         </span>
       </span>
-      <span
-        className={cn(
-          "justify-self-start px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider",
-          PLAN_STATUS_CLASS[planStatus],
-        )}
-        title={
-          planStatus === "booked"
-            ? "WO assigned and a calendar block is linked to this event"
-            : planStatus === "planned"
-              ? "Work order assigned — no hangar slot booked yet"
-              : "No work order assigned yet"
-        }
-      >
-        {PLAN_STATUS_LABEL[planStatus]}
-      </span>
-      <div className="justify-self-start">
+      <div className="pr-2">
+        <span
+          className={cn(
+            "inline-flex items-center border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-spec",
+            PLAN_STATUS_CLASS[planStatus],
+          )}
+          title={
+            planStatus === "booked"
+              ? "WO assigned and a calendar block is linked to this event"
+              : planStatus === "planned"
+                ? "Work order assigned — no hangar slot booked yet"
+                : "No work order assigned yet"
+          }
+        >
+          {PLAN_STATUS_LABEL[planStatus]}
+        </span>
+      </div>
+      <div className="pr-2">
         <EstimatePill
           estimated={event.estimated}
           estimatedManHours={event.estimatedManHours}
@@ -145,15 +150,16 @@ export default function EventRow({
           onClick={onEstimate}
         />
       </div>
-      {/* Due at — date | TTAF compartment. The TTAF half shows the extended
-          due time when an extension is in effect; a small "+Xh ext" tag below
-          flags it so the original isn't silently rewritten. */}
+      {/* Due-date cell — when an extension is in effect we surface it in the
+          TTAF cell next door, not here. */}
+      <div className="border-l border-foreground/15 px-2 py-0.5 text-center font-mono text-[11px] tabular-nums">
+        {formatDate(event.expiryDate)}
+      </div>
+      {/* Due-TTAF cell — extension annotation lives here as a hairline tag */}
       <div
         className={cn(
-          "grid grid-cols-2 divide-x divide-border border shadow-sm overflow-hidden",
-          extHours != null
-            ? "border-amber-400 bg-amber-50"
-            : "border-border bg-background",
+          "border-l border-foreground/15 px-2 py-0.5 text-center font-mono text-[11px] tabular-nums leading-tight flex flex-col items-center justify-center",
+          extHours != null && "bg-sev-yellow-bg/50",
         )}
         title={
           extHours != null
@@ -161,91 +167,83 @@ export default function EventRow({
             : undefined
         }
       >
-        <span className="px-1.5 py-0.5 text-center font-mono text-xs tabular-nums self-center">
-          {formatDate(event.expiryDate)}
+        <span
+          className={cn(
+            extHours != null && "font-semibold text-sev-yellow-fg",
+          )}
+        >
+          {formatMinutesAsDuration(effectiveExpiry)}
         </span>
-        <span className="px-1 py-0 flex flex-col items-center justify-center leading-tight">
-          <span
-            className={cn(
-              "font-mono text-xs tabular-nums",
-              extHours != null && "font-semibold text-amber-900",
-            )}
-          >
-            {formatMinutesAsDuration(effectiveExpiry)}
+        {extHours != null && (
+          <span className="text-[8px] font-semibold tracking-spec text-sev-yellow-fg/80">
+            +{extHours}H EXT
           </span>
-          {extHours != null && (
-            <span className="text-[9px] font-medium tracking-wide text-amber-700">
-              +{extHours}h ext
-            </span>
-          )}
-        </span>
+        )}
       </div>
-      {/* Time left — days | hours compartment with per-half severity tint */}
-      <div className="grid grid-cols-2 divide-x divide-border border border-border shadow-sm overflow-hidden">
-        <span
-          className={cn(
-            "px-1.5 py-0.5 text-center font-mono text-xs tabular-nums",
-            severityHalf[daysSev],
-          )}
-        >
-          {daysLeft == null ? "—" : daysLeft}
-        </span>
-        <span
-          className={cn(
-            "px-1.5 py-0.5 text-center font-mono text-xs tabular-nums",
-            severityHalf[hoursSev],
-          )}
-        >
-          {formatHoursLeft(minutesLeft)}
-        </span>
+      {/* Days-left cell */}
+      <div
+        className={cn(
+          "border-l border-foreground/15 px-1 py-0.5 text-center font-mono text-[11px] tabular-nums",
+          severityHalf[daysSev],
+        )}
+        title="Days until due"
+      >
+        {daysLeft == null ? "—" : daysLeft}
       </div>
-      <div className="flex items-center justify-end gap-0.5">
+      {/* Hours-left cell */}
+      <div
+        className={cn(
+          "border-l border-r border-foreground/15 px-1 py-0.5 text-center font-mono text-[11px] tabular-nums",
+          severityHalf[hoursSev],
+        )}
+        title="Hours until due (vs current TTAF)"
+      >
+        {formatHoursLeft(minutesLeft)}
+      </div>
+      {/* Action strip — square ghost buttons with hairline separators */}
+      <div className="flex items-center justify-end gap-px pl-2">
         {!readOnly && (
           <>
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn(
-                "h-6 w-6 rounded-none",
-                extHours != null &&
-                  "text-amber-700 hover:bg-amber-100 hover:text-amber-800",
-              )}
+            <button
+              type="button"
               onClick={onExtend}
               title={
                 extHours != null
                   ? `Extension active (+${extHours}h) — click to manage`
                   : "Grant TTAF extension (CAMO, max 5h)"
               }
+              className={cn(
+                "inline-flex h-6 w-6 items-center justify-center border border-transparent transition-colors hover:border-foreground/20 hover:bg-foreground/[0.06]",
+                extHours != null &&
+                  "text-sev-yellow-fg hover:bg-sev-yellow-bg/60",
+              )}
             >
               <Hourglass className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 rounded-none text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800"
+            </button>
+            <button
+              type="button"
               onClick={onResolve}
               title="Close event (mark complete)"
+              className="inline-flex h-6 w-6 items-center justify-center border border-transparent text-sev-green-fg transition-colors hover:border-sev-green-edge/40 hover:bg-sev-green-bg/60"
             >
               <CheckCircle2 className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 rounded-none"
+            </button>
+            <button
+              type="button"
               onClick={onEdit}
               title="Edit event"
+              className="inline-flex h-6 w-6 items-center justify-center border border-transparent text-muted-foreground transition-colors hover:border-foreground/20 hover:bg-foreground/[0.06] hover:text-foreground"
             >
               <Pencil className="h-3 w-3" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 rounded-none"
+            </button>
+            <button
+              type="button"
               onClick={onDelete}
               title="Delete event"
+              className="inline-flex h-6 w-6 items-center justify-center border border-transparent text-muted-foreground transition-colors hover:border-sev-red-edge/40 hover:bg-sev-red-bg/60 hover:text-sev-red-fg"
             >
               <Trash2 className="h-3 w-3" />
-            </Button>
+            </button>
           </>
         )}
       </div>
