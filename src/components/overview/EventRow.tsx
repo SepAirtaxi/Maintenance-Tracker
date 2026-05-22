@@ -176,7 +176,7 @@ export default function EventRow({
         </span>
         {extHours != null && (
           <span className="text-[8px] font-semibold tracking-spec text-sev-yellow-fg/80">
-            +{extHours}H EXT
+            EXTENDED {extHours}H
           </span>
         )}
       </div>

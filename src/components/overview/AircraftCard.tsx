@@ -509,11 +509,11 @@ function BookingChip({
   const hasDefect = entry.defects.length > 0;
   const typeLabel =
     hasEvent && hasDefect
-      ? "EVT+DEF"
+      ? "Event+Defect"
       : hasEvent
-        ? "EVT"
+        ? "Event"
         : hasDefect
-          ? "DEF"
+          ? "Defect"
           : null;
 
   const range = formatBookingRange(b.from, b.to);
@@ -575,9 +575,8 @@ function BookingChip({
 
 function SectionBreak({ label }: { label: string }) {
   return (
-    <div className="flex items-center gap-3 border-b border-foreground/10 bg-card px-3 py-1.5">
+    <div className="border-b border-foreground/10 bg-foreground/[0.08] px-3 py-0.5">
       <span className="label-eyebrow-strong">{label}</span>
-      <span className="section-rule" />
     </div>
   );
 }
@@ -760,15 +759,15 @@ function NoteBanner({
 }) {
   return (
     <div className="flex items-stretch border-t border-foreground/10 bg-sev-yellow-bg text-sev-yellow-fg">
-      <div className="flex flex-col items-center justify-center border-r border-sev-yellow-edge/30 px-2.5 py-1.5">
-        <StickyNote className="h-3.5 w-3.5 mb-0.5" />
+      <div className="flex items-center gap-1.5 border-r border-sev-yellow-edge/30 px-2.5 py-1">
+        <StickyNote className="h-3 w-3" />
         <span className="text-[8px] font-bold uppercase tracking-spec">
           Note
         </span>
       </div>
-      <span className="flex-1 px-3 py-1.5 whitespace-pre-wrap break-words text-xs">
+      <div className="flex-1 flex items-center px-3 py-1 whitespace-pre-wrap break-words text-xs">
         {note}
-      </span>
+      </div>
       {!readOnly && (
         <button
           type="button"

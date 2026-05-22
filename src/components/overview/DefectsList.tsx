@@ -105,11 +105,10 @@ export default function DefectsList({
   return (
     <div className="bg-sev-yellow-bg/15">
       {/* Section break — small-caps zone marker between events and defects */}
-      <div className="flex items-center gap-3 border-t border-foreground/20 bg-card px-3 py-1.5">
+      <div className="border-t border-foreground/20 bg-sev-yellow-bg/40 px-3 py-0.5">
         <span className="label-eyebrow-strong text-sev-yellow-fg">
           Defects · {defects.length} open
         </span>
-        <span className="section-rule" />
       </div>
       {/* Column header — sub-titles for the swapped final columns
           (Reported / TTAF replace Due-date / TTAF / Days / Hours) */}

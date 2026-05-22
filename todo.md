@@ -1,1 +1,4 @@
 1: For extended events: can you change the sub-title for extended events from "+5H EXT" to "EXTENDED 5H"?
+2: Note fields: they take up too much vertical space because of the note icon, and it looks odd because the text is top-aligned. Can you reduce the height of the note-bar and and make the text vertically center-aligned?
+3: For booking bars, I realize that we have more than plenty horizontal space to make the booking pills a little wider, so I would like it to say "Event" and "Defect" instead of just "Evt" and "Evt+def".
+4: The divider line right-adjecent to the events and defects titles (e.g. "Defects - 2 open" and "Events - 4 active") on the aircraft cards is a bit confusing, because it is the same color/thickness as the borders, so it adds unnecessary clutter. Can you try a different approach for these titles rows so it still looks stylish and distinguishable, but ditch the horizontal line?
