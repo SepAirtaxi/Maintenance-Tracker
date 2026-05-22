@@ -469,15 +469,19 @@ export default function OverviewPage() {
   }, [needsBookingMatches]);
 
   // Reconciliation sweep: raises one booking-reminder banner per tail that has
-  // qualifying events, and clears the banner for any tail that no longer has
-  // any. Driven off the existing `bookingReminders` subscription so writes only
-  // fire when state actually changes (no per-scan delete churn).
+  // qualifying events, and cleans up *acknowledged* banners for any tail that
+  // no longer has any. Unacknowledged banners are deliberately left in place —
+  // SEP wants every banner to require a human Acknowledge click, even if the
+  // underlying cause resolves (e.g. consolidating the event onto an existing
+  // booking) before the user sees it. Auto-clearing unacked banners also
+  // caused them to blink on/off when needsBookingByTail recomputed across the
+  // resolution boundary.
   useEffect(() => {
     if (isViewer || !user || !aircraft) return;
     if (bookingReminderProcessing.current) return;
 
-    const existingTails = new Set<string>();
-    for (const n of bookingReminders) existingTails.add(n.tailNumber);
+    const existingByTail = new Map<string, Notification>();
+    for (const n of bookingReminders) existingByTail.set(n.tailNumber, n);
 
     const matchedTails = new Set<string>(needsBookingByTail.keys());
     const airworthyTails = new Set<string>();
@@ -488,13 +492,15 @@ export default function OverviewPage() {
     const toRaise: { tail: string; matches: NeedsBookingMatch[] }[] = [];
     const toClear: string[] = [];
     for (const tail of matchedTails) {
-      if (!existingTails.has(tail)) {
+      if (!existingByTail.has(tail)) {
         toRaise.push({ tail, matches: needsBookingByTail.get(tail) ?? [] });
       }
     }
-    for (const tail of existingTails) {
-      // Clear if the tail no longer has matches OR has been grounded since the
-      // banner was raised (grounded planes don't need a hangar reminder).
+    for (const [tail, n] of existingByTail) {
+      // Only sweep away banners the user has already acknowledged; unacked
+      // banners stay visible until Acknowledge is clicked. Acked banners get
+      // deleted once the cause is gone so a future occurrence can re-raise.
+      if (n.acknowledgedAt == null) continue;
       if (!matchedTails.has(tail) || !airworthyTails.has(tail)) {
         toClear.push(tail);
       }
@@ -564,7 +570,9 @@ export default function OverviewPage() {
       const tailBookings = upcomingBookingsForTail(allBookings, a.tailNumber);
       const bookings: BookingWithLinks[] = tailBookings.map((b) => ({
         booking: b,
-        event: b.eventId ? eventsById.get(b.eventId) ?? null : null,
+        events: b.eventIds
+          .map((id) => eventsById.get(id))
+          .filter((e): e is MaintenanceEvent => !!e),
         defects: b.defectIds
           .map((id) => defectsById.get(id))
           .filter((d): d is Defect => !!d),

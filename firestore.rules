@@ -50,5 +50,10 @@ service cloud.firestore {
       allow read: if signedIn();
       allow write: if isMember();
     }
+
+    match /notifications/{notificationId} {
+      allow read: if signedIn();
+      allow write: if isMember();
+    }
   }
 }

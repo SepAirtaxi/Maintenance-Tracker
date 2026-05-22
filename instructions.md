@@ -97,7 +97,7 @@ const firebaseConfig = {
 - Actions column holds three icon buttons in this order: **Close** (green check), **Edit**, **Delete**.
 
 ### Aircraft header — two-row layout
-- **Row 1:** tail number, model, airworthy/grounded toggle, in-maintenance badge (appends `WO: <num>` when the active booking has a linked event with a WO#), defect badge, "Updated <date>" (latest aircraft-doc `updatedAt`), and Event/Defect/Note/Log action buttons.
+- **Row 1:** tail number, model, airworthy/grounded toggle, in-maintenance badge (appends `WO: <num>` for the first WO group on the active booking — multi-event bookings can carry several WOs; the chip just leads with the first), defect badge, "Updated <date>" (latest aircraft-doc `updatedAt`), and Event/Defect/Note/Log action buttons.
 - **Row 2:** TTAF as a fixed-column grid cell (predictable positions for value, meta date/source, edit pencil); Booked as a distinctive sky-tinted pill (or blue "In hangar" when today is within the active booking) — see *Maintenance calendar / bookings* below for content layout.
 - **Note banner (conditional):** when the aircraft has a free-text note set, an amber sticky-note banner appears below row 2 with the note text and an edit pencil (members only).
 - "Updated <date>" reflects any change to the aircraft document — TTAF, model change, airworthiness toggle, note. (Bookings live in their own collection now and don't bump the aircraft `updatedAt`.)
@@ -142,14 +142,17 @@ const firebaseConfig = {
 - Pending entries (server timestamp not yet acknowledged from Firestore) bucket into a `Just now` group at the top so a write isn't invisible during the round-trip.
 - When any filter or search is active, every group containing matches **auto-expands** so the user doesn't have to click through closed months hunting for hits. Auto-expansion is computed on top of the user's manual open-set, so clearing the filters reverts to the prior collapsed state.
 
-### Bookings — linked event + linked defects
-- A booking can link **one event** (`eventId`) and **any number of defects** (`defectIds: string[]`) on the same tail. Both are validated server-side (defect/event must belong to the booking's tail).
-- The dialog has the existing event dropdown plus a checkbox list for defects. Resolved-but-still-linked items remain visible in the picker so users can see what's there before changing it (matches the existing event-link behavior).
-- Display logic lives in `src/lib/bookingDisplay.ts` (`buildBookingGroups` + `describeBookingGroups`) and is shared by both the calendar block and the Overview "In hangar"/"Booked" tile.
-  - Items are **grouped by WO#**. The event's group is rendered first (the parent); defect-only WO groups follow; items with no WO# come last.
-  - Within a group: event before defects.
+### Bookings — linked events + linked defects (multi-event)
+- A booking can link **any number of events** (`eventIds: string[]`) and **any number of defects** (`defectIds: string[]`) on the same tail. Both sides are validated server-side (every linked event/defect must belong to the booking's tail).
+- One hangar slot routinely covers several WOs (e.g. an inspection WO + a separate defect-rectification WO during the same visit). Consolidating a newly-imported event onto an existing booking is the intended way to plan this — open the booking, tick the new event in the events list, save.
+- **Legacy shape:** docs created before multi-event support stored a single scalar `eventId: string | null`. `docToBooking` normalizes either field shape into `eventIds: string[]` on read, and the next `updateBooking` upgrades the doc by writing `eventIds` and explicitly clearing `eventId: null` so a row can't carry both shapes.
+- The dialog renders linked events as a **checkbox list** (mirroring the defect list), not a single-select dropdown. Resolved-but-still-linked events remain visible in the picker (struck through + `resolved` tag) so users can see what's there before changing it — same affordance as the defect side.
+- Display logic lives in `src/lib/bookingDisplay.ts` (`buildBookingGroups` + `describeBookingGroups`) and is shared by the calendar block, the booking view dialog, and the Overview "In hangar"/"Booked" tile.
+  - Items are **grouped by WO#**. Groups containing an event come before defect-only groups; among event-bearing groups, the order matches the input event order so the planner's first pick reads first. Items with no WO# come last.
+  - Within a group: events before defects.
   - Resolved items keep their link but render with `line-through` + a small `Check` icon so closed work is still visible on the calendar.
-- Audit log captures defect labels and WO# alongside the event, same format pattern as before.
+- `buildBookedIdSets` walks `b.eventIds ?? []` (was: `b.eventId`) when deciding which events count as "booked" for plan status — same predicate as before, just iterating the array.
+- Audit log captures every linked event label (and every defect label) alongside the WO#, same format pattern as before. The summary line reads `event: …` for a single linked event and `events: A, B, C` when more than one is linked.
 
 ### Calendar — grounded aircraft rows
 - Rows for non-airworthy tails (`airworthy === false`) get a slate background tint and a "Grounded" subtitle in the tail-cell. The cell label alone signals the status — no centered watermark across the row.
@@ -215,7 +218,7 @@ const firebaseConfig = {
 - Events and defects display a derived **PlanStatus**: `unplanned` / `planned` / `booked` (rendered as *no action* / *WO created* / *WO + booked*).
 - `unplanned` = no work-order number set.
 - `planned` = WO# set, no booking links this entity.
-- `booked` = WO# set **and** at least one **active or upcoming** booking links the entity (event via `eventId`, defect via `defectIds`). Past bookings (whose `to` date is before today) are skipped — the work is assumed resolved or rescheduled, so they no longer hold the entity in "booked" once the calendar window has elapsed. They stay in Firestore and remain editable from the timeline. The booked-set is precomputed in `OverviewPage` via `buildBookedIdSets` (`src/lib/eventStatus.ts`) and passed down to the rows.
+- `booked` = WO# set **and** at least one **active or upcoming** booking links the entity (event via `eventIds`, defect via `defectIds`). Past bookings (whose `to` date is before today) are skipped — the work is assumed resolved or rescheduled, so they no longer hold the entity in "booked" once the calendar window has elapsed. They stay in Firestore and remain editable from the timeline. The booked-set is precomputed in `OverviewPage` via `buildBookedIdSets` (`src/lib/eventStatus.ts`) and passed down to the rows.
 - **Pill colour hierarchy** signals progress toward booked: *no action* = red (rose), *WO created* = yellow (amber), *WO + booked* = green (emerald). Same `PLAN_STATUS_CLASS` map is used in `EventRow.tsx` and `DefectsList.tsx`.
 - The Firestore `event.status` field is still written (`statusFromWo`) for historical/audit continuity but the overview rendering uses the derived status. Defects had no status badge before — they now show one symmetric to events.
 
@@ -243,7 +246,8 @@ const firebaseConfig = {
   - `deferral-overdue` — sky-blue (gentle reminder), `Info` icon. Raised when a deferred defect crosses the 30-day review window.
   - `booking-reminder` — sky-blue, `CalendarClock` icon. Raised per-tail when one or more events enter the booking window with no hangar slot linked (see *Needs booking* below).
 - Dismiss is a labeled **Acknowledge** outline button, not an X icon — explicit action language reads more deliberately for state-changing alerts. Global ack: once anyone dismisses, the banner is gone for everyone. View-only users never see banners and don't subscribe to the collection.
-- Message text is frozen at raise time so entity renames don't drift the banner copy. Banners come back fresh after `clearNotification` runs (event resolved, defect re-deferred, or all per-tail matches clear).
+- **Human ack is required before a banner can disappear.** A banner that's never been acknowledged stays visible even if the underlying cause resolves in the meantime (e.g. the planner consolidates the relevant event onto an existing hangar slot before noticing the banner). The auto-clear sweep only deletes banners whose `acknowledgedAt` is set — unacked docs are left in place. This prevents the on/off blink that used to occur when the cause flipped resolved→unresolved→resolved across recomputes, and matches SEP's explicit preference for deliberate operator acknowledgement of every banner.
+- Message text is frozen at raise time so entity renames don't drift the banner copy. After a banner is acked, `clearNotification` may delete the doc when the cause resolves so a future occurrence can raise a fresh banner.
 
 ### Needs booking — banner + dialog
 - Surfaces events that have entered the hangar-booking window so the planner can grab a slot before the plane flies through the deadline or hangars fill up.
@@ -253,9 +257,9 @@ const firebaseConfig = {
   - When the event is date-only (no TTAF timer): ≤ 14 days remaining and not yet expired.
   - Already-expired events (negative remaining) are excluded — they're handled by the auto-ground sweep.
 - **Banner** (`booking-reminder` type): one per tail, info-style. Message lists up to three event titles inline (`OY-XYZ: "Annual" and "100h" approaching expiry with no booking — book a hangar slot.`); 4+ collapse to `"A", "B", "C" and N more` so a busy tail doesn't spam a paragraph. Frozen at raise time; live source of truth is the dialog.
-- **Reconciliation sweep** in `OverviewPage.tsx`: subscribes to existing booking-reminder docs (`subscribeBookingReminders` returns acked + unacked) and diffs them against the live match set per tail. Writes only when state actually changes — raises for newly-matched tails, clears for tails that lose all matches or get grounded. No per-render delete churn.
+- **Reconciliation sweep** in `OverviewPage.tsx`: subscribes to existing booking-reminder docs (`subscribeBookingReminders` returns acked + unacked) and diffs them against the live match set per tail. Writes only when state actually changes — raises for newly-matched tails, deletes acked banners for tails that lose all matches or get grounded. **Unacked banners are deliberately left alone** even when the cause resolves: the planner must click Acknowledge before the banner can be swept. This is what stops the on/off blink that used to occur when consolidating a new event onto an existing booking flipped the tail in and out of `needsBookingByTail` (see *Notification banner stack* above). No per-render delete churn.
 - **Button + dialog** (`NeedsBookingDialog.tsx`): "Needs booking" button sits next to "Upcoming events" with an amber count badge when matches > 0. Dialog lists each qualifying event with tail, warning, due value, remaining hrs/days, and a per-row **Book** button that closes the dialog and opens the booking form prefilled with that tail.
-- Dismissing the banner does **not** re-raise as more events appear on the same tail — once acked, the cause-tail stays acked until all matches clear (booking linked or events resolved). A future occurrence raises a fresh banner. Live count is always visible via the dialog/button badge regardless of ack state.
+- Dismissing the banner does **not** re-raise as more events appear on the same tail — once acked, the cause-tail stays acked until all matches clear (events booked or resolved). A future occurrence raises a fresh banner. Live count is always visible via the dialog/button badge regardless of ack state.
 
 ### Bookings — location field
 - New `Booking.locationId: string | null`. The `BookingDialog` form has a Location selector below the defect list. Selecting `— No location —` stores `null`. The selected location is looked up at render time, so renaming a location updates everywhere live.

@@ -23,23 +23,27 @@ export type BookingGroup = {
   items: BookingItem[];
 };
 
-// Builds groups from the event + defects linked to a booking.
+// Builds groups from the events + defects linked to a booking.
 //   • Items with the same WO# share a group.
-//   • The event's group (if any) is rendered first — it's the parent.
-//   • Within a group, the event comes before defects.
+//   • Groups containing an event come before defect-only groups; among
+//     event-bearing groups, the order matches the input event order so the
+//     planner sees their primary pick first.
+//   • Within a group, events come before defects.
 //   • Groups without a WO# come last.
 // Optional `booking` lets the function prefer the frozen `itemResolutions`
 // snapshot over live entity state. Call sites that don't yet have the
 // booking can omit it; the live-state fallback path is preserved.
 export function buildBookingGroups(
-  event: MaintenanceEvent | null,
+  events: MaintenanceEvent[],
   defects: Defect[],
   booking?: Booking | null,
 ): BookingGroup[] {
   type Bucket = { wo: string | null; items: BookingItem[] };
   const woBuckets = new Map<string, Bucket>();
   const noWo: Bucket = { wo: null, items: [] };
-  let eventWoKey: string | null = null;
+  // Track the WO of every event in input order so multi-event bookings keep
+  // the planner's chosen ordering on render.
+  const eventWoOrder: string[] = [];
   const snapshots = booking?.itemResolutions ?? null;
 
   const push = (
@@ -54,10 +58,10 @@ export function buildBookingGroups(
     }
     if (!woBuckets.has(wo)) woBuckets.set(wo, { wo, items: [] });
     woBuckets.get(wo)!.items.push(item);
-    if (isEvent) eventWoKey = wo;
+    if (isEvent && !eventWoOrder.includes(wo)) eventWoOrder.push(wo);
   };
 
-  if (event) {
+  for (const event of events) {
     const snap = snapshots?.[event.id] ?? null;
     push(
       snap?.kind === "resolved" ? snap.workOrder : event.workOrderNumber,
@@ -98,9 +102,13 @@ export function buildBookingGroups(
   }
 
   const ordered: BookingGroup[] = [];
-  if (eventWoKey != null) ordered.push(woBuckets.get(eventWoKey)!);
+  const seen = new Set<string>();
+  for (const wo of eventWoOrder) {
+    ordered.push(woBuckets.get(wo)!);
+    seen.add(wo);
+  }
   for (const [k, g] of woBuckets) {
-    if (k !== eventWoKey) ordered.push(g);
+    if (!seen.has(k)) ordered.push(g);
   }
   if (noWo.items.length > 0) ordered.push(noWo);
   return ordered;

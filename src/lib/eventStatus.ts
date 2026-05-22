@@ -206,8 +206,8 @@ export function buildBookedIdSets(
   for (const b of bookings) {
     const toMs = b.to ? b.to.toMillis() : Number.POSITIVE_INFINITY;
     if (toMs < startOfToday) continue;
-    if (b.eventId) {
-      const e = events.get(b.eventId);
+    for (const eid of b.eventIds ?? []) {
+      const e = events.get(eid);
       if (e && e.workOrderNumber?.trim()) eventIds.add(e.id);
     }
     for (const did of b.defectIds ?? []) {

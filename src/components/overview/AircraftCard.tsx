@@ -33,11 +33,11 @@ import type {
   MaintenanceEvent,
 } from "@/types";
 
-// One booking + the event/defects it links to. Resolved in the parent
+// One booking + the events/defects it links to. Resolved in the parent
 // (OverviewPage) so this card doesn't need the global event/defect lists.
 export type BookingWithLinks = {
   booking: Booking;
-  event: MaintenanceEvent | null;
+  events: MaintenanceEvent[];
   defects: Defect[];
 };
 
@@ -141,7 +141,7 @@ export default function AircraftCard({
   const inHangar = isBookingActive(activeBooking);
   const activeWo = inHangar
     ? buildBookingGroups(
-        bookings[0]?.event ?? null,
+        bookings[0]?.events ?? [],
         bookings[0]?.defects ?? [],
         bookings[0]?.booking ?? null,
       )[0]?.wo ?? null
@@ -501,11 +501,11 @@ function BookingChip({
 }) {
   const b = entry.booking;
   const active = isBookingActive(b);
-  const groups = buildBookingGroups(entry.event, entry.defects, b);
+  const groups = buildBookingGroups(entry.events, entry.defects, b);
   const wos = groups.map((g) => g.wo).filter((w): w is string => !!w);
   const primaryWo = wos[0] ?? null;
   const extraWoCount = Math.max(0, wos.length - 1);
-  const hasEvent = !!entry.event;
+  const hasEvent = entry.events.length > 0;
   const hasDefect = entry.defects.length > 0;
   const typeLabel =
     hasEvent && hasDefect

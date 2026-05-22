@@ -66,7 +66,7 @@ export default function BookingDialog({
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [openEnded, setOpenEnded] = useState(false);
-  const [eventId, setEventId] = useState<string>("");
+  const [eventIds, setEventIds] = useState<string[]>([]);
   const [defectIds, setDefectIds] = useState<string[]>([]);
   const [locationId, setLocationId] = useState<string>("");
   const [locations, setLocations] = useState<Location[]>([]);
@@ -88,7 +88,7 @@ export default function BookingDialog({
       setFrom(tsToInputDate(booking.from));
       setTo(tsToInputDate(booking.to));
       setOpenEnded(booking.to == null);
-      setEventId(booking.eventId ?? "");
+      setEventIds(booking.eventIds ?? []);
       setDefectIds(booking.defectIds ?? []);
       setLocationId(booking.locationId ?? "");
       setNotes(booking.notes ?? "");
@@ -97,7 +97,7 @@ export default function BookingDialog({
       setFrom(prefill?.from ? dateToInputDate(prefill.from) : "");
       setTo("");
       setOpenEnded(false);
-      setEventId("");
+      setEventIds([]);
       setDefectIds([]);
       setLocationId("");
       setNotes("");
@@ -119,16 +119,17 @@ export default function BookingDialog({
     const list = events
       .filter((e) => e.tailNumber === normalisedTail && !e.resolvedAt)
       .sort((a, b) => a.warning.localeCompare(b.warning));
-    // Keep a currently-linked event visible even if it's resolved or has
-    // moved tails — so the user can read what's there and pick a new one.
-    if (booking?.eventId) {
-      const linked = events.find((e) => e.id === booking.eventId);
-      if (linked && !list.some((e) => e.id === linked.id)) {
-        list.unshift(linked);
+    // Keep currently-linked events visible even if they're resolved or have
+    // moved tails — so the user can read what's there and untick if needed.
+    const linkedIds = booking?.eventIds ?? [];
+    for (const id of linkedIds) {
+      if (!list.some((e) => e.id === id)) {
+        const linked = events.find((e) => e.id === id);
+        if (linked) list.unshift(linked);
       }
     }
     return list;
-  }, [events, normalisedTail, booking?.eventId]);
+  }, [events, normalisedTail, booking?.eventIds]);
 
   const defectOptions = useMemo(() => {
     const list = defects
@@ -148,16 +149,23 @@ export default function BookingDialog({
   // When the tail changes (in create mode), drop stale event/defect links.
   useEffect(() => {
     if (isEdit) return;
-    if (eventId && !eventOptions.some((e) => e.id === eventId)) {
-      setEventId("");
-    }
+    setEventIds((prev) => {
+      const next = prev.filter((id) => eventOptions.some((e) => e.id === id));
+      return next.length === prev.length ? prev : next;
+    });
     setDefectIds((prev) => {
       const next = prev.filter((id) =>
         defectOptions.some((d) => d.id === id),
       );
       return next.length === prev.length ? prev : next;
     });
-  }, [normalisedTail, eventOptions, defectOptions, eventId, isEdit]);
+  }, [normalisedTail, eventOptions, defectOptions, isEdit]);
+
+  const toggleEvent = (id: string) => {
+    setEventIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
 
   const toggleDefect = (id: string) => {
     setDefectIds((prev) =>
@@ -200,7 +208,7 @@ export default function BookingDialog({
           tailNumber: normalisedTail,
           from: fromDate,
           to: toDate,
-          eventId: eventId || null,
+          eventIds,
           defectIds,
           locationId: locationId || null,
           notes,
@@ -210,7 +218,7 @@ export default function BookingDialog({
           tailNumber: normalisedTail,
           from: fromDate,
           to: toDate,
-          eventId: eventId || null,
+          eventIds,
           defectIds,
           locationId: locationId || null,
           notes: notes || null,
@@ -239,6 +247,9 @@ export default function BookingDialog({
 
   const eventSelectDisabled = !normalisedTail || eventOptions.length === 0;
   const defectSelectDisabled = !normalisedTail || defectOptions.length === 0;
+  const eventSelectEmptyHint = !normalisedTail
+    ? "Pick a tail number to see its events."
+    : "No open events on this tail. Add one from the overview if you want to link.";
 
   const locationOptions = useMemo(() => {
     const active = locations.filter((l) => l.active);
@@ -253,7 +264,7 @@ export default function BookingDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="overflow-hidden">
+      <DialogContent>
         <form onSubmit={onSubmit} className="min-w-0">
           <DialogHeader>
             <DialogTitle>
@@ -332,31 +343,58 @@ export default function BookingDialog({
             </label>
 
             <div className="space-y-2">
-              <Label htmlFor="bookingEvent">Linked event (optional)</Label>
-              <select
-                id="bookingEvent"
-                value={eventId}
-                onChange={(e) => setEventId(e.target.value)}
-                disabled={eventSelectDisabled}
-                className="flex h-9 w-full min-w-0 rounded-md border border-input bg-card px-3 py-1 text-sm shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              >
-                <option value="">— None / custom block —</option>
-                {eventOptions.map((e) => {
-                  const wo = e.workOrderNumber?.trim();
-                  const label = wo ? `${wo} · ${e.warning}` : e.warning;
-                  return (
-                    <option key={e.id} value={e.id}>
-                      {label}
-                    </option>
-                  );
-                })}
-              </select>
+              <Label>Linked events (optional)</Label>
+              {eventSelectDisabled ? (
+                <p className="text-xs text-muted-foreground">
+                  {eventSelectEmptyHint}
+                </p>
+              ) : (
+                <div className="rounded-md border bg-card max-h-40 overflow-y-auto overflow-x-hidden">
+                  {eventOptions.map((e) => {
+                    const checked = eventIds.includes(e.id);
+                    const wo = e.workOrderNumber?.trim();
+                    const resolved = !!e.resolvedAt;
+                    return (
+                      <label
+                        key={e.id}
+                        className={cn(
+                          "flex cursor-pointer items-center gap-2 px-2 py-1 text-xs hover:bg-secondary/60 border-b last:border-b-0 min-w-0",
+                          resolved && "text-muted-foreground",
+                        )}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleEvent(e.id)}
+                          className="h-3.5 w-3.5 rounded border-input shrink-0"
+                        />
+                        {wo && (
+                          <span className="shrink-0 rounded bg-muted px-1 py-0.5 font-mono text-[10px] font-semibold">
+                            WO: {wo}
+                          </span>
+                        )}
+                        <span
+                          className={cn(
+                            "flex-1 min-w-0 truncate",
+                            resolved && "line-through",
+                          )}
+                          title={e.warning}
+                        >
+                          {e.warning}
+                        </span>
+                        {resolved && (
+                          <span className="shrink-0 text-[10px] italic">
+                            resolved
+                          </span>
+                        )}
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
               <p className="text-xs text-muted-foreground">
-                {!normalisedTail
-                  ? "Pick a tail number to see its events."
-                  : eventOptions.length === 0
-                    ? "No open events on this tail. Add one from the overview if you want to link."
-                    : "WO# (if set) and the event name will appear on the calendar block."}
+                Tick every event covered by this hangar slot — events sharing
+                a WO# group together on the calendar block.
               </p>
             </div>
 
@@ -413,7 +451,7 @@ export default function BookingDialog({
                 </div>
               )}
               <p className="text-xs text-muted-foreground">
-                Defects sharing a WO# with the linked event are grouped under
+                Defects sharing a WO# with a linked event are grouped under
                 that WO on the calendar block.
               </p>
             </div>

@@ -149,6 +149,6 @@
 
   body.printing-card .print-target {
     box-shadow: none !important;
-    zoom: 0.85;
+    zoom: 0.7;
   }
 }

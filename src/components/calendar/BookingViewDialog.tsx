@@ -50,9 +50,12 @@ export default function BookingViewDialog({
     if (!booking?.locationId) return null;
     return locations.find((l) => l.id === booking.locationId) ?? null;
   }, [booking, locations]);
-  const linkedEvent = useMemo(() => {
-    if (!booking?.eventId) return null;
-    return events.find((e) => e.id === booking.eventId) ?? null;
+  const linkedEvents = useMemo(() => {
+    if (!booking) return [] as MaintenanceEvent[];
+    const ids = booking.eventIds ?? [];
+    return ids
+      .map((id) => events.find((e) => e.id === id))
+      .filter((e): e is MaintenanceEvent => !!e);
   }, [booking, events]);
 
   const linkedDefects = useMemo(() => {
@@ -65,8 +68,8 @@ export default function BookingViewDialog({
 
   const groups: BookingGroup[] = useMemo(
     () =>
-      booking ? buildBookingGroups(linkedEvent, linkedDefects, booking) : [],
-    [booking, linkedEvent, linkedDefects],
+      booking ? buildBookingGroups(linkedEvents, linkedDefects, booking) : [],
+    [booking, linkedEvents, linkedDefects],
   );
 
   if (!booking) return null;

@@ -75,11 +75,14 @@ export type Booking = {
   from: Timestamp;
   // `to: null` = open-ended booking (release date unknown).
   to: Timestamp | null;
-  // Optional link to a maintenance event on the same tail. WO# and event name
-  // are derived from the linked event at render time, not stored here.
-  eventId: string | null;
+  // Optional links to maintenance events on the same tail. Multi-select so a
+  // single hangar slot can cover several WOs (e.g. inspection WO + a separate
+  // defects WO during the same visit). WO# and event names are derived from
+  // the linked events at render time, not stored here. Legacy docs may have a
+  // single `eventId: string` field instead — normalized to this array on read.
+  eventIds: string[];
   // Optional links to defects on the same tail. Same render-time-derivation
-  // pattern as `eventId`.
+  // pattern as `eventIds`.
   defectIds: string[];
   // Optional location/hangar assignment — managed via Settings → Locations.
   // Render time looks the doc up by id; the label can change over time.

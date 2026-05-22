@@ -33,7 +33,14 @@ export default function NotificationBannerStack() {
 
   const onDismiss = async (id: string) => {
     if (!user) return;
-    await acknowledgeNotification(id, user.uid);
+    try {
+      await acknowledgeNotification(id, user.uid);
+    } catch (err) {
+      // Surface so a future rules/permission regression doesn't fail silently
+      // — the optimistic update would otherwise hide the banner briefly, then
+      // it'd snap back when the SDK rolls back the rejected write.
+      console.error("Failed to acknowledge notification", id, err);
+    }
   };
 
   return (

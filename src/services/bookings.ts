@@ -29,7 +29,7 @@ export type BookingInput = {
   tailNumber: string;
   from: Date;
   to: Date | null;
-  eventId: string | null;
+  eventIds: string[];
   defectIds: string[];
   locationId: string | null;
   notes: string | null;
@@ -63,6 +63,17 @@ function docToBooking(id: string, data: Record<string, unknown>): Booking {
   const defectIds = Array.isArray(rawDefectIds)
     ? (rawDefectIds.filter((v) => typeof v === "string") as string[])
     : [];
+  // Legacy: docs predating multi-event support stored a single `eventId`.
+  // Normalize either field shape into `eventIds: string[]` on read; the next
+  // write upgrades the doc.
+  const rawEventIds = data.eventIds;
+  let eventIds: string[];
+  if (Array.isArray(rawEventIds)) {
+    eventIds = rawEventIds.filter((v) => typeof v === "string") as string[];
+  } else {
+    const legacy = data.eventId;
+    eventIds = typeof legacy === "string" && legacy ? [legacy] : [];
+  }
   const rawResolutions = data.itemResolutions as
     | Record<string, BookingItemResolution>
     | undefined;
@@ -71,7 +82,7 @@ function docToBooking(id: string, data: Record<string, unknown>): Booking {
     tailNumber: data.tailNumber as string,
     from: data.from as Timestamp,
     to: (data.to as Timestamp | null) ?? null,
-    eventId: (data.eventId as string | null) ?? null,
+    eventIds,
     defectIds,
     locationId: (data.locationId as string | null) ?? null,
     notes: (data.notes as string | null) ?? null,
@@ -122,7 +133,7 @@ async function describeForAudit(input: {
   tailNumber: string;
   from: Date;
   to: Date | null;
-  eventId: string | null;
+  eventIds: string[];
   defectIds: string[];
   locationId: string | null;
   notes: string | null;
@@ -132,17 +143,23 @@ async function describeForAudit(input: {
     input.to ? Timestamp.fromDate(input.to) : null,
   );
   const parts: string[] = [range];
-  if (input.eventId) {
-    const snap = await getDoc(eventDocRef(input.eventId));
-    if (snap.exists()) {
-      const e = snap.data();
-      const wo = (e.workOrderNumber as string | null) ?? null;
-      const warning = (e.warning as string | undefined) ?? "";
-      const evLabel = wo ? `WO ${wo} ${warning}` : warning;
-      parts.push(`event: ${evLabel.trim() || input.eventId}`);
-    } else {
-      parts.push(`event: ${input.eventId} (missing)`);
+  if (input.eventIds.length > 0) {
+    const labels: string[] = [];
+    for (const id of input.eventIds) {
+      const snap = await getDoc(eventDocRef(id));
+      if (snap.exists()) {
+        const e = snap.data();
+        const wo = (e.workOrderNumber as string | null) ?? null;
+        const warning = (e.warning as string | undefined) ?? "";
+        const evLabel = wo ? `WO ${wo} ${warning}` : warning;
+        labels.push(evLabel.trim() || id);
+      } else {
+        labels.push(`${id} (missing)`);
+      }
     }
+    parts.push(
+      `${labels.length === 1 ? "event" : "events"}: ${labels.join(", ")}`,
+    );
   }
   if (input.defectIds.length > 0) {
     const labels: string[] = [];
@@ -173,17 +190,19 @@ async function describeForAudit(input: {
   return parts.join(" · ");
 }
 
-async function validateEventBelongsToTail(
-  eventId: string,
+async function validateEventsBelongToTail(
+  eventIds: string[],
   tail: string,
 ): Promise<void> {
-  const snap = await getDoc(eventDocRef(eventId));
-  if (!snap.exists()) {
-    throw new Error("Selected event no longer exists.");
-  }
-  const data = snap.data();
-  if ((data.tailNumber as string) !== tail) {
-    throw new Error("Selected event belongs to a different tail.");
+  for (const id of eventIds) {
+    const snap = await getDoc(eventDocRef(id));
+    if (!snap.exists()) {
+      throw new Error("Selected event no longer exists.");
+    }
+    const data = snap.data();
+    if ((data.tailNumber as string) !== tail) {
+      throw new Error("Selected event belongs to a different tail.");
+    }
   }
 }
 
@@ -217,12 +236,12 @@ export async function createBooking(input: BookingInput): Promise<string> {
       throw new Error("'To' date must be on or after 'From' date.");
     }
   }
-  const eventId = input.eventId || null;
+  const eventIds = Array.from(new Set(input.eventIds.filter((id) => !!id)));
   const defectIds = Array.from(new Set(input.defectIds));
   const locationId = input.locationId || null;
   const notes = input.notes?.trim() || null;
 
-  if (eventId) await validateEventBelongsToTail(eventId, tail);
+  if (eventIds.length > 0) await validateEventsBelongToTail(eventIds, tail);
   if (defectIds.length > 0) await validateDefectsBelongToTail(defectIds, tail);
 
   const existing = await fetchBookingsForTail(tail);
@@ -233,7 +252,7 @@ export async function createBooking(input: BookingInput): Promise<string> {
     tailNumber: tail,
     from: Timestamp.fromDate(input.from),
     to: input.to ? Timestamp.fromDate(input.to) : null,
-    eventId,
+    eventIds,
     defectIds,
     locationId,
     notes,
@@ -246,7 +265,7 @@ export async function createBooking(input: BookingInput): Promise<string> {
     tailNumber: tail,
     from: input.from,
     to: input.to,
-    eventId,
+    eventIds,
     defectIds,
     locationId,
     notes,
@@ -287,8 +306,10 @@ export async function updateBooking(
       throw new Error("'To' date must be on or after 'From' date.");
     }
   }
-  const eventId =
-    patch.eventId !== undefined ? patch.eventId || null : prev.eventId;
+  const eventIds =
+    patch.eventIds !== undefined
+      ? Array.from(new Set(patch.eventIds.filter((id) => !!id)))
+      : prev.eventIds;
   const defectIds =
     patch.defectIds !== undefined
       ? Array.from(new Set(patch.defectIds))
@@ -300,7 +321,7 @@ export async function updateBooking(
   const notes =
     patch.notes !== undefined ? patch.notes?.trim() || null : prev.notes;
 
-  if (eventId) await validateEventBelongsToTail(eventId, tail);
+  if (eventIds.length > 0) await validateEventsBelongToTail(eventIds, tail);
   if (defectIds.length > 0) await validateDefectsBelongToTail(defectIds, tail);
 
   const existing = await fetchBookingsForTail(tail);
@@ -311,7 +332,10 @@ export async function updateBooking(
     tailNumber: tail,
     from: Timestamp.fromDate(fromDate),
     to: toDate ? Timestamp.fromDate(toDate) : null,
-    eventId,
+    // Write the array form going forward; clear the legacy scalar so a doc
+    // can't carry both shapes after an upgrade write.
+    eventIds,
+    eventId: null,
     defectIds,
     locationId,
     notes,
@@ -321,7 +345,7 @@ export async function updateBooking(
     tailNumber: prev.tailNumber,
     from: prev.from.toDate(),
     to: prev.to ? prev.to.toDate() : null,
-    eventId: prev.eventId,
+    eventIds: prev.eventIds,
     defectIds: prev.defectIds,
     locationId: prev.locationId,
     notes: prev.notes,
@@ -330,7 +354,7 @@ export async function updateBooking(
     tailNumber: tail,
     from: fromDate,
     to: toDate,
-    eventId,
+    eventIds,
     defectIds,
     locationId,
     notes,
@@ -362,7 +386,7 @@ export async function deleteBooking(id: string): Promise<void> {
       tailNumber: prev.tailNumber,
       from: prev.from.toDate(),
       to: prev.to ? prev.to.toDate() : null,
-      eventId: prev.eventId,
+      eventIds: prev.eventIds,
       defectIds: prev.defectIds,
       locationId: prev.locationId,
       notes: prev.notes,
@@ -433,7 +457,7 @@ export async function snapshotItemResolution(
   const targets = bookings.filter((b) => {
     if (b.from.toMillis() > nowMs) return false;
     if (b.itemResolutions?.[itemId]) return false;
-    if (itemKind === "event") return b.eventId === itemId;
+    if (itemKind === "event") return b.eventIds.includes(itemId);
     return b.defectIds.includes(itemId);
   });
   if (targets.length === 0) return;

@@ -283,16 +283,16 @@ export default function CalendarGrid({
               const left = `calc(${TAIL_COL_PX}px + (100% - ${TAIL_COL_PX}px) * ${startCol} / ${dayCount})`;
               const width = `calc((100% - ${TAIL_COL_PX}px) * ${span} / ${dayCount})`;
 
-              const linkedEvent = b.eventId
-                ? eventsById.get(b.eventId) ?? null
-                : null;
+              const linkedEvents = (b.eventIds ?? [])
+                .map((id) => eventsById.get(id))
+                .filter((e): e is MaintenanceEvent => !!e);
               const linkedDefects = (b.defectIds ?? [])
                 .map((id) => defectsById.get(id))
                 .filter((d): d is Defect => !!d);
               const linkedLocation = b.locationId
                 ? locationsById.get(b.locationId) ?? null
                 : null;
-              const groups = buildBookingGroups(linkedEvent, linkedDefects, b);
+              const groups = buildBookingGroups(linkedEvents, linkedDefects, b);
               const notes = b.notes?.trim() || null;
               const description = describeBookingGroups(groups);
 

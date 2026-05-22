@@ -190,15 +190,26 @@ export default function EventRow({
       >
         {daysLeft == null ? "—" : daysLeft}
       </div>
-      {/* Hours-left cell */}
+      {/* Hours-left cell — when an extension is active, the displayed hours
+          already include it; stack a hairline tag to make that explicit so
+          CAMO doesn't second-guess whether the value reflects the extension. */}
       <div
         className={cn(
-          "border-l border-r border-foreground/15 px-1 py-0.5 text-center font-mono text-[11px] tabular-nums",
+          "border-l border-r border-foreground/15 px-1 py-0.5 text-center font-mono text-[11px] tabular-nums leading-tight flex flex-col items-center justify-center",
           severityHalf[hoursSev],
         )}
-        title="Hours until due (vs current TTAF)"
+        title={
+          extHours != null
+            ? `Hours until due (vs current TTAF) — includes +${extHours}h extension`
+            : "Hours until due (vs current TTAF)"
+        }
       >
-        {formatHoursLeft(minutesLeft)}
+        <span>{formatHoursLeft(minutesLeft)}</span>
+        {extHours != null && (
+          <span className="text-[8px] font-semibold tracking-spec opacity-80">
+            INCL. EXT
+          </span>
+        )}
       </div>
       {/* Action strip — square ghost buttons with hairline separators */}
       <div className="flex items-center justify-end gap-px pl-2">
