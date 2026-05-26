@@ -55,8 +55,6 @@ export type SyncResult = {
     stored: number;
   }>;
   skippedUnchanged: string[]; // candidate === stored
-  missingInFleet: string[]; // Flightlogger callSigns we don't recognise
-  missingFromFlightlogger: string[]; // Our tails absent from Flightlogger
   error?: string;
 };
 
@@ -145,15 +143,11 @@ function describeSummary(result: SyncResult): string {
     `${result.updated.length} updated, ${result.skippedUnchanged.length} unchanged`,
   );
   if (result.skippedStale.length > 0) {
-    parts.push(`${result.skippedStale.length} skipped (stale)`);
-  }
-  if (result.missingFromFlightlogger.length > 0) {
-    parts.push(
-      `${result.missingFromFlightlogger.length} not in Flightlogger`,
-    );
-  }
-  if (result.missingInFleet.length > 0) {
-    parts.push(`${result.missingInFleet.length} unknown call sign(s)`);
+    // Inline the actual tails so the indicator answers "which ones?" without
+    // needing to dig into the audit log. Stale skips are rare and small in
+    // count, so the full list comfortably fits in the summary line.
+    const tails = result.skippedStale.map((s) => s.tailNumber).join(", ");
+    parts.push(`${result.skippedStale.length} stale (${tails})`);
   }
   return parts.join(" · ");
 }
@@ -165,8 +159,6 @@ export async function runFlightloggerSync(byUid: string): Promise<SyncResult> {
     updated: [],
     skippedStale: [],
     skippedUnchanged: [],
-    missingInFleet: [],
-    missingFromFlightlogger: [],
   };
 
   let payload: FlightloggerSyncResponse;
@@ -191,7 +183,6 @@ export async function runFlightloggerSync(byUid: string): Promise<SyncResult> {
   }
 
   const fleet = await fetchFleetByTail();
-  const reportedTails = new Set<string>();
 
   const batch = writeBatch(db);
   let pendingWrites = 0;
@@ -199,13 +190,11 @@ export async function runFlightloggerSync(byUid: string): Promise<SyncResult> {
   for (const item of payload.aircraft) {
     const tail = normaliseTailNumber(item.callSign);
     if (!tail) continue;
-    reportedTails.add(tail);
 
     const aircraft = fleet.get(tail);
-    if (!aircraft) {
-      result.missingInFleet.push(tail);
-      continue;
-    }
+    // Silently skip call signs we don't know about — they're outside the
+    // scope of this app's fleet and SEP doesn't need them surfaced.
+    if (!aircraft) continue;
 
     const candidate = item.totalAirborneMinutes;
     if (candidate == null || !Number.isFinite(candidate) || candidate < 0) {
@@ -244,12 +233,6 @@ export async function runFlightloggerSync(byUid: string): Promise<SyncResult> {
     );
     result.updated.push({ tailNumber: tail, before: stored, after: candidate });
     pendingWrites += 2;
-  }
-
-  for (const tail of fleet.keys()) {
-    if (!reportedTails.has(tail)) {
-      result.missingFromFlightlogger.push(tail);
-    }
   }
 
   result.summary = describeSummary(result);
