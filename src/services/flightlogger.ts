@@ -72,9 +72,20 @@ export async function getSyncMeta(): Promise<FlightloggerSyncMeta | null> {
 export function subscribeSyncMeta(
   callback: (meta: FlightloggerSyncMeta | null) => void,
 ): () => void {
-  return onSnapshot(metaDocRef(), (snap) => {
-    callback(snap.exists() ? (snap.data() as FlightloggerSyncMeta) : null);
-  });
+  return onSnapshot(
+    metaDocRef(),
+    (snap) => {
+      callback(snap.exists() ? (snap.data() as FlightloggerSyncMeta) : null);
+    },
+    // Without an error handler, a permission/network failure silently kills
+    // the listener and the indicator never loads. Emitting null on error
+    // lets the caller mark the indicator as "loaded with no data" so the
+    // user sees a "not yet synced" state instead of an empty header.
+    (err) => {
+      console.error("Flightlogger sync meta subscription failed", err);
+      callback(null);
+    },
+  );
 }
 
 // Calendar-day comparison in Europe/Copenhagen. `lastSuccessAt` being on a

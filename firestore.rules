@@ -60,5 +60,13 @@ service cloud.firestore {
       allow read: if signedIn();
       allow write: if isMember();
     }
+
+    // Singleton-style status docs (e.g. `flightloggerSync` — last-run summary
+    // for the Flightlogger TTAF sync). Any signed-in user reads so the top-of-
+    // app indicator works for viewers too; only members write.
+    match /meta/{docId} {
+      allow read: if signedIn();
+      allow write: if isMember();
+    }
   }
 }
