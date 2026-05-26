@@ -1016,7 +1016,7 @@ export default function OverviewPage() {
               <RefreshCw
                 className={cn("h-3.5 w-3.5", syncing && "animate-spin")}
               />
-              {syncing ? "Syncing…" : "Sync now"}
+              {syncing ? "Syncing…" : "Sync TTAF from Flightlogger"}
             </Button>
           )}
         </div>

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
@@ -10,7 +11,65 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import NotificationBannerStack from "@/components/notifications/NotificationBannerStack";
+import {
+  subscribeSyncMeta,
+  type FlightloggerSyncMeta,
+} from "@/services/flightlogger";
 import logoUrl from "@/img/logo.png";
+
+function formatTtafSyncStamp(meta: FlightloggerSyncMeta | null): string | null {
+  const ts = meta?.lastSuccessAt;
+  if (!ts) return null;
+  const d = ts.toDate();
+  // dd.MM.yyyy HH:mm in Europe/Copenhagen — matches the filing-strip date
+  // style and reads as an instrument timestamp.
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Copenhagen",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  })
+    .format(d)
+    .replace(/\//g, ".")
+    .replace(",", "");
+}
+
+// Compact global TTAF sync indicator for the filing strip. Mirrors the per-
+// page indicator on OverviewPage but rendered on every route so the user can
+// glance up from any view and see when flight hours were last pulled.
+function TtafStripIndicator({
+  meta,
+  loaded,
+}: {
+  meta: FlightloggerSyncMeta | null;
+  loaded: boolean;
+}) {
+  if (!loaded) return null;
+
+  if (!meta || !meta.lastSuccessAt) {
+    return <span>TTAF · not yet synced</span>;
+  }
+
+  const stamp = formatTtafSyncStamp(meta);
+  if (meta.lastStatus === "failed") {
+    return (
+      <span
+        className="inline-flex items-center gap-1.5 text-sev-red-fg"
+        title={meta.lastError ?? "Sync failed"}
+      >
+        <span
+          aria-hidden="true"
+          className="inline-block h-1 w-1 rounded-full bg-sev-red-fg"
+        />
+        TTAF · sync failed{stamp ? ` · last ok ${stamp}` : ""}
+      </span>
+    );
+  }
+  return <span>TTAF synced {stamp}</span>;
+}
 
 const navItems = [
   {
@@ -50,6 +109,17 @@ const navItems = [
 export default function Layout() {
   const { profile, isViewer, signOutUser } = useAuth();
   const navigate = useNavigate();
+  const [syncMeta, setSyncMeta] = useState<FlightloggerSyncMeta | null>(null);
+  const [syncMetaLoaded, setSyncMetaLoaded] = useState(false);
+
+  useEffect(
+    () =>
+      subscribeSyncMeta((m) => {
+        setSyncMeta(m);
+        setSyncMetaLoaded(true);
+      }),
+    [],
+  );
 
   const onSignOut = async () => {
     await signOutUser();
@@ -63,19 +133,27 @@ export default function Layout() {
   return (
     <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-40 border-b border-foreground/15 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-        {/* Hairline filing strip — gives the masthead a publication tell */}
+        {/* Hairline filing strip — gives the masthead a publication tell.
+            Right rail carries the global TTAF-sync indicator + today's date
+            so the user can confirm flight hours are fresh from any route. */}
         <div className="border-b border-foreground/10 bg-card/60">
-          <div className="container flex h-5 items-center justify-between text-[9px] uppercase tracking-spec text-muted-foreground/80">
+          <div className="container flex h-5 items-center justify-between text-[10px] uppercase tracking-spec text-muted-foreground/80">
             <span>CAT · Maintenance Tracker · v0.1</span>
-            <span className="font-mono tabular-nums">
-              {new Date()
-                .toLocaleDateString("en-GB", {
-                  day: "2-digit",
-                  month: "2-digit",
-                  year: "numeric",
-                })
-                .replace(/\//g, ".")}
-            </span>
+            <div className="flex items-center gap-3 font-mono tabular-nums">
+              <TtafStripIndicator meta={syncMeta} loaded={syncMetaLoaded} />
+              <span aria-hidden="true" className="text-foreground/20">
+                |
+              </span>
+              <span>
+                {new Date()
+                  .toLocaleDateString("en-GB", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                  })
+                  .replace(/\//g, ".")}
+              </span>
+            </div>
           </div>
         </div>
 
