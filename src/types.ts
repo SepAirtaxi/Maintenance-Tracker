@@ -29,6 +29,11 @@ export type Aircraft = {
   // docs that pre-date the Flightlogger sync (from the now-removed CSV path) —
   // tolerated on read but no longer written.
   totalTimeSource: "flightlogger" | "manual" | "import" | null;
+  // Opt-out switch for the Flightlogger TTAF sync. Default behavior is to
+  // sync (treat absent/undefined as `true`). Aircraft whose TTAF is managed
+  // outside of Flightlogger — typically the PC-12 / King Air turboprops —
+  // get this set to `false` from the settings page so the sync ignores them.
+  syncTtafFromFlightlogger?: boolean;
   // Per-aircraft utilization rate in flight hours per month. Consumed by the
   // Forecast module to convert calendar deadlines into hour deadlines. Null =
   // use the module's default constant. Editing UI is deferred (see

@@ -6,6 +6,7 @@ import {
   Pencil,
   Plane,
   Plus,
+  RefreshCw,
   Sprout,
   Trash2,
 } from "lucide-react";
@@ -17,13 +18,17 @@ import LocationFormDialog from "@/components/settings/LocationFormDialog";
 import DeleteLocationDialog from "@/components/settings/DeleteLocationDialog";
 import EventTemplateFormDialog from "@/components/settings/EventTemplateFormDialog";
 import DeleteEventTemplateDialog from "@/components/settings/DeleteEventTemplateDialog";
-import { subscribeAircraft } from "@/services/aircraft";
+import {
+  subscribeAircraft,
+  updateSyncTtafFromFlightlogger,
+} from "@/services/aircraft";
 import { subscribeLocations } from "@/services/locations";
 import { subscribeEventTemplates } from "@/services/eventTemplates";
 import { seedFleet } from "@/services/seed";
+import { classifyEngineType } from "@/lib/tails";
 import type { Aircraft, EventTemplate, Location } from "@/types";
 
-type Section = "aircraft" | "locations" | "scheduledEvents";
+type Section = "aircraft" | "locations" | "scheduledEvents" | "flightlogger";
 
 export default function SettingsPage() {
   const [section, setSection] = useState<Section>("aircraft");
@@ -67,11 +72,19 @@ export default function SettingsPage() {
         >
           Scheduled events
         </SectionTab>
+        <SectionTab
+          active={section === "flightlogger"}
+          onClick={() => setSection("flightlogger")}
+          icon={<RefreshCw className="h-3.5 w-3.5" />}
+        >
+          Flightlogger sync
+        </SectionTab>
       </div>
 
       {section === "aircraft" && <AircraftSection />}
       {section === "locations" && <LocationsSection />}
       {section === "scheduledEvents" && <ScheduledEventsSection />}
+      {section === "flightlogger" && <FlightloggerSyncSection />}
     </div>
   );
 }
@@ -552,6 +565,164 @@ function ScheduledEventsSection() {
         template={deleteTarget}
         onClose={() => setDeleteTarget(null)}
       />
+    </div>
+  );
+}
+
+function FlightloggerSyncSection() {
+  const [aircraft, setAircraft] = useState<Aircraft[] | null>(null);
+  // Tracks tails whose toggle is mid-flight so the checkbox stays disabled
+  // until Firestore acknowledges the write. Prevents flicker if the user
+  // double-clicks.
+  const [pending, setPending] = useState<Set<string>>(new Set());
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => subscribeAircraft(setAircraft), []);
+
+  const sorted = useMemo(() => {
+    if (!aircraft) return null;
+    // Group turboprops together so SEP can scan them quickly — they're the
+    // group most likely to be opted out (TTAF managed in CAMO's separate
+    // system, not Flightlogger).
+    return [...aircraft].sort((a, b) => {
+      const ea = classifyEngineType(a.model);
+      const eb = classifyEngineType(b.model);
+      if (ea !== eb) return ea === "turboprop" ? 1 : -1;
+      return a.tailNumber.localeCompare(b.tailNumber);
+    });
+  }, [aircraft]);
+
+  const toggle = async (tail: string, next: boolean) => {
+    setError(null);
+    setPending((p) => new Set(p).add(tail));
+    try {
+      await updateSyncTtafFromFlightlogger(tail, next);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update sync flag.");
+    } finally {
+      setPending((p) => {
+        const next = new Set(p);
+        next.delete(tail);
+        return next;
+      });
+    }
+  };
+
+  const enabledCount =
+    aircraft?.filter((a) => a.syncTtafFromFlightlogger !== false).length ?? 0;
+  const totalCount = aircraft?.length ?? 0;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-end justify-between gap-4">
+        <p className="text-sm text-muted-foreground">
+          Choose which aircraft the Flightlogger TTAF sync should touch.
+          Disabled aircraft keep their current TTAF; update them manually via
+          the per-card edit dialog.{" "}
+          <span className="text-foreground font-medium">
+            {enabledCount} of {totalCount}
+          </span>{" "}
+          aircraft are currently being synced.
+        </p>
+      </div>
+
+      {error && (
+        <div className="border border-sev-red-edge/60 bg-sev-red-bg/50 px-3 py-2 text-sm text-sev-red-fg">
+          {error}
+        </div>
+      )}
+
+      <div className="border border-foreground/20 overflow-hidden bg-card">
+        <table className="w-full text-sm">
+          <thead className="bg-foreground/[0.04] text-muted-foreground border-b border-foreground/15">
+            <tr>
+              <th className="text-left text-[10px] font-bold uppercase tracking-spec px-4 py-2 w-40">
+                Tail number
+              </th>
+              <th className="text-left text-[10px] font-bold uppercase tracking-spec px-4 py-2">
+                Model
+              </th>
+              <th className="text-left text-[10px] font-bold uppercase tracking-spec px-4 py-2 w-32">
+                Engine
+              </th>
+              <th className="text-center text-[10px] font-bold uppercase tracking-spec px-4 py-2 w-32">
+                Sync TTAF
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted === null && (
+              <tr>
+                <td
+                  colSpan={4}
+                  className="px-4 py-6 text-center text-muted-foreground italic"
+                >
+                  Loading…
+                </td>
+              </tr>
+            )}
+            {sorted !== null && sorted.length === 0 && (
+              <tr>
+                <td
+                  colSpan={4}
+                  className="px-4 py-6 text-center text-muted-foreground"
+                >
+                  No aircraft in the fleet yet.
+                </td>
+              </tr>
+            )}
+            {sorted?.map((a) => {
+              const engine = classifyEngineType(a.model);
+              const enabled = a.syncTtafFromFlightlogger !== false;
+              const isPending = pending.has(a.tailNumber);
+              return (
+                <tr
+                  key={a.tailNumber}
+                  className="border-t border-foreground/10 hover:bg-foreground/[0.025]"
+                >
+                  <td className="px-4 py-2 font-mono font-bold tracking-stamp">
+                    {a.tailNumber}
+                  </td>
+                  <td className="px-4 py-2">{a.model}</td>
+                  <td className="px-4 py-2">
+                    <span
+                      className={cn(
+                        "inline-flex items-center border px-2 py-0.5 text-[9px] font-bold uppercase tracking-spec",
+                        engine === "turboprop"
+                          ? "border-sev-yellow-edge/50 bg-sev-yellow-bg/60 text-sev-yellow-fg"
+                          : "border-foreground/20 bg-foreground/[0.04] text-muted-foreground",
+                      )}
+                    >
+                      {engine === "turboprop" ? "Turboprop" : "Piston"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2 text-center">
+                    <label
+                      className={cn(
+                        "inline-flex items-center gap-2 cursor-pointer select-none",
+                        isPending && "opacity-50 cursor-wait",
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 border-input"
+                        checked={enabled}
+                        disabled={isPending}
+                        onChange={(e) =>
+                          void toggle(a.tailNumber, e.target.checked)
+                        }
+                      />
+                      <span className="text-[10px] font-bold uppercase tracking-spec text-muted-foreground">
+                        {enabled ? "On" : "Off"}
+                      </span>
+                    </label>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

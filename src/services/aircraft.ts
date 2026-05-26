@@ -325,6 +325,36 @@ export async function updateAircraftNote(
   });
 }
 
+// Toggle whether the Flightlogger TTAF sync touches this aircraft. Stored
+// as a literal boolean (not "default-on") so the Settings table can show an
+// unambiguous checked/unchecked state and so writes are idempotent.
+export async function updateSyncTtafFromFlightlogger(
+  tailNumber: string,
+  enabled: boolean,
+): Promise<void> {
+  const tail = normaliseTailNumber(tailNumber);
+  const existing = await getDoc(aircraftDoc(tail));
+  if (!existing.exists()) throw new Error(`Aircraft ${tail} not found.`);
+  const prev = existing.data() as Aircraft;
+  // Treat absent as enabled (the default behaviour) when comparing — keeps
+  // first-time toggles from logging a no-op audit entry.
+  const before = prev.syncTtafFromFlightlogger !== false;
+  if (before === enabled) return;
+
+  await updateDoc(aircraftDoc(tail), {
+    syncTtafFromFlightlogger: enabled,
+    updatedAt: serverTimestamp(),
+  });
+
+  logAudit(tail, {
+    action: "update",
+    entity: "aircraft",
+    summary: enabled
+      ? "Flightlogger TTAF sync enabled"
+      : "Flightlogger TTAF sync disabled — TTAF must be updated manually",
+  });
+}
+
 export async function deleteAircraft(tailNumber: string): Promise<void> {
   const tail = normaliseTailNumber(tailNumber);
   await deleteDoc(aircraftDoc(tail));

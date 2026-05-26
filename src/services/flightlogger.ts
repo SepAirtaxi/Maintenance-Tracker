@@ -55,6 +55,7 @@ export type SyncResult = {
     stored: number;
   }>;
   skippedUnchanged: string[]; // candidate === stored
+  excluded: string[]; // aircraft with syncTtafFromFlightlogger === false
   error?: string;
 };
 
@@ -149,6 +150,9 @@ function describeSummary(result: SyncResult): string {
     const tails = result.skippedStale.map((s) => s.tailNumber).join(", ");
     parts.push(`${result.skippedStale.length} stale (${tails})`);
   }
+  if (result.excluded.length > 0) {
+    parts.push(`${result.excluded.length} excluded`);
+  }
   return parts.join(" · ");
 }
 
@@ -159,6 +163,7 @@ export async function runFlightloggerSync(byUid: string): Promise<SyncResult> {
     updated: [],
     skippedStale: [],
     skippedUnchanged: [],
+    excluded: [],
   };
 
   let payload: FlightloggerSyncResponse;
@@ -195,6 +200,15 @@ export async function runFlightloggerSync(byUid: string): Promise<SyncResult> {
     // Silently skip call signs we don't know about — they're outside the
     // scope of this app's fleet and SEP doesn't need them surfaced.
     if (!aircraft) continue;
+
+    // Per-aircraft opt-out: turboprops have TTAF managed outside Flightlogger
+    // (the CAMO maintains them in another system). `syncTtafFromFlightlogger`
+    // is treated as defaulting to true when undefined, so existing docs stay
+    // synced without a migration; only an explicit `false` excludes a tail.
+    if (aircraft.syncTtafFromFlightlogger === false) {
+      result.excluded.push(tail);
+      continue;
+    }
 
     const candidate = item.totalAirborneMinutes;
     if (candidate == null || !Number.isFinite(candidate) || candidate < 0) {
