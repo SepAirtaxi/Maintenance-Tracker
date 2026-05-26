@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  AlertTriangle,
   ArrowDown,
   ArrowUp,
   CalendarClock,
-  CalendarPlus,
   ShieldOff,
   Upload,
 } from "lucide-react";
@@ -31,7 +31,7 @@ import EstimateDialog, {
   type EstimateTarget,
 } from "@/components/overview/EstimateDialog";
 import UpcomingEventsDialog from "@/components/overview/UpcomingEventsDialog";
-import NeedsBookingDialog from "@/components/overview/NeedsBookingDialog";
+import MissingDialog from "@/components/overview/MissingDialog";
 import HistoryDialog from "@/components/overview/HistoryDialog";
 import { useAuth } from "@/context/AuthContext";
 import { autoGroundExpired, subscribeAircraft } from "@/services/aircraft";
@@ -49,13 +49,16 @@ import {
 } from "@/services/bookings";
 import { subscribeLocations } from "@/services/locations";
 import { subscribeUsers } from "@/services/users";
+import { subscribeEventTemplates } from "@/services/eventTemplates";
 import {
   buildBookedIdSets,
   daysSinceDeferred,
   getDeferralStatus,
   getEventSeverity,
+  getMissingEventMatches,
   getNeedsBookingMatches,
   worstSeverity,
+  type MissingEventMatch,
   type NeedsBookingMatch,
   type Severity,
 } from "@/lib/eventStatus";
@@ -63,6 +66,7 @@ import type {
   Aircraft,
   Booking,
   Defect,
+  EventTemplate,
   Location,
   MaintenanceEvent,
   Notification,
@@ -241,6 +245,7 @@ export default function OverviewPage() {
   const [allBookings, setAllBookings] = useState<Booking[]>([]);
   const [allLocations, setAllLocations] = useState<Location[]>([]);
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
+  const [allTemplates, setAllTemplates] = useState<EventTemplate[]>([]);
 
   const [sortKey, setSortKey] = useState<SortKey>("tail");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
@@ -299,7 +304,7 @@ export default function OverviewPage() {
     useState<Defect | null>(null);
   const [historyTail, setHistoryTail] = useState<string | null>(null);
   const [upcomingOpen, setUpcomingOpen] = useState(false);
-  const [needsBookingOpen, setNeedsBookingOpen] = useState(false);
+  const [missingOpen, setMissingOpen] = useState(false);
 
   useEffect(() => subscribeAircraft(setAircraft), []);
   useEffect(() => subscribeEvents(setAllEvents), []);
@@ -307,6 +312,7 @@ export default function OverviewPage() {
   useEffect(() => subscribeBookings(setAllBookings), []);
   useEffect(() => subscribeLocations(setAllLocations), []);
   useEffect(() => subscribeUsers(setAllUsers), []);
+  useEffect(() => subscribeEventTemplates(setAllTemplates), []);
   useEffect(() => {
     if (isViewer) return;
     return subscribeBookingReminders(setBookingReminders);
@@ -442,13 +448,19 @@ export default function OverviewPage() {
     [allBookings, eventsById, defectsById],
   );
 
+  const airworthyTails = useMemo(() => {
+    const set = new Set<string>();
+    for (const a of aircraft ?? []) {
+      if (a.airworthy !== false) set.add(a.tailNumber);
+    }
+    return set;
+  }, [aircraft]);
+
   const needsBookingMatches: NeedsBookingMatch[] = useMemo(() => {
     if (!aircraft) return [];
     const ttafByTail = new Map<string, number | null>();
-    const airworthyTails = new Set<string>();
     for (const a of aircraft) {
       ttafByTail.set(a.tailNumber, a.totalTimeMinutes);
-      if (a.airworthy !== false) airworthyTails.add(a.tailNumber);
     }
     return getNeedsBookingMatches(
       allEvents,
@@ -456,7 +468,7 @@ export default function OverviewPage() {
       airworthyTails,
       bookedIds.eventIds,
     );
-  }, [aircraft, allEvents, bookedIds.eventIds]);
+  }, [aircraft, allEvents, airworthyTails, bookedIds.eventIds]);
 
   const needsBookingByTail: Map<string, NeedsBookingMatch[]> = useMemo(() => {
     const m = new Map<string, NeedsBookingMatch[]>();
@@ -467,6 +479,13 @@ export default function OverviewPage() {
     }
     return m;
   }, [needsBookingMatches]);
+
+  const missingEventMatches: MissingEventMatch[] = useMemo(
+    () => getMissingEventMatches(allTemplates, allEvents, airworthyTails),
+    [allTemplates, allEvents, airworthyTails],
+  );
+
+  const missingTotal = needsBookingMatches.length + missingEventMatches.length;
 
   // Reconciliation sweep: raises one booking-reminder banner per tail that has
   // qualifying events, and cleans up *acknowledged* banners for any tail that
@@ -849,15 +868,15 @@ export default function OverviewPage() {
             Upcoming events
           </Button>
           <Button
-            onClick={() => setNeedsBookingOpen(true)}
+            onClick={() => setMissingOpen(true)}
             size="sm"
             variant="outline"
           >
-            <CalendarPlus className="h-3.5 w-3.5" />
-            Needs booking
-            {needsBookingMatches.length > 0 && (
+            <AlertTriangle className="h-3.5 w-3.5" />
+            Missing
+            {missingTotal > 0 && (
               <span className="ml-1 inline-flex items-center justify-center bg-accent text-accent-foreground px-1.5 min-w-[1.25rem] h-5 text-[10px] font-bold tabular-nums">
-                {needsBookingMatches.length}
+                {missingTotal}
               </span>
             )}
           </Button>
@@ -1075,12 +1094,14 @@ export default function OverviewPage() {
         aircraft={aircraft ?? []}
         events={allEvents.filter((e) => !e.resolvedAt)}
       />
-      <NeedsBookingDialog
-        open={needsBookingOpen}
-        onOpenChange={setNeedsBookingOpen}
-        matches={needsBookingMatches}
+      <MissingDialog
+        open={missingOpen}
+        onOpenChange={setMissingOpen}
+        bookingMatches={needsBookingMatches}
+        eventMatches={missingEventMatches}
         readOnly={isViewer}
         onBook={openAddBooking}
+        onAddEvent={openAddEvent}
       />
     </div>
   );

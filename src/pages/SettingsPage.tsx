@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Building2,
+  CalendarCheck2,
   MapPin,
   Pencil,
   Plane,
@@ -14,12 +15,15 @@ import AircraftFormDialog from "@/components/aircraft/AircraftFormDialog";
 import DeleteAircraftDialog from "@/components/aircraft/DeleteAircraftDialog";
 import LocationFormDialog from "@/components/settings/LocationFormDialog";
 import DeleteLocationDialog from "@/components/settings/DeleteLocationDialog";
+import EventTemplateFormDialog from "@/components/settings/EventTemplateFormDialog";
+import DeleteEventTemplateDialog from "@/components/settings/DeleteEventTemplateDialog";
 import { subscribeAircraft } from "@/services/aircraft";
 import { subscribeLocations } from "@/services/locations";
+import { subscribeEventTemplates } from "@/services/eventTemplates";
 import { seedFleet } from "@/services/seed";
-import type { Aircraft, Location } from "@/types";
+import type { Aircraft, EventTemplate, Location } from "@/types";
 
-type Section = "aircraft" | "locations";
+type Section = "aircraft" | "locations" | "scheduledEvents";
 
 export default function SettingsPage() {
   const [section, setSection] = useState<Section>("aircraft");
@@ -56,9 +60,18 @@ export default function SettingsPage() {
         >
           Locations
         </SectionTab>
+        <SectionTab
+          active={section === "scheduledEvents"}
+          onClick={() => setSection("scheduledEvents")}
+          icon={<CalendarCheck2 className="h-3.5 w-3.5" />}
+        >
+          Scheduled events
+        </SectionTab>
       </div>
 
-      {section === "aircraft" ? <AircraftSection /> : <LocationsSection />}
+      {section === "aircraft" && <AircraftSection />}
+      {section === "locations" && <LocationsSection />}
+      {section === "scheduledEvents" && <ScheduledEventsSection />}
     </div>
   );
 }
@@ -379,6 +392,164 @@ function LocationsSection() {
       />
       <DeleteLocationDialog
         location={deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+      />
+    </div>
+  );
+}
+
+function ScheduledEventsSection() {
+  const [templates, setTemplates] = useState<EventTemplate[] | null>(null);
+  const [fleet, setFleet] = useState<Aircraft[] | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<EventTemplate | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<EventTemplate | null>(null);
+
+  useEffect(() => subscribeEventTemplates(setTemplates), []);
+  useEffect(() => subscribeAircraft(setFleet), []);
+
+  const modelByTail = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const a of fleet ?? []) map.set(a.tailNumber, a.model);
+    return map;
+  }, [fleet]);
+
+  const openCreate = () => {
+    setEditTarget(null);
+    setFormOpen(true);
+  };
+  const openEdit = (t: EventTemplate) => {
+    setEditTarget(t);
+    setFormOpen(true);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-end justify-between gap-4">
+        <p className="text-sm text-muted-foreground">
+          Recurring scheduled events (50/100-hour inspections, phase checks).
+          Used by the event form's template picker and by the Missing list to
+          flag aircraft without an open event.
+        </p>
+        <Button onClick={openCreate} disabled={fleet === null}>
+          <Plus className="h-4 w-4" />
+          Add scheduled event
+        </Button>
+      </div>
+
+      <div className="border border-foreground/20 overflow-hidden bg-card">
+        <table className="w-full text-sm">
+          <thead className="bg-foreground/[0.04] text-muted-foreground border-b border-foreground/15">
+            <tr>
+              <th className="text-left text-[10px] font-bold uppercase tracking-spec px-4 py-2 w-64">
+                Title
+              </th>
+              <th className="text-left text-[10px] font-bold uppercase tracking-spec px-4 py-2">
+                Applies to
+              </th>
+              <th className="text-left text-[10px] font-bold uppercase tracking-spec px-4 py-2 w-28">
+                Status
+              </th>
+              <th className="text-right text-[10px] font-bold uppercase tracking-spec px-4 py-2 w-32">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {templates === null && (
+              <tr>
+                <td
+                  colSpan={4}
+                  className="px-4 py-6 text-center text-muted-foreground italic"
+                >
+                  Loading…
+                </td>
+              </tr>
+            )}
+            {templates !== null && templates.length === 0 && (
+              <tr>
+                <td
+                  colSpan={4}
+                  className="px-4 py-6 text-center text-muted-foreground"
+                >
+                  No scheduled events yet. Click <b>Add scheduled event</b> to
+                  create a template (e.g. <i>50 Hour Inspection</i>).
+                </td>
+              </tr>
+            )}
+            {templates?.map((t) => (
+              <tr
+                key={t.id}
+                className="border-t border-foreground/10 hover:bg-foreground/[0.025]"
+              >
+                <td className="px-4 py-2 font-medium">{t.title}</td>
+                <td className="px-4 py-2">
+                  {t.tailNumbers.length === 0 ? (
+                    <span className="text-muted-foreground italic">
+                      No aircraft selected
+                    </span>
+                  ) : (
+                    <div className="flex flex-wrap gap-1">
+                      {t.tailNumbers.map((tail) => (
+                        <span
+                          key={tail}
+                          className="inline-flex items-center border border-foreground/15 bg-foreground/[0.04] px-1.5 py-0.5 font-mono text-[11px] tracking-stamp"
+                          title={modelByTail.get(tail) ?? undefined}
+                        >
+                          {tail}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </td>
+                <td className="px-4 py-2">
+                  <span
+                    className={cn(
+                      "inline-flex items-center border px-2 py-0.5 text-[9px] font-bold uppercase tracking-spec",
+                      t.active
+                        ? "border-sev-green-edge/50 bg-sev-green-bg text-sev-green-fg"
+                        : "border-foreground/25 bg-foreground/[0.05] text-muted-foreground",
+                    )}
+                  >
+                    {t.active ? "Active" : "Inactive"}
+                  </span>
+                </td>
+                <td className="px-4 py-2 text-right">
+                  <div className="inline-flex items-center gap-0.5">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => openEdit(t)}
+                      title="Edit"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 hover:text-sev-red-fg"
+                      onClick={() => setDeleteTarget(t)}
+                      title="Delete"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <EventTemplateFormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        template={editTarget}
+        fleet={fleet ?? []}
+      />
+      <DeleteEventTemplateDialog
+        template={deleteTarget}
         onClose={() => setDeleteTarget(null)}
       />
     </div>

@@ -147,6 +147,12 @@ export type MaintenanceEvent = {
   // onto a WorkOrder collection (names port directly).
   estimated: boolean;
   estimatedManHours: number | null;
+  // Link to the scheduled-event template this event was created from. Null
+  // for free-text events and for events that pre-date templates. Stored as an
+  // ID (not title text) so renaming a template doesn't silently break the
+  // missing-events check. The title (`warning`) is editable independently
+  // after creation — the link is what counts.
+  templateId: string | null;
   // Resolution metadata. Resolved events stay in Firestore as legacy; the
   // overview filters them out. All four resolution fields are set together.
   resolvedDate: Timestamp | null;
@@ -189,6 +195,23 @@ export type Defect = {
   // Planner estimate — see `MaintenanceEvent.estimated` for semantics.
   estimated: boolean;
   estimatedManHours: number | null;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+};
+
+// Recurring scheduled-event template (e.g. "50 Hour Inspection",
+// "100 Hour Inspection", PC-12 phase inspections). Events created from a
+// template carry its `id` in `MaintenanceEvent.templateId`. The template's
+// `tailNumbers` list is the CAMO's per-template applicability — used by the
+// missing-events check to flag aircraft that should have an open event for
+// this template but don't. Inactive templates stop appearing in pickers and
+// stop flagging missing, but stay in Firestore so legacy events keep their
+// link.
+export type EventTemplate = {
+  id: string;
+  title: string;
+  tailNumbers: string[];
+  active: boolean;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 };

@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Timestamp } from "firebase/firestore";
 import {
   Dialog,
@@ -12,13 +12,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createEvent, updateEvent } from "@/services/events";
+import { subscribeEventTemplates } from "@/services/eventTemplates";
 import {
   formatMinutesAsDuration,
   detectTtafFormat,
   parseTtafInput,
 } from "@/lib/time";
 import { cn } from "@/lib/utils";
-import type { MaintenanceEvent } from "@/types";
+import type { EventTemplate, MaintenanceEvent } from "@/types";
 
 type Props = {
   open: boolean;
@@ -55,8 +56,26 @@ export default function EventFormDialog({
   const [timerExpiry, setTimerExpiry] = useState(""); // HH:MM or decimal hours (auto-detected)
   const [workOrderNumber, setWorkOrderNumber] = useState("");
   const [requisitionNumber, setRequisitionNumber] = useState("");
+  const [templateId, setTemplateId] = useState<string | null>(null);
+  const [templates, setTemplates] = useState<EventTemplate[] | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => subscribeEventTemplates(setTemplates), []);
+
+  // Templates available in the picker for this aircraft. Active-only on
+  // create so retired templates don't clutter the list; on edit we also
+  // include the currently-linked template even if inactive, so the user
+  // can see what's set and choose to clear it without losing context.
+  const availableTemplates = useMemo(() => {
+    if (templates === null) return [];
+    return templates.filter((t) => {
+      if (!t.tailNumbers.includes(tailNumber)) {
+        return isEdit && t.id === event?.templateId;
+      }
+      return t.active || (isEdit && t.id === event?.templateId);
+    });
+  }, [templates, tailNumber, isEdit, event?.templateId]);
 
   useEffect(() => {
     if (!open) return;
@@ -71,7 +90,20 @@ export default function EventFormDialog({
     setRequisitionNumber(event?.requisitionNumber ?? "");
     setError(null);
     setSaving(false);
-  }, [open, event]);
+    // Pre-select the event's existing template (edit) or null (create).
+    setTemplateId(isEdit ? (event?.templateId ?? null) : null);
+  }, [open, event, isEdit]);
+
+  // When a template is picked in create mode, seed the warning field with the
+  // template's title — but only if the user hasn't typed something custom
+  // already. On edit, we never overwrite an existing title silently.
+  useEffect(() => {
+    if (!open || isEdit) return;
+    if (templateId == null) return;
+    const tpl = templates?.find((t) => t.id === templateId);
+    if (!tpl) return;
+    setWarning((current) => (current.trim() === "" ? tpl.title : current));
+  }, [open, isEdit, templateId, templates]);
 
   const timerDetectedMode = detectTtafFormat(timerExpiry);
 
@@ -107,6 +139,7 @@ export default function EventFormDialog({
           timerExpiryTimeMinutes: timerMinutes,
           workOrderNumber,
           requisitionNumber: requisitionNumber || null,
+          templateId,
         });
       } else {
         await createEvent({
@@ -116,6 +149,7 @@ export default function EventFormDialog({
           timerExpiryTimeMinutes: timerMinutes,
           workOrderNumber: workOrderNumber || null,
           requisitionNumber: requisitionNumber || null,
+          templateId,
         });
       }
       onOpenChange(false);
@@ -140,6 +174,32 @@ export default function EventFormDialog({
           </DialogHeader>
 
           <div className="py-4 space-y-4">
+            {availableTemplates.length > 0 && (
+              <div className="space-y-2">
+                <Label htmlFor="templatePicker">From template (optional)</Label>
+                <select
+                  id="templatePicker"
+                  value={templateId ?? ""}
+                  onChange={(e) => setTemplateId(e.target.value || null)}
+                  className={cn(
+                    "flex h-9 w-full border border-input bg-transparent px-3 py-1 text-sm shadow-sm",
+                    "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                  )}
+                >
+                  <option value="">— none (free-text event) —</option>
+                  {availableTemplates.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.title}
+                      {!t.active ? " (inactive)" : ""}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  Pre-fills the title. The link stays even if you edit the
+                  title afterward — it's what the Missing list checks against.
+                </p>
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="warning">Warning / title</Label>
               <Input

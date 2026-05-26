@@ -55,5 +55,10 @@ service cloud.firestore {
       allow read: if signedIn();
       allow write: if isMember();
     }
+
+    match /eventTemplates/{templateId} {
+      allow read: if signedIn();
+      allow write: if isMember();
+    }
   }
 }

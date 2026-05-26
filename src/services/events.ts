@@ -36,6 +36,7 @@ export type EventInput = {
   timerExpiryTimeMinutes: number | null;
   workOrderNumber: string | null;
   requisitionNumber: string | null;
+  templateId?: string | null;
 };
 
 export type EventPatch = Partial<EventInput> & {
@@ -68,6 +69,7 @@ function docToEvent(
     estimated: (data.estimated as boolean | undefined) ?? false,
     estimatedManHours:
       (data.estimatedManHours as number | null | undefined) ?? null,
+    templateId: (data.templateId as string | null | undefined) ?? null,
     resolvedDate: (data.resolvedDate as Timestamp | undefined) ?? null,
     resolutionWorkOrder:
       (data.resolutionWorkOrder as string | undefined) ?? null,
@@ -129,6 +131,7 @@ export async function createEvent(
     extensionMinutes: null,
     estimated: false,
     estimatedManHours: null,
+    templateId: input.templateId ?? null,
     resolvedDate: null,
     resolutionWorkOrder: null,
     resolvedAt: null,
@@ -184,6 +187,9 @@ export async function updateEvent(
   if (patch.requisitionNumber !== undefined) {
     update.requisitionNumber = patch.requisitionNumber?.trim() || null;
   }
+  if (patch.templateId !== undefined) {
+    update.templateId = patch.templateId ?? null;
+  }
   await updateDoc(eventDoc(id), update);
 
   if (prev) {
@@ -231,6 +237,14 @@ export async function updateEvent(
       const nextReq = patch.requisitionNumber?.trim() || null;
       if ((prev.requisitionNumber ?? null) !== nextReq) {
         changes.push(`REQ ${prev.requisitionNumber ?? "—"} → ${nextReq ?? "—"}`);
+      }
+    }
+    if (patch.templateId !== undefined) {
+      const nextTpl = patch.templateId ?? null;
+      if ((prev.templateId ?? null) !== nextTpl) {
+        changes.push(
+          `template ${prev.templateId ?? "—"} → ${nextTpl ?? "—"}`,
+        );
       }
     }
     if (changes.length > 0) {

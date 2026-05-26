@@ -1,5 +1,10 @@
 import { differenceInCalendarDays } from "date-fns";
-import type { Booking, Defect, MaintenanceEvent } from "@/types";
+import type {
+  Booking,
+  Defect,
+  EventTemplate,
+  MaintenanceEvent,
+} from "@/types";
 
 // Severity thresholds. "Green until <X" semantics:
 //   days >= 7  → green
@@ -180,6 +185,105 @@ export function getNeedsBookingMatches(
       out.push({ event: e, reason: "days", remaining: days });
     }
   }
+  return out;
+}
+
+// One row of the Missing → Events tab: an aircraft that's listed on at least
+// one active template but has no open event linked to any of those templates.
+// The check is aircraft-level on purpose — the recurring inspections bounce
+// between e.g. 50 and 100 hour, so flagging both as missing whenever only one
+// is in progress is noise. As long as an aircraft has any one of its
+// applicable scheduled events open, it counts as "in the cycle".
+//
+// `applicableTemplates` carries every active template that includes this
+// tail, so the dialog can show "this aircraft is supposed to cycle through
+// 50h + 100h" as context. `lastCompleted` is the most recent resolved event
+// (across any template) — the hint for what the planner just closed and
+// therefore what they may want to schedule next. Null when no
+// template-linked event has ever been resolved on this aircraft.
+export type MissingEventMatch = {
+  tailNumber: string;
+  applicableTemplates: EventTemplate[];
+  airworthy: boolean;
+  lastCompleted: {
+    templateId: string;
+    resolvedDate: MaintenanceEvent["resolvedDate"];
+    resolutionWorkOrder: string | null;
+  } | null;
+};
+
+export function getMissingEventMatches(
+  templates: ReadonlyArray<EventTemplate>,
+  events: ReadonlyArray<MaintenanceEvent>,
+  airworthyTails: ReadonlySet<string>,
+): MissingEventMatch[] {
+  // Index active templates by tail. Inactive templates don't gate the check —
+  // an aircraft only listed on inactive templates is treated as having no
+  // applicable scheduled events at all and is skipped.
+  const tplsByTail = new Map<string, EventTemplate[]>();
+  for (const tpl of templates) {
+    if (!tpl.active) continue;
+    for (const tail of tpl.tailNumbers) {
+      const arr = tplsByTail.get(tail) ?? [];
+      arr.push(tpl);
+      tplsByTail.set(tail, arr);
+    }
+  }
+
+  // Single pass over events to (a) find which tails currently hold any open
+  // template-linked event whose template is still applicable, and (b) track
+  // the most-recent resolved template-linked event per tail.
+  const hasOpen = new Set<string>();
+  const lastResolved = new Map<
+    string,
+    {
+      templateId: string;
+      resolvedDate: MaintenanceEvent["resolvedDate"];
+      workOrder: string | null;
+    }
+  >();
+  for (const e of events) {
+    if (!e.templateId) continue;
+    const applicable = tplsByTail.get(e.tailNumber);
+    if (!applicable) continue;
+    const stillApplicable = applicable.some((t) => t.id === e.templateId);
+    if (!stillApplicable) continue;
+    if (e.resolvedAt) {
+      const prev = lastResolved.get(e.tailNumber);
+      const ms = e.resolvedDate?.toMillis() ?? 0;
+      const prevMs = prev?.resolvedDate?.toMillis() ?? -1;
+      if (ms > prevMs) {
+        lastResolved.set(e.tailNumber, {
+          templateId: e.templateId,
+          resolvedDate: e.resolvedDate,
+          workOrder: e.resolutionWorkOrder ?? null,
+        });
+      }
+    } else {
+      hasOpen.add(e.tailNumber);
+    }
+  }
+
+  const out: MissingEventMatch[] = [];
+  for (const [tail, applicableTemplates] of tplsByTail) {
+    if (hasOpen.has(tail)) continue;
+    const last = lastResolved.get(tail);
+    out.push({
+      tailNumber: tail,
+      applicableTemplates: [...applicableTemplates].sort((a, b) =>
+        a.title.localeCompare(b.title),
+      ),
+      airworthy: airworthyTails.has(tail),
+      lastCompleted: last
+        ? {
+            templateId: last.templateId,
+            resolvedDate: last.resolvedDate,
+            resolutionWorkOrder: last.workOrder,
+          }
+        : null,
+    });
+  }
+  out.sort((a, b) => a.tailNumber.localeCompare(b.tailNumber));
   return out;
 }
 
