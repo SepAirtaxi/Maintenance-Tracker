@@ -24,7 +24,11 @@ export type Aircraft = {
   previousTotalTimeMinutes?: number | null;
   totalTimeUpdatedAt: Timestamp | null;
   totalTimeUpdatedBy: string | null;
-  totalTimeSource: "import" | "manual" | null;
+  // `"flightlogger"` = auto-pulled from the Flightlogger API; `"manual"` =
+  // edited via the TTAF dialog. The literal `"import"` still appears on legacy
+  // docs that pre-date the Flightlogger sync (from the now-removed CSV path) —
+  // tolerated on read but no longer written.
+  totalTimeSource: "flightlogger" | "manual" | "import" | null;
   // Per-aircraft utilization rate in flight hours per month. Consumed by the
   // Forecast module to convert calendar deadlines into hour deadlines. Null =
   // use the module's default constant. Editing UI is deferred (see

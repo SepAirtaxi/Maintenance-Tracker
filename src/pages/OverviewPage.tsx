@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   ArrowDown,
   ArrowUp,
   CalendarClock,
+  RefreshCw,
   ShieldOff,
-  Upload,
 } from "lucide-react";
+import { Timestamp } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import AircraftCard, {
@@ -14,7 +15,6 @@ import AircraftCard, {
 } from "@/components/overview/AircraftCard";
 import EventFormDialog from "@/components/overview/EventFormDialog";
 import DeleteEventDialog from "@/components/overview/DeleteEventDialog";
-import ImportDialog from "@/components/overview/ImportDialog";
 import TtafDialog from "@/components/overview/TtafDialog";
 import BookingDialog from "@/components/calendar/BookingDialog";
 import BookingViewDialog from "@/components/calendar/BookingViewDialog";
@@ -42,6 +42,12 @@ import {
   raiseNotification,
   subscribeBookingReminders,
 } from "@/services/notifications";
+import {
+  isStaleForToday,
+  runFlightloggerSync,
+  subscribeSyncMeta,
+  type FlightloggerSyncMeta,
+} from "@/services/flightlogger";
 import { formatDate } from "@/lib/format";
 import {
   subscribeBookings,
@@ -72,6 +78,82 @@ import type {
   Notification,
   UserProfile,
 } from "@/types";
+
+// Renders a Firestore timestamp as `YYYY-MM-DD HH:mm` in Europe/Copenhagen —
+// the form SEP reads as an instrument readout. Returns "" for null so callers
+// can compose strings without an extra guard.
+function formatSyncTimestamp(ts: Timestamp | null | undefined): string {
+  if (!ts) return "";
+  return new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Europe/Copenhagen",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(ts.toDate());
+}
+
+function SyncIndicator({
+  meta,
+  loaded,
+  syncing,
+}: {
+  meta: FlightloggerSyncMeta | null;
+  loaded: boolean;
+  syncing: boolean;
+}) {
+  if (syncing) {
+    return (
+      <p className="text-xs text-muted-foreground inline-flex items-center gap-1.5">
+        <RefreshCw className="h-3 w-3 animate-spin" />
+        Syncing flight hours…
+      </p>
+    );
+  }
+  if (!loaded) return null;
+  if (!meta) {
+    return (
+      <p className="text-xs text-muted-foreground">
+        Flight hours have not been synced yet.
+      </p>
+    );
+  }
+  if (meta.lastStatus === "failed") {
+    return (
+      <p className="text-xs inline-flex items-center gap-1.5 text-sev-red-fg">
+        <span
+          aria-hidden="true"
+          className="inline-block h-1.5 w-1.5 rounded-full bg-sev-red-fg"
+        />
+        <span>
+          Sync failed{" "}
+          <span className="font-mono">{formatSyncTimestamp(meta.lastRunAt)}</span>
+          {meta.lastSuccessAt && (
+            <>
+              {" "}· last success{" "}
+              <span className="font-mono">
+                {formatSyncTimestamp(meta.lastSuccessAt)}
+              </span>
+            </>
+          )}
+          {meta.lastError && (
+            <span className="text-muted-foreground"> — {meta.lastError}</span>
+          )}
+        </span>
+      </p>
+    );
+  }
+  return (
+    <p className="text-xs text-muted-foreground">
+      Flight hours synced{" "}
+      <span className="font-mono text-foreground">
+        {formatSyncTimestamp(meta.lastSuccessAt)}
+      </span>
+      {meta.lastSummary && <> · {meta.lastSummary}</>}
+    </p>
+  );
+}
 
 // Frozen-message snippet for the booking-reminder banner. Lists up to three
 // event titles inline; collapses the rest into a count so very busy tails
@@ -279,7 +361,10 @@ export default function OverviewPage() {
     useState<MaintenanceEvent | null>(null);
   const [estimateTarget, setEstimateTarget] =
     useState<EstimateTarget | null>(null);
-  const [importOpen, setImportOpen] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMeta, setSyncMeta] = useState<FlightloggerSyncMeta | null>(null);
+  const [syncMetaLoaded, setSyncMetaLoaded] = useState(false);
+  const autoSyncFiredRef = useRef(false);
   const [ttafTarget, setTtafTarget] = useState<Aircraft | null>(null);
   const [bookingDialogOpen, setBookingDialogOpen] = useState(false);
   const [bookingPrefillTail, setBookingPrefillTail] = useState<string>("");
@@ -317,6 +402,42 @@ export default function OverviewPage() {
     if (isViewer) return;
     return subscribeBookingReminders(setBookingReminders);
   }, [isViewer]);
+  useEffect(
+    () =>
+      subscribeSyncMeta((m) => {
+        setSyncMeta(m);
+        setSyncMetaLoaded(true);
+      }),
+    [],
+  );
+
+  const handleSync = useCallback(async () => {
+    if (syncing || !user) return;
+    setSyncing(true);
+    try {
+      await runFlightloggerSync(user.uid);
+    } catch (err) {
+      // Service writes its own failure state to the meta doc, so the
+      // indicator picks up the error via the snapshot listener — nothing
+      // else to surface here.
+      console.error("Flightlogger sync failed", err);
+    } finally {
+      setSyncing(false);
+    }
+  }, [syncing, user]);
+
+  // Auto-sync on first load each Europe/Copenhagen calendar day. The ref
+  // guards against the snapshot listener re-firing this effect once the meta
+  // doc updates mid-sync. Viewers never sync (no write permission and no
+  // meaningful UX benefit).
+  useEffect(() => {
+    if (isViewer || !user) return;
+    if (!syncMetaLoaded) return;
+    if (autoSyncFiredRef.current) return;
+    if (!isStaleForToday(syncMeta)) return;
+    autoSyncFiredRef.current = true;
+    void handleSync();
+  }, [isViewer, user, syncMetaLoaded, syncMeta, handleSync]);
 
   // Auto-ground sweep: walks airworthy aircraft for expired events and
   // grounds them, raising a banner notification per grounding. Runs client-
@@ -857,6 +978,11 @@ export default function OverviewPage() {
               </>
             )}
           </p>
+          <SyncIndicator
+            meta={syncMeta}
+            loaded={syncMetaLoaded}
+            syncing={syncing}
+          />
         </div>
         <div className="flex items-center gap-1.5">
           <Button
@@ -881,9 +1007,16 @@ export default function OverviewPage() {
             )}
           </Button>
           {!isViewer && (
-            <Button onClick={() => setImportOpen(true)} size="sm">
-              <Upload className="h-3.5 w-3.5" />
-              Import flight data
+            <Button
+              onClick={() => void handleSync()}
+              size="sm"
+              disabled={syncing}
+              title="Pull total airborne time from Flightlogger"
+            >
+              <RefreshCw
+                className={cn("h-3.5 w-3.5", syncing && "animate-spin")}
+              />
+              {syncing ? "Syncing…" : "Sync now"}
             </Button>
           )}
         </div>
@@ -1008,7 +1141,6 @@ export default function OverviewPage() {
         target={estimateTarget}
         onClose={() => setEstimateTarget(null)}
       />
-      <ImportDialog open={importOpen} onOpenChange={setImportOpen} />
       <TtafDialog
         aircraft={ttafTarget}
         onClose={() => setTtafTarget(null)}

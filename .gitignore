@@ -5,6 +5,9 @@ dist-ssr
 .env
 .env.local
 
+# Local notes containing secrets / API tokens — never commit
+flightlogger.md
+
 .vite
 .DS_Store
 Thumbs.db
