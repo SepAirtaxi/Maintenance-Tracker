@@ -56,8 +56,8 @@ export default function MissingDialog({
         <DialogHeader>
           <DialogTitle>Missing</DialogTitle>
           <DialogDescription>
-            Aircraft with gaps — events that need a hangar slot, or scheduled
-            events that aren't on the books yet.
+            Aircraft with gaps — events that need a hangar slot, or aircraft
+            missing a scheduled 50/100-hour inspection.
           </DialogDescription>
         </DialogHeader>
 
@@ -245,7 +245,10 @@ function BookingsTab({
   );
 }
 
-const EVENTS_GRID_COLS = "84px minmax(0,1.1fr) minmax(0,1.2fr) 110px";
+const EVENTS_GRID_COLS = "84px minmax(0,1.4fr) minmax(0,1fr) 110px";
+
+const MISSING_INSPECTION_MESSAGE =
+  "No scheduled inspections — please create one";
 
 function EventsTab({
   matches,
@@ -266,8 +269,8 @@ function EventsTab({
   if (matches.length === 0) {
     return (
       <div className="border border-foreground/20 bg-card px-4 py-6 text-center text-sm text-muted-foreground">
-        Every aircraft on a scheduled-event template has an open event in
-        progress. Nothing to plan right now.
+        Every aircraft with recurring inspections has one scheduled. Nothing
+        to plan right now.
       </div>
     );
   }
@@ -340,7 +343,7 @@ function Section({
           style={{ gridTemplateColumns: EVENTS_GRID_COLS }}
         >
           <span>Tail</span>
-          <span>Applies to</span>
+          <span>Status</span>
           <span>Last completed</span>
           <span />
         </div>
@@ -366,16 +369,14 @@ function Section({
                   )}
                   {m.tailNumber}
                 </span>
-                <div className="flex flex-wrap gap-1">
-                  {m.applicableTemplates.map((t) => (
-                    <span
-                      key={t.id}
-                      className="inline-flex items-center border border-foreground/15 bg-foreground/[0.04] px-1.5 py-0.5 text-[10px] uppercase tracking-spec text-muted-foreground"
-                    >
-                      {t.title}
-                    </span>
-                  ))}
-                </div>
+                <span
+                  className={cn(
+                    "inline-flex items-center self-start border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-spec",
+                    "border-sev-yellow-edge/60 bg-sev-yellow-bg text-sev-yellow-fg",
+                  )}
+                >
+                  {MISSING_INSPECTION_MESSAGE}
+                </span>
                 <span className="truncate text-muted-foreground">
                   {m.lastCompleted ? (
                     <span className="font-mono text-[11px]">

@@ -188,19 +188,36 @@ export function getNeedsBookingMatches(
   return out;
 }
 
+// Templates whose absence triggers a Missing → Events flag. Match is by
+// title, case-insensitive, trimmed. Deliberately narrow: most CAMO-recurring
+// items (AMP Review, ARC Renewal, ARC Review, …) are calendar-driven and
+// planned out of the forecast, not from this dialog. Only the recurring
+// flight-hour inspections need a "did anyone schedule the next one?" check.
+// Extend this set when another recurring inspection should join the cycle.
+export const MISSING_INSPECTION_TEMPLATE_TITLES: ReadonlySet<string> = new Set([
+  "50 hour inspection",
+  "100 hour inspection",
+]);
+
+export function isMissingInspectionTemplate(tpl: EventTemplate): boolean {
+  return MISSING_INSPECTION_TEMPLATE_TITLES.has(
+    tpl.title.trim().toLowerCase(),
+  );
+}
+
 // One row of the Missing → Events tab: an aircraft that's listed on at least
-// one active template but has no open event linked to any of those templates.
-// The check is aircraft-level on purpose — the recurring inspections bounce
-// between e.g. 50 and 100 hour, so flagging both as missing whenever only one
-// is in progress is noise. As long as an aircraft has any one of its
-// applicable scheduled events open, it counts as "in the cycle".
+// one active inspection template (see MISSING_INSPECTION_TEMPLATE_TITLES) but
+// has no open event linked to any of those templates. The check is
+// aircraft-level on purpose — the 50/100-hour inspections bounce off each
+// other, so flagging both whenever only one is in progress is noise. As long
+// as a 50h *or* 100h event is open, the aircraft is in the cycle.
 //
-// `applicableTemplates` carries every active template that includes this
-// tail, so the dialog can show "this aircraft is supposed to cycle through
-// 50h + 100h" as context. `lastCompleted` is the most recent resolved event
-// (across any template) — the hint for what the planner just closed and
-// therefore what they may want to schedule next. Null when no
-// template-linked event has ever been resolved on this aircraft.
+// `applicableTemplates` carries every active inspection template that
+// includes this tail, so the dialog can show "this aircraft cycles through
+// 50h + 100h" as context. `lastCompleted` is the most recent resolved
+// inspection event — the hint for what the planner just closed and therefore
+// what they may want to schedule next. Null when no inspection event has
+// ever been resolved on this aircraft.
 export type MissingEventMatch = {
   tailNumber: string;
   applicableTemplates: EventTemplate[];
@@ -217,12 +234,13 @@ export function getMissingEventMatches(
   events: ReadonlyArray<MaintenanceEvent>,
   airworthyTails: ReadonlySet<string>,
 ): MissingEventMatch[] {
-  // Index active templates by tail. Inactive templates don't gate the check —
-  // an aircraft only listed on inactive templates is treated as having no
-  // applicable scheduled events at all and is skipped.
+  // Index active inspection templates by tail. Inactive templates and any
+  // template outside the inspection set don't gate the check — an aircraft
+  // with only AMP/ARC templates assigned is skipped entirely.
   const tplsByTail = new Map<string, EventTemplate[]>();
   for (const tpl of templates) {
     if (!tpl.active) continue;
+    if (!isMissingInspectionTemplate(tpl)) continue;
     for (const tail of tpl.tailNumbers) {
       const arr = tplsByTail.get(tail) ?? [];
       arr.push(tpl);
