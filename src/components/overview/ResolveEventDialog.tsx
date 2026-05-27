@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
+import { Wand2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -145,71 +146,73 @@ export default function ResolveEventDialog({
           </DialogHeader>
 
           <div className="py-4 space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="closeDate">Completion date</Label>
-                <Input
-                  id="closeDate"
-                  type="date"
-                  value={resolvedDate}
-                  onChange={(e) => setResolvedDate(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="closeWO">Work order #</Label>
-                <Input
-                  id="closeWO"
-                  value={administrative ? "" : workOrder}
-                  onChange={(e) => setWorkOrder(e.target.value)}
-                  required={!administrative}
-                  disabled={administrative}
-                  placeholder={administrative ? "—" : "e.g. 6600"}
-                  className="font-mono"
-                  autoFocus={!event.workOrderNumber}
-                />
-              </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="closeDate">Completion date</Label>
+              <Input
+                id="closeDate"
+                type="date"
+                value={resolvedDate}
+                onChange={(e) => setResolvedDate(e.target.value)}
+                required
+              />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <Label htmlFor="closeTtaf">TTAF at close</Label>
-                  <div
-                    className="inline-flex border bg-card p-0.5 text-[10px]"
-                    aria-label="Detected input format"
-                  >
+            <div className="space-y-1.5">
+              <Label htmlFor="closeWO">Work order #</Label>
+              <Input
+                id="closeWO"
+                value={administrative ? "" : workOrder}
+                onChange={(e) => setWorkOrder(e.target.value)}
+                required={!administrative}
+                disabled={administrative}
+                placeholder={administrative ? "—" : "e.g. 6600"}
+                className="font-mono"
+                autoFocus={!event.workOrderNumber}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="closeTtaf">TTAF at close</Label>
+              <div className="flex items-stretch gap-2">
+                <div className="relative flex-1">
+                  <Input
+                    id="closeTtaf"
+                    value={administrative ? "" : resolvedTtaf}
+                    onChange={(e) => setResolvedTtaf(e.target.value)}
+                    required={!administrative}
+                    disabled={administrative}
+                    placeholder={administrative ? "—" : "e.g. 6480:12"}
+                    className="font-mono pr-[110px]"
+                  />
+                  {!administrative && resolvedTtaf.trim() && (
                     <span
-                      className={cn(
-                        "px-1.5 py-0.5 font-mono transition-colors",
-                        ttafDetectedMode === "hhmm"
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground",
-                      )}
+                      className="pointer-events-none absolute inset-y-0 right-2 flex items-center gap-0.5 text-[10px] font-mono"
+                      aria-label="Detected input format"
                     >
-                      HH:MM
+                      <span
+                        className={cn(
+                          "px-1 transition-colors",
+                          ttafDetectedMode === "hhmm"
+                            ? "text-foreground/80"
+                            : "text-foreground/25",
+                        )}
+                      >
+                        HH:MM
+                      </span>
+                      <span className="text-foreground/15">|</span>
+                      <span
+                        className={cn(
+                          "px-1 transition-colors",
+                          ttafDetectedMode === "decimal"
+                            ? "text-foreground/80"
+                            : "text-foreground/25",
+                        )}
+                      >
+                        Decimal
+                      </span>
                     </span>
-                    <span
-                      className={cn(
-                        "px-1.5 py-0.5 font-mono transition-colors",
-                        ttafDetectedMode === "decimal"
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground",
-                      )}
-                    >
-                      Decimal
-                    </span>
-                  </div>
+                  )}
                 </div>
-                <Input
-                  id="closeTtaf"
-                  value={administrative ? "" : resolvedTtaf}
-                  onChange={(e) => setResolvedTtaf(e.target.value)}
-                  required={!administrative}
-                  disabled={administrative}
-                  placeholder={administrative ? "—" : "e.g. 6480:12"}
-                  className="font-mono"
-                />
                 <button
                   type="button"
                   disabled={administrative || currentTtafMinutes == null}
@@ -220,33 +223,42 @@ export default function ResolveEventDialog({
                       );
                     }
                   }}
-                  className={cn(
-                    "inline-flex items-center gap-1.5 self-start border border-foreground/25 bg-card px-2 py-1 text-[10px] font-bold uppercase tracking-spec transition-colors",
-                    administrative || currentTtafMinutes == null
-                      ? "text-muted-foreground/60 cursor-not-allowed"
-                      : "hover:bg-foreground/[0.04]",
-                  )}
                   title={
-                    currentTtafMinutes == null
-                      ? "No TTAF recorded for this aircraft yet"
-                      : "Fill with the aircraft's currently stored TTAF"
+                    administrative
+                      ? "Disabled — TTAF is skipped on administrative close"
+                      : currentTtafMinutes == null
+                      ? "No current TTAF on file for this aircraft"
+                      : `Use aircraft's current TTAF (${formatMinutesAsDuration(currentTtafMinutes)})`
                   }
-                >
-                  Use current TTAF
-                  {currentTtafMinutes != null && (
-                    <span className="font-mono tracking-normal text-foreground/80">
-                      {formatMinutesAsDuration(currentTtafMinutes)}
-                    </span>
+                  aria-label="Use aircraft's current TTAF"
+                  className={cn(
+                    "inline-flex h-9 shrink-0 items-center justify-center border border-foreground/30 bg-card px-3 transition-colors",
+                    administrative || currentTtafMinutes == null
+                      ? "text-muted-foreground/40 cursor-not-allowed bg-muted"
+                      : "text-foreground/80 hover:bg-foreground/[0.04] hover:text-foreground",
                   )}
+                >
+                  <Wand2 className="h-4 w-4" />
                 </button>
-                <p className="text-[11px] text-muted-foreground">
-                  Tick "administrative close" below for calendar-only events
-                  (AMP/ARC reviews etc.) with no TTAF reading.
-                </p>
               </div>
+              {!administrative && (
+                <p className="text-[11px] text-muted-foreground">
+                  {currentTtafMinutes != null ? (
+                    <>
+                      Click the wand to fill with the aircraft's current TTAF:{" "}
+                      <span className="font-mono text-foreground/80">
+                        {formatMinutesAsDuration(currentTtafMinutes)}
+                      </span>
+                      .
+                    </>
+                  ) : (
+                    "No current TTAF on file for this aircraft yet."
+                  )}
+                </p>
+              )}
             </div>
 
-            <label className="flex items-start gap-2 cursor-pointer text-sm">
+            <label className="flex cursor-pointer items-start gap-2.5 border-t border-foreground/10 pt-3 text-sm">
               <input
                 type="checkbox"
                 checked={administrative}
@@ -256,9 +268,8 @@ export default function ResolveEventDialog({
               <span className="select-none">
                 <span className="font-medium">Administrative close</span>
                 <span className="block text-xs text-muted-foreground">
-                  Use only for events not tracked in the work-order system
-                  (e.g. AMP / ARC renewals signed off by the technical
-                  director). Skips the WO requirement.
+                  For events not tracked in the work-order system (AMP / ARC
+                  renewals etc.). Skips both WO and TTAF.
                 </span>
               </span>
             </label>
