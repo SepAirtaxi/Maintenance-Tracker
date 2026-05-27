@@ -27,6 +27,10 @@ type Props = {
   tailNumber: string;
   defect: Defect | null; // null = create
   tailDefects: Defect[];
+  // Aircraft's currently stored TTAF — used to fill the "TTAF at report"
+  // field via the import button. Null when the aircraft has no recorded
+  // TTAF yet, which disables the button.
+  currentTtafMinutes: number | null;
 };
 
 function tsToInput(d: Date): string {
@@ -49,6 +53,7 @@ export default function DefectFormDialog({
   tailNumber,
   defect,
   tailDefects,
+  currentTtafMinutes,
 }: Props) {
   const isEdit = defect !== null;
   const [title, setTitle] = useState("");
@@ -243,6 +248,37 @@ export default function DefectFormDialog({
                   placeholder="e.g. 6466:36 or 6466.6"
                   className="font-mono"
                 />
+                {!isEdit && (
+                  <button
+                    type="button"
+                    disabled={currentTtafMinutes == null}
+                    onClick={() => {
+                      if (currentTtafMinutes != null) {
+                        setReportedTtaf(
+                          formatMinutesAsDuration(currentTtafMinutes),
+                        );
+                      }
+                    }}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 self-start border border-foreground/25 bg-card px-2 py-1 text-[10px] font-bold uppercase tracking-spec transition-colors",
+                      currentTtafMinutes == null
+                        ? "text-muted-foreground/60 cursor-not-allowed"
+                        : "hover:bg-foreground/[0.04]",
+                    )}
+                    title={
+                      currentTtafMinutes == null
+                        ? "No TTAF recorded for this aircraft yet"
+                        : "Fill with the aircraft's currently stored TTAF"
+                    }
+                  >
+                    Use current TTAF
+                    {currentTtafMinutes != null && (
+                      <span className="font-mono tracking-normal text-foreground/80">
+                        {formatMinutesAsDuration(currentTtafMinutes)}
+                      </span>
+                    )}
+                  </button>
+                )}
               </div>
             </div>
 

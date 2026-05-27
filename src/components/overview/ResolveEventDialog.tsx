@@ -12,13 +12,21 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { resolveEvent } from "@/services/events";
 import { formatDate } from "@/lib/format";
-import { formatMinutesAsDuration } from "@/lib/time";
+import {
+  detectTtafFormat,
+  formatMinutesAsDuration,
+  parseTtafInput,
+} from "@/lib/time";
+import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import type { MaintenanceEvent } from "@/types";
 
 type Props = {
   event: MaintenanceEvent | null;
   onClose: () => void;
+  // The aircraft's currently stored TTAF — fills the "TTAF at close" field
+  // via the import button. Null when the aircraft has no recorded TTAF yet.
+  currentTtafMinutes: number | null;
 };
 
 function tsToInput(d: Date): string {
@@ -35,10 +43,15 @@ function inputToDate(value: string): Date | null {
   return new Date(y, m - 1, d);
 }
 
-export default function ResolveEventDialog({ event, onClose }: Props) {
+export default function ResolveEventDialog({
+  event,
+  onClose,
+  currentTtafMinutes,
+}: Props) {
   const { user } = useAuth();
   const [resolvedDate, setResolvedDate] = useState(tsToInput(new Date()));
   const [workOrder, setWorkOrder] = useState("");
+  const [resolvedTtaf, setResolvedTtaf] = useState("");
   const [administrative, setAdministrative] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +60,7 @@ export default function ResolveEventDialog({ event, onClose }: Props) {
     if (event) {
       setResolvedDate(tsToInput(new Date()));
       setWorkOrder(event.workOrderNumber ?? "");
+      setResolvedTtaf("");
       setAdministrative(false);
       setError(null);
       setSaving(false);
@@ -54,6 +68,8 @@ export default function ResolveEventDialog({ event, onClose }: Props) {
   }, [event]);
 
   if (!event) return null;
+
+  const ttafDetectedMode = detectTtafFormat(resolvedTtaf);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -67,6 +83,18 @@ export default function ResolveEventDialog({ event, onClose }: Props) {
       setError("Work order number is required.");
       return;
     }
+    let resolutionTtafMinutes: number | null = null;
+    const ttafTrimmed = resolvedTtaf.trim();
+    if (ttafTrimmed) {
+      const parsed = parseTtafInput(ttafTrimmed);
+      if (parsed == null) {
+        setError(
+          "TTAF at close must look like 1234:30 (HH:MM) or 1234.5 (decimal hours), or be left blank.",
+        );
+        return;
+      }
+      resolutionTtafMinutes = parsed;
+    }
     if (!user) {
       setError("You must be signed in.");
       return;
@@ -78,6 +106,7 @@ export default function ResolveEventDialog({ event, onClose }: Props) {
         {
           resolvedDate: date,
           resolutionWorkOrder: administrative ? null : workOrder.trim(),
+          resolutionTtafMinutes,
         },
         user.uid,
       );
@@ -136,6 +165,75 @@ export default function ResolveEventDialog({ event, onClose }: Props) {
                   autoFocus={!event.workOrderNumber}
                 />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="closeTtaf">TTAF at close (optional)</Label>
+                <div
+                  className="inline-flex border bg-card p-0.5 text-[10px]"
+                  aria-label="Detected input format"
+                >
+                  <span
+                    className={cn(
+                      "px-1.5 py-0.5 font-mono transition-colors",
+                      ttafDetectedMode === "hhmm"
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground",
+                    )}
+                  >
+                    HH:MM
+                  </span>
+                  <span
+                    className={cn(
+                      "px-1.5 py-0.5 font-mono transition-colors",
+                      ttafDetectedMode === "decimal"
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground",
+                    )}
+                  >
+                    Decimal
+                  </span>
+                </div>
+              </div>
+              <Input
+                id="closeTtaf"
+                value={resolvedTtaf}
+                onChange={(e) => setResolvedTtaf(e.target.value)}
+                placeholder="From the mechanic's work pack — e.g. 6480:12"
+                className="font-mono"
+              />
+              <button
+                type="button"
+                disabled={currentTtafMinutes == null}
+                onClick={() => {
+                  if (currentTtafMinutes != null) {
+                    setResolvedTtaf(formatMinutesAsDuration(currentTtafMinutes));
+                  }
+                }}
+                className={cn(
+                  "inline-flex items-center gap-1.5 self-start border border-foreground/25 bg-card px-2 py-1 text-[10px] font-bold uppercase tracking-spec transition-colors",
+                  currentTtafMinutes == null
+                    ? "text-muted-foreground/60 cursor-not-allowed"
+                    : "hover:bg-foreground/[0.04]",
+                )}
+                title={
+                  currentTtafMinutes == null
+                    ? "No TTAF recorded for this aircraft yet"
+                    : "Fill with the aircraft's currently stored TTAF"
+                }
+              >
+                Use current TTAF
+                {currentTtafMinutes != null && (
+                  <span className="font-mono tracking-normal text-foreground/80">
+                    {formatMinutesAsDuration(currentTtafMinutes)}
+                  </span>
+                )}
+              </button>
+              <p className="text-[11px] text-muted-foreground">
+                Leave blank for calendar-only events (AMP/ARC reviews etc.) with
+                no meaningful TTAF reading.
+              </p>
             </div>
 
             <label className="flex items-start gap-2 cursor-pointer text-sm">

@@ -401,6 +401,14 @@ function EventRow({
         <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-sev-green-fg">
           <span className="font-medium uppercase tracking-wider">Closed</span>
           <span>· {formatDate(event.resolvedDate)}</span>
+          {event.resolutionTtafMinutes != null && (
+            <span>
+              · TTAF{" "}
+              <span className="font-mono">
+                {formatMinutesAsDuration(event.resolutionTtafMinutes)}
+              </span>
+            </span>
+          )}
           {event.resolutionWorkOrder && (
             <span>
               · WO{" "}

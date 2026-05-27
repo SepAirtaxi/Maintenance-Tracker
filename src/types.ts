@@ -29,11 +29,20 @@ export type Aircraft = {
   // docs that pre-date the Flightlogger sync (from the now-removed CSV path) —
   // tolerated on read but no longer written.
   totalTimeSource: "flightlogger" | "manual" | "import" | null;
-  // Opt-out switch for the Flightlogger TTAF sync. Default behavior is to
-  // sync (treat absent/undefined as `true`). Aircraft whose TTAF is managed
-  // outside of Flightlogger — typically the PC-12 / King Air turboprops —
-  // get this set to `false` from the settings page so the sync ignores them.
+  // Opt-out switch for the Flightlogger sync (both TTAF and landings).
+  // Default behavior is to sync (treat absent/undefined as `true`). Aircraft
+  // whose TTAF/landings are managed outside of Flightlogger — typically the
+  // PC-12 / King Air turboprops — get this set to `false` from the settings
+  // page so the sync ignores them. Name predates the landings field; kept as
+  // `syncTtafFromFlightlogger` to avoid a migration.
   syncTtafFromFlightlogger?: boolean;
+  // All-time accumulated landings, pulled from Flightlogger alongside TTAF.
+  // Integer count. Same monotonic-increase rule as TTAF (never decreases on
+  // sync). Null until the first successful sync, or for aircraft excluded
+  // from the sync that have no manual landings flow. Audit history for
+  // landings rides on the TTAF audit entry — a single "sync occurred" line
+  // covers both deltas.
+  totalLandings?: number | null;
   // Per-aircraft utilization rate in flight hours per month. Consumed by the
   // Forecast module to convert calendar deadlines into hour deadlines. Null =
   // use the module's default constant. Editing UI is deferred (see
@@ -166,6 +175,12 @@ export type MaintenanceEvent = {
   // overview filters them out. All four resolution fields are set together.
   resolvedDate: Timestamp | null;
   resolutionWorkOrder: string | null;
+  // TTAF at which the event was actually carried out, captured from the
+  // mechanic's work pack at close time. Manual entry — optional, not
+  // back-fillable for events closed before this field shipped. Surfaced in
+  // the Missing → Events "last completed" hint and the history dialog so
+  // SEP can see when each templated inspection last happened in TTAF terms.
+  resolutionTtafMinutes: number | null;
   resolvedAt: Timestamp | null;
   resolvedBy: string | null;
   createdAt: Timestamp;

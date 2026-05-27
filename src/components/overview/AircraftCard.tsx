@@ -266,13 +266,26 @@ export default function AircraftCard({
             </div>
           </div>
 
-          {/* TTAF instrument strip */}
+          {/* TTAF + Landings instrument strip */}
           <div className="flex items-stretch border-b border-foreground/10">
             <StripLabel icon={Gauge}>TTAF</StripLabel>
             <div className="flex flex-1 items-baseline gap-3 px-3 py-1.5 min-w-0">
               <span className="readout text-xl font-bold leading-none text-foreground">
                 {formatMinutesAsDuration(aircraft.totalTimeMinutes)}
               </span>
+              {aircraft.totalLandings != null && (
+                <span
+                  className="flex items-baseline gap-1.5 border-l border-foreground/15 pl-3 leading-none"
+                  title="All-time landings (Flightlogger)"
+                >
+                  <span className="readout text-lg font-bold leading-none text-foreground">
+                    {aircraft.totalLandings.toLocaleString("en-US")}
+                  </span>
+                  <span className="text-[10px] font-bold uppercase tracking-spec text-muted-foreground">
+                    Ldg
+                  </span>
+                </span>
+              )}
               {aircraft.totalTimeUpdatedAt && (
                 <span
                   className="ml-auto flex items-baseline gap-1.5 text-[10px] uppercase tracking-spec text-muted-foreground whitespace-nowrap"

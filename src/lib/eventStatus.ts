@@ -197,6 +197,7 @@ export function getNeedsBookingMatches(
 export const MISSING_INSPECTION_TEMPLATE_TITLES: ReadonlySet<string> = new Set([
   "50 hour inspection",
   "100 hour inspection",
+  "annual inspection",
 ]);
 
 export function isMissingInspectionTemplate(tpl: EventTemplate): boolean {
@@ -208,9 +209,10 @@ export function isMissingInspectionTemplate(tpl: EventTemplate): boolean {
 // One row of the Missing → Events tab: an aircraft that's listed on at least
 // one active inspection template (see MISSING_INSPECTION_TEMPLATE_TITLES) but
 // has no open event linked to any of those templates. The check is
-// aircraft-level on purpose — the 50/100-hour inspections bounce off each
-// other, so flagging both whenever only one is in progress is noise. As long
-// as a 50h *or* 100h event is open, the aircraft is in the cycle.
+// aircraft-level on purpose — the inspection templates bounce off each other
+// (an Annual rolls up the 50/100-hour work), so flagging when any one of them
+// is in progress is noise. As long as any anchor inspection event is open,
+// the aircraft is in the cycle.
 //
 // `applicableTemplates` carries every active inspection template that
 // includes this tail, so the dialog can show "this aircraft cycles through
@@ -226,6 +228,7 @@ export type MissingEventMatch = {
     templateId: string;
     resolvedDate: MaintenanceEvent["resolvedDate"];
     resolutionWorkOrder: string | null;
+    resolutionTtafMinutes: number | null;
   } | null;
 };
 
@@ -258,6 +261,7 @@ export function getMissingEventMatches(
       templateId: string;
       resolvedDate: MaintenanceEvent["resolvedDate"];
       workOrder: string | null;
+      ttafMinutes: number | null;
     }
   >();
   for (const e of events) {
@@ -275,6 +279,7 @@ export function getMissingEventMatches(
           templateId: e.templateId,
           resolvedDate: e.resolvedDate,
           workOrder: e.resolutionWorkOrder ?? null,
+          ttafMinutes: e.resolutionTtafMinutes ?? null,
         });
       }
     } else {
@@ -297,6 +302,7 @@ export function getMissingEventMatches(
             templateId: last.templateId,
             resolvedDate: last.resolvedDate,
             resolutionWorkOrder: last.workOrder,
+            resolutionTtafMinutes: last.ttafMinutes,
           }
         : null,
     });

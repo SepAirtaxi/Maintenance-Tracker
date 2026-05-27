@@ -28,6 +28,7 @@ import type { Aircraft } from "@/types";
 export type FlightloggerAircraftPayload = {
   callSign: string;
   totalAirborneMinutes: number | null;
+  totalLandings: number | null;
 };
 
 export type FlightloggerSyncResponse = {
@@ -216,36 +217,82 @@ export async function runFlightloggerSync(byUid: string): Promise<SyncResult> {
     }
 
     const stored = aircraft.totalTimeMinutes;
-    if (stored != null) {
-      if (candidate === stored) {
-        result.skippedUnchanged.push(tail);
-        continue;
-      }
-      if (candidate < stored) {
-        result.skippedStale.push({ tailNumber: tail, candidate, stored });
-        continue;
-      }
+    const ttafUnchanged = stored != null && candidate === stored;
+    const ttafStale = stored != null && candidate < stored;
+
+    // Landings ride on the same sync. Apply the same monotonic-increase rule
+    // as TTAF: never overwrite a higher stored value with a lower API value.
+    // Treated as optional — if Flightlogger returns null/garbage we just
+    // don't touch landings this round, but TTAF can still update.
+    const candidateLandings = item.totalLandings;
+    const storedLandings = aircraft.totalLandings ?? null;
+    const landingsValid =
+      candidateLandings != null &&
+      Number.isFinite(candidateLandings) &&
+      candidateLandings >= 0;
+    const landingsStale =
+      landingsValid &&
+      storedLandings != null &&
+      candidateLandings < storedLandings;
+    const landingsShouldWrite =
+      landingsValid &&
+      !landingsStale &&
+      (storedLandings == null || candidateLandings !== storedLandings);
+
+    if (ttafUnchanged && !landingsShouldWrite) {
+      result.skippedUnchanged.push(tail);
+      continue;
+    }
+    if (ttafStale && !landingsShouldWrite) {
+      result.skippedStale.push({ tailNumber: tail, candidate, stored: stored! });
+      continue;
     }
 
     const ref = doc(db, "aircraft", tail);
-    batch.update(ref, {
-      totalTimeMinutes: candidate,
-      previousTotalTimeMinutes: stored,
-      totalTimeUpdatedAt: serverTimestamp(),
-      totalTimeUpdatedBy: byUid,
-      totalTimeSource: "flightlogger",
+    const update: Record<string, unknown> = {
       updatedAt: serverTimestamp(),
-    });
+    };
+    let ttafChangedForAudit = false;
+    if (!ttafUnchanged && !ttafStale) {
+      update.totalTimeMinutes = candidate;
+      update.previousTotalTimeMinutes = stored;
+      update.totalTimeUpdatedAt = serverTimestamp();
+      update.totalTimeUpdatedBy = byUid;
+      update.totalTimeSource = "flightlogger";
+      ttafChangedForAudit = true;
+    }
+    if (landingsShouldWrite) {
+      update.totalLandings = candidateLandings;
+    }
+    batch.update(ref, update);
+
+    // Single audit entry covers both deltas. When only landings changed
+    // (TTAF unchanged or stale-blocked), the line still reads naturally.
+    const ttafPart = ttafChangedForAudit
+      ? `TTAF: ${formatMinutesAsDuration(stored)} → ${formatMinutesAsDuration(candidate)}`
+      : `TTAF: ${formatMinutesAsDuration(stored)} (unchanged)`;
+    const landingsPart = landingsShouldWrite
+      ? ` · landings ${storedLandings ?? "—"} → ${candidateLandings}`
+      : "";
     logAudit(
       tail,
       {
         action: "update",
         entity: "ttaf",
-        summary: `TTAF: ${formatMinutesAsDuration(stored)} → ${formatMinutesAsDuration(candidate)} (source: flightlogger)`,
+        summary: `${ttafPart}${landingsPart} (source: flightlogger)`,
       },
       batch,
     );
-    result.updated.push({ tailNumber: tail, before: stored, after: candidate });
+    // Always record into `updated` when anything was written. For the
+    // landings-only backfill case (first sync after this code ships, TTAF
+    // already on file, landings about to be filled in for the first time)
+    // before/after read as identical TTAF — the audit entry carries the
+    // landings story.
+    result.updated.push({
+      tailNumber: tail,
+      before: stored,
+      after: ttafChangedForAudit ? candidate : (stored ?? candidate),
+    });
     pendingWrites += 2;
   }
 

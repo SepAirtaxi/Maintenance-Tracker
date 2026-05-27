@@ -1,11 +1,12 @@
-// Serverless proxy for Flightlogger TTAF sync.
+// Serverless proxy for Flightlogger TTAF + landings sync.
 //
 // Lives on Vercel's Edge runtime — runs server-side, never ships to the
 // browser. The Flightlogger API token is read from `FLIGHTLOGGER_TOKEN`
 // (configured in Vercel env vars) and never leaves the server. The browser
 // hits `/api/flightlogger-sync` and gets back a fixed-shape JSON payload;
 // the GraphQL query is hardcoded here so this endpoint can only ever return
-// per-aircraft TTAF — no arbitrary Flightlogger data access.
+// per-aircraft TTAF + landings counts — no arbitrary Flightlogger data
+// access.
 
 export const config = { runtime: "edge" };
 
@@ -17,6 +18,7 @@ const QUERY = `
       nodes {
         callSign
         totalAirborneMinutes
+        totalLandings
       }
     }
   }
@@ -25,6 +27,7 @@ const QUERY = `
 type FlightloggerNode = {
   callSign: string | null;
   totalAirborneMinutes: number | null;
+  totalLandings: number | null;
 };
 
 type FlightloggerResponse = {
@@ -112,6 +115,7 @@ export default async function handler(): Promise<Response> {
     .map((n) => ({
       callSign: n.callSign.trim(),
       totalAirborneMinutes: n.totalAirborneMinutes,
+      totalLandings: n.totalLandings,
     }));
 
   return jsonResponse({ aircraft, fetchedAt: new Date().toISOString() }, 200);

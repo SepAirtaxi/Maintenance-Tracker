@@ -65,6 +65,7 @@ export async function createAircraft(input: {
     totalTimeUpdatedAt: null,
     totalTimeUpdatedBy: null,
     totalTimeSource: null,
+    totalLandings: null,
     utilizationHoursPerMonth: null,
     note: null,
     groundingCauseType: null,
@@ -350,8 +351,8 @@ export async function updateSyncTtafFromFlightlogger(
     action: "update",
     entity: "aircraft",
     summary: enabled
-      ? "Flightlogger TTAF sync enabled"
-      : "Flightlogger TTAF sync disabled — TTAF must be updated manually",
+      ? "Flightlogger sync enabled (TTAF + landings)"
+      : "Flightlogger sync disabled — TTAF + landings must be updated manually",
   });
 }
 
@@ -417,6 +418,7 @@ export async function upsertAircraftIfMissing(input: {
     totalTimeUpdatedAt: null,
     totalTimeUpdatedBy: null,
     totalTimeSource: null,
+    totalLandings: null,
     utilizationHoursPerMonth: null,
     note: null,
     groundingCauseType: null,

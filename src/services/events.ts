@@ -73,6 +73,8 @@ function docToEvent(
     resolvedDate: (data.resolvedDate as Timestamp | undefined) ?? null,
     resolutionWorkOrder:
       (data.resolutionWorkOrder as string | undefined) ?? null,
+    resolutionTtafMinutes:
+      (data.resolutionTtafMinutes as number | undefined) ?? null,
     resolvedAt: (data.resolvedAt as Timestamp | undefined) ?? null,
     resolvedBy: (data.resolvedBy as string | undefined) ?? null,
     createdAt: data.createdAt as Timestamp,
@@ -134,6 +136,7 @@ export async function createEvent(
     templateId: input.templateId ?? null,
     resolvedDate: null,
     resolutionWorkOrder: null,
+    resolutionTtafMinutes: null,
     resolvedAt: null,
     resolvedBy: null,
     createdAt: serverTimestamp(),
@@ -264,6 +267,10 @@ export type ResolveEventInput = {
   // system). The dialog drives this via an explicit "administrative" toggle so
   // a missing WO can never be a silent slip-through.
   resolutionWorkOrder: string | null;
+  // TTAF at which the work was carried out, in integer minutes. Optional —
+  // calendar-only events (AMP/ARC) have no meaningful TTAF; admin closes
+  // typically don't either.
+  resolutionTtafMinutes: number | null;
 };
 
 export async function resolveEvent(
@@ -287,6 +294,7 @@ export async function resolveEvent(
   const update: Record<string, unknown> = {
     resolvedDate: Timestamp.fromDate(input.resolvedDate),
     resolutionWorkOrder: wo,
+    resolutionTtafMinutes: input.resolutionTtafMinutes,
     resolvedAt: serverTimestamp(),
     resolvedBy: byUid,
     updatedAt: serverTimestamp(),
@@ -300,8 +308,10 @@ export async function resolveEvent(
   await updateDoc(eventDoc(id), update);
 
   const ttafSuffix =
-    prev.timerExpiryTimeMinutes != null
-      ? ` at TTAF ${formatMinutesAsDuration(prev.timerExpiryTimeMinutes)}`
+    input.resolutionTtafMinutes != null
+      ? ` at TTAF ${formatMinutesAsDuration(input.resolutionTtafMinutes)}`
+      : prev.timerExpiryTimeMinutes != null
+      ? ` (due at TTAF ${formatMinutesAsDuration(prev.timerExpiryTimeMinutes)})`
       : "";
   const closeDetail = wo ? `WO ${wo}` : "administrative — no WO";
   logAudit(prev.tailNumber, {

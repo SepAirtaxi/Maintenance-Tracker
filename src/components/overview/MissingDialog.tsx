@@ -57,7 +57,7 @@ export default function MissingDialog({
           <DialogTitle>Missing</DialogTitle>
           <DialogDescription>
             Aircraft with gaps — events that need a hangar slot, or aircraft
-            missing a scheduled 50/100-hour inspection.
+            missing a scheduled recurring inspection.
           </DialogDescription>
         </DialogHeader>
 
@@ -383,6 +383,11 @@ function Section({
                       <span className="text-foreground/80">{lastTemplate}</span>
                       {" · "}
                       {formatDate(m.lastCompleted.resolvedDate)}
+                      {m.lastCompleted.resolutionTtafMinutes != null
+                        ? ` · TTAF ${formatMinutesAsDuration(
+                            m.lastCompleted.resolutionTtafMinutes,
+                          )}`
+                        : ""}
                       {m.lastCompleted.resolutionWorkOrder
                         ? ` · ${m.lastCompleted.resolutionWorkOrder}`
                         : " · admin close"}

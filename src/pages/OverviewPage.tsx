@@ -546,6 +546,21 @@ export default function OverviewPage() {
     [defectFormTail, allDefects],
   );
 
+  // Tail → currently stored TTAF minutes. Drives the "Use current TTAF"
+  // button in the defect-create and event-close dialogs. Aircraft with no
+  // TTAF on file map to null and the button is disabled.
+  const ttafByTail = useMemo(() => {
+    const m = new Map<string, number | null>();
+    for (const a of aircraft ?? []) m.set(a.tailNumber, a.totalTimeMinutes);
+    return m;
+  }, [aircraft]);
+
+  const defectFormCurrentTtaf =
+    ttafByTail.get(defectFormTail) ?? null;
+  const resolveEventCurrentTtaf = resolveEventTarget
+    ? ttafByTail.get(resolveEventTarget.tailNumber) ?? null
+    : null;
+
   const eventsById = useMemo(() => {
     const m = new Map<string, MaintenanceEvent>();
     for (const e of allEvents) m.set(e.id, e);
@@ -1132,6 +1147,7 @@ export default function OverviewPage() {
       <ResolveEventDialog
         event={resolveEventTarget}
         onClose={() => setResolveEventTarget(null)}
+        currentTtafMinutes={resolveEventCurrentTtaf}
       />
       <ExtendEventDialog
         event={extendEventTarget}
@@ -1196,6 +1212,7 @@ export default function OverviewPage() {
         tailNumber={defectFormTail}
         defect={defectFormTarget}
         tailDefects={defectFormTailDefects}
+        currentTtafMinutes={defectFormCurrentTtaf}
       />
       <DeleteDefectDialog
         defect={defectDeleteTarget}
