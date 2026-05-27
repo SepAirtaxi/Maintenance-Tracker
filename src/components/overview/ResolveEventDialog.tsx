@@ -85,11 +85,15 @@ export default function ResolveEventDialog({
     }
     let resolutionTtafMinutes: number | null = null;
     const ttafTrimmed = resolvedTtaf.trim();
-    if (ttafTrimmed) {
+    if (!administrative) {
+      if (!ttafTrimmed) {
+        setError("TTAF at close is required.");
+        return;
+      }
       const parsed = parseTtafInput(ttafTrimmed);
       if (parsed == null) {
         setError(
-          "TTAF at close must look like 1234:30 (HH:MM) or 1234.5 (decimal hours), or be left blank.",
+          "TTAF at close must look like 1234:30 (HH:MM) or 1234.5 (decimal hours).",
         );
         return;
       }
@@ -167,73 +171,79 @@ export default function ResolveEventDialog({
               </div>
             </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <Label htmlFor="closeTtaf">TTAF at close (optional)</Label>
-                <div
-                  className="inline-flex border bg-card p-0.5 text-[10px]"
-                  aria-label="Detected input format"
-                >
-                  <span
-                    className={cn(
-                      "px-1.5 py-0.5 font-mono transition-colors",
-                      ttafDetectedMode === "hhmm"
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground",
-                    )}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="closeTtaf">TTAF at close</Label>
+                  <div
+                    className="inline-flex border bg-card p-0.5 text-[10px]"
+                    aria-label="Detected input format"
                   >
-                    HH:MM
-                  </span>
-                  <span
-                    className={cn(
-                      "px-1.5 py-0.5 font-mono transition-colors",
-                      ttafDetectedMode === "decimal"
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground",
-                    )}
-                  >
-                    Decimal
-                  </span>
+                    <span
+                      className={cn(
+                        "px-1.5 py-0.5 font-mono transition-colors",
+                        ttafDetectedMode === "hhmm"
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground",
+                      )}
+                    >
+                      HH:MM
+                    </span>
+                    <span
+                      className={cn(
+                        "px-1.5 py-0.5 font-mono transition-colors",
+                        ttafDetectedMode === "decimal"
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground",
+                      )}
+                    >
+                      Decimal
+                    </span>
+                  </div>
                 </div>
-              </div>
-              <Input
-                id="closeTtaf"
-                value={resolvedTtaf}
-                onChange={(e) => setResolvedTtaf(e.target.value)}
-                placeholder="From the mechanic's work pack — e.g. 6480:12"
-                className="font-mono"
-              />
-              <button
-                type="button"
-                disabled={currentTtafMinutes == null}
-                onClick={() => {
-                  if (currentTtafMinutes != null) {
-                    setResolvedTtaf(formatMinutesAsDuration(currentTtafMinutes));
+                <Input
+                  id="closeTtaf"
+                  value={administrative ? "" : resolvedTtaf}
+                  onChange={(e) => setResolvedTtaf(e.target.value)}
+                  required={!administrative}
+                  disabled={administrative}
+                  placeholder={administrative ? "—" : "e.g. 6480:12"}
+                  className="font-mono"
+                />
+                <button
+                  type="button"
+                  disabled={administrative || currentTtafMinutes == null}
+                  onClick={() => {
+                    if (currentTtafMinutes != null) {
+                      setResolvedTtaf(
+                        formatMinutesAsDuration(currentTtafMinutes),
+                      );
+                    }
+                  }}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 self-start border border-foreground/25 bg-card px-2 py-1 text-[10px] font-bold uppercase tracking-spec transition-colors",
+                    administrative || currentTtafMinutes == null
+                      ? "text-muted-foreground/60 cursor-not-allowed"
+                      : "hover:bg-foreground/[0.04]",
+                  )}
+                  title={
+                    currentTtafMinutes == null
+                      ? "No TTAF recorded for this aircraft yet"
+                      : "Fill with the aircraft's currently stored TTAF"
                   }
-                }}
-                className={cn(
-                  "inline-flex items-center gap-1.5 self-start border border-foreground/25 bg-card px-2 py-1 text-[10px] font-bold uppercase tracking-spec transition-colors",
-                  currentTtafMinutes == null
-                    ? "text-muted-foreground/60 cursor-not-allowed"
-                    : "hover:bg-foreground/[0.04]",
-                )}
-                title={
-                  currentTtafMinutes == null
-                    ? "No TTAF recorded for this aircraft yet"
-                    : "Fill with the aircraft's currently stored TTAF"
-                }
-              >
-                Use current TTAF
-                {currentTtafMinutes != null && (
-                  <span className="font-mono tracking-normal text-foreground/80">
-                    {formatMinutesAsDuration(currentTtafMinutes)}
-                  </span>
-                )}
-              </button>
-              <p className="text-[11px] text-muted-foreground">
-                Leave blank for calendar-only events (AMP/ARC reviews etc.) with
-                no meaningful TTAF reading.
-              </p>
+                >
+                  Use current TTAF
+                  {currentTtafMinutes != null && (
+                    <span className="font-mono tracking-normal text-foreground/80">
+                      {formatMinutesAsDuration(currentTtafMinutes)}
+                    </span>
+                  )}
+                </button>
+                <p className="text-[11px] text-muted-foreground">
+                  Tick "administrative close" below for calendar-only events
+                  (AMP/ARC reviews etc.) with no TTAF reading.
+                </p>
+              </div>
             </div>
 
             <label className="flex items-start gap-2 cursor-pointer text-sm">
