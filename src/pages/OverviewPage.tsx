@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   ArrowDown,
   ArrowUp,
+  Ban,
   CalendarClock,
   RefreshCw,
   ShieldOff,
@@ -34,7 +35,7 @@ import UpcomingEventsDialog from "@/components/overview/UpcomingEventsDialog";
 import MissingDialog from "@/components/overview/MissingDialog";
 import HistoryDialog from "@/components/overview/HistoryDialog";
 import { useAuth } from "@/context/AuthContext";
-import { autoGroundExpired, subscribeAircraft } from "@/services/aircraft";
+import { subscribeAircraft } from "@/services/aircraft";
 import { subscribeEvents } from "@/services/events";
 import { subscribeDefects } from "@/services/defects";
 import {
@@ -48,7 +49,7 @@ import {
   subscribeSyncMeta,
   type FlightloggerSyncMeta,
 } from "@/services/flightlogger";
-import { formatDate } from "@/lib/format";
+import { getAircraftStatus } from "@/lib/aircraftStatus";
 import {
   subscribeBookings,
   upcomingBookingsForTail,
@@ -70,6 +71,7 @@ import {
 } from "@/lib/eventStatus";
 import type {
   Aircraft,
+  AircraftStatus,
   Booking,
   Defect,
   EventTemplate,
@@ -273,26 +275,34 @@ function TailPill({
   severity,
   active,
   grounded = false,
+  outOfProduction = false,
   onClick,
 }: {
   tail: string;
   severity: Severity;
   active: boolean;
   grounded?: boolean;
+  outOfProduction?: boolean;
   onClick: () => void;
 }) {
+  const title = grounded
+    ? `${tail} (grounded)`
+    : outOfProduction
+      ? `${tail} (out of production)`
+      : tail;
   return (
     <button
       type="button"
       onClick={onClick}
-      title={grounded ? `${tail} (grounded)` : tail}
+      title={title}
       className={cn(
         "inline-flex shrink-0 items-center gap-1 border px-1 py-0.5 font-mono text-[11px] font-semibold tracking-stamp transition-colors",
         active ? PILL_TINT_ACTIVE[severity] : PILL_TINT[severity],
-        grounded && "opacity-60",
+        (grounded || outOfProduction) && "opacity-60",
       )}
     >
       {grounded && <ShieldOff className="h-3 w-3" />}
+      {outOfProduction && <Ban className="h-3 w-3" />}
       {tail}
     </button>
   );
@@ -305,7 +315,7 @@ type AircraftSummary = {
   bookings: BookingWithLinks[];
   worst: Severity;
   earliestDueMillis: number | null;
-  airworthy: boolean;
+  status: AircraftStatus;
 };
 
 function compareNullable(
@@ -339,10 +349,6 @@ export default function OverviewPage() {
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const visibleTails = useRef<Set<string>>(new Set());
 
-  // Guards the auto-ground sweep so re-renders during the in-flight Firestore
-  // writes don't fire a second concurrent pass (idempotent at the service
-  // layer, but the ref keeps writes out of the network in the common case).
-  const autoGroundProcessing = useRef(false);
   const deferralScanProcessing = useRef(false);
   const bookingReminderProcessing = useRef(false);
 
@@ -438,45 +444,6 @@ export default function OverviewPage() {
     autoSyncFiredRef.current = true;
     void handleSync();
   }, [isViewer, user, syncMetaLoaded, syncMeta, handleSync]);
-
-  // Auto-ground sweep: walks airworthy aircraft for expired events and
-  // grounds them, raising a banner notification per grounding. Runs client-
-  // side on every aircraft/events change because the app stays open all day
-  // and SEP wants the grounded state to surface the moment anyone loads the
-  // overview. Skipped entirely for view-only users — they neither write nor
-  // see banners.
-  useEffect(() => {
-    if (isViewer || !user || !aircraft) return;
-    if (autoGroundProcessing.current) return;
-    let cancelled = false;
-    autoGroundProcessing.current = true;
-    (async () => {
-      try {
-        const grounded = await autoGroundExpired(user.uid, aircraft, allEvents);
-        if (cancelled) return;
-        await Promise.all(
-          grounded.map(({ tail, event }) => {
-            const dueStr = event.expiryDate
-              ? ` on ${formatDate(event.expiryDate)}`
-              : "";
-            return raiseNotification({
-              type: "auto-grounded",
-              tailNumber: tail,
-              eventId: event.id,
-              message: `${tail} grounded — event "${event.warning}" expired${dueStr}.`,
-            });
-          }),
-        );
-      } catch (err) {
-        console.error("autoGroundExpired sweep failed", err);
-      } finally {
-        autoGroundProcessing.current = false;
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [isViewer, user, aircraft, allEvents]);
 
   // Deferral-overdue sweep: any active defect past its 30-day review window
   // raises a gentle banner reminding CAMO to either extend (re-defer) or
@@ -739,7 +706,7 @@ export default function OverviewPage() {
         bookings,
         worst,
         earliestDueMillis,
-        airworthy: a.airworthy !== false,
+        status: getAircraftStatus(a),
       };
     });
   }, [aircraft, allEvents, allDefects, allBookings, eventsById, defectsById]);
@@ -777,26 +744,37 @@ export default function OverviewPage() {
     };
   }, [sortKey, sortDir]);
 
-  const { airworthyList, groundedList } = useMemo(() => {
+  const { airworthyList, groundedList, outOfProductionList } = useMemo(() => {
     const aw: AircraftSummary[] = [];
     const gr: AircraftSummary[] = [];
+    const oop: AircraftSummary[] = [];
     for (const s of summaries) {
-      (s.airworthy ? aw : gr).push(s);
+      const bucket =
+        s.status === "airworthy" ? aw : s.status === "grounded" ? gr : oop;
+      bucket.push(s);
     }
     aw.sort(sortFn);
     gr.sort(sortFn);
-    return { airworthyList: aw, groundedList: gr };
+    oop.sort(sortFn);
+    return {
+      airworthyList: aw,
+      groundedList: gr,
+      outOfProductionList: oop,
+    };
   }, [summaries, sortFn]);
 
   // Pills are sorted alphabetically and stay in fixed positions regardless of
   // the card sort order — that keeps muscle memory intact when jumping.
-  const { airworthyPills, groundedPills } = useMemo(() => {
+  const { airworthyPills, groundedPills, outOfProductionPills } = useMemo(() => {
     const sorted = [...summaries].sort((a, b) =>
       a.aircraft.tailNumber.localeCompare(b.aircraft.tailNumber),
     );
     return {
-      airworthyPills: sorted.filter((s) => s.airworthy),
-      groundedPills: sorted.filter((s) => !s.airworthy),
+      airworthyPills: sorted.filter((s) => s.status === "airworthy"),
+      groundedPills: sorted.filter((s) => s.status === "grounded"),
+      outOfProductionPills: sorted.filter(
+        (s) => s.status === "out-of-production",
+      ),
     };
   }, [summaries]);
 
@@ -841,7 +819,7 @@ export default function OverviewPage() {
       observer.disconnect();
       visibleTails.current.clear();
     };
-  }, [summaries.length, airworthyList, groundedList]);
+  }, [summaries.length, airworthyList, groundedList, outOfProductionList]);
 
   const onSortClick = (key: SortKey) => {
     if (key === sortKey) {
@@ -926,7 +904,7 @@ export default function OverviewPage() {
       defects={s.defects}
       bookings={s.bookings}
       worstSeverity={s.worst}
-      airworthy={s.airworthy}
+      status={s.status}
       bookedEventIds={bookedIds.eventIds}
       bookedDefectIds={bookedIds.defectIds}
       locationsById={locationsById}
@@ -990,6 +968,15 @@ export default function OverviewPage() {
                   {groundedList.length}
                 </span>{" "}
                 grounded
+              </>
+            )}
+            {outOfProductionList.length > 0 && (
+              <>
+                {" · "}
+                <span className="font-semibold text-foreground">
+                  {outOfProductionList.length}
+                </span>{" "}
+                out of production
               </>
             )}
           </p>
@@ -1100,6 +1087,24 @@ export default function OverviewPage() {
                 ))}
               </>
             )}
+            {outOfProductionPills.length > 0 && (
+              <>
+                <span
+                  className="mx-1 h-5 w-px shrink-0 bg-foreground/20"
+                  aria-hidden="true"
+                />
+                {outOfProductionPills.map((s) => (
+                  <TailPill
+                    key={s.aircraft.tailNumber}
+                    tail={s.aircraft.tailNumber}
+                    severity={s.worst}
+                    outOfProduction
+                    active={s.aircraft.tailNumber === activeTail}
+                    onClick={() => jumpToTail(s.aircraft.tailNumber)}
+                  />
+                ))}
+              </>
+            )}
           </div>
         </div>
       )}
@@ -1129,6 +1134,19 @@ export default function OverviewPage() {
                 <span className="h-px flex-1 bg-sev-red-edge/40" />
               </div>
               {groundedList.map(renderCard)}
+            </div>
+          )}
+
+          {outOfProductionList.length > 0 && (
+            <div className="pt-5 space-y-4">
+              <div className="flex items-center gap-3">
+                <Ban className="h-4 w-4 text-muted-foreground" />
+                <h2 className="font-display text-sm font-bold uppercase tracking-spec text-muted-foreground">
+                  Out of production · {outOfProductionList.length}
+                </h2>
+                <span className="h-px flex-1 bg-foreground/20" />
+              </div>
+              {outOfProductionList.map(renderCard)}
             </div>
           )}
         </>

@@ -11,12 +11,34 @@ export type UserProfile = {
 
 export type GroundingCauseType = "defect" | "event" | "other";
 
+// The three operational states an aircraft can be in. Derived from the stored
+// fields (never stored directly) via `getAircraftStatus` in
+// `lib/aircraftStatus.ts`:
+//   • "airworthy"        — in service, flying (airworthy !== false).
+//   • "grounded"         — AOG / unserviceable, urgent (airworthy === false,
+//                          outOfProduction falsy). Carries a grounding cause.
+//   • "out-of-production" — deliberately parked and outside the operational
+//                          cycle for non-urgent reasons (not yet enrolled,
+//                          pending legal work, long-term storage). Not alarming.
+export type AircraftStatus = "airworthy" | "grounded" | "out-of-production";
+
 export type Aircraft = {
   tailNumber: string;
   model: string;
   // Defaults to true. Existing docs predating the field are treated as
-  // airworthy at read-time via `airworthy !== false`.
+  // airworthy at read-time via `airworthy !== false`. Both a grounding and an
+  // out-of-production status set this to `false`; `outOfProduction` is what
+  // distinguishes the two. Prefer `getAircraftStatus` over reading this raw.
   airworthy?: boolean;
+  // Out-of-production flag. When true the aircraft is parked outside the
+  // operational cycle (see AircraftStatus) — `airworthy` is also false, but the
+  // UI treats it as neutral rather than an urgent grounding. Absent/false =
+  // not out of production. The three `outOfProduction*` fields are set together
+  // and cleared together when the aircraft returns to service.
+  outOfProduction?: boolean;
+  outOfProductionReason?: string | null;
+  outOfProductionAt?: Timestamp | null;
+  outOfProductionBy?: string | null;
   totalTimeMinutes: number | null;
   // Snapshot of `totalTimeMinutes` from the previous write — used to render
   // the "Last flight: HH:MM" delta on the overview. Null until at least one

@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import {
+  Ban,
   CalendarDays,
   ChevronRight,
   Gauge,
@@ -27,6 +28,7 @@ import EventRow, { EVENTS_GRID_COLS } from "@/components/overview/EventRow";
 import DefectsList from "@/components/overview/DefectsList";
 import type {
   Aircraft,
+  AircraftStatus,
   Booking,
   Defect,
   Location,
@@ -48,7 +50,7 @@ type Props = {
   // All active + upcoming bookings for this tail, active-first then by `from`.
   bookings: BookingWithLinks[];
   worstSeverity: Severity;
-  airworthy: boolean;
+  status: AircraftStatus;
   bookedEventIds: ReadonlySet<string>;
   bookedDefectIds: ReadonlySet<string>;
   locationsById: ReadonlyMap<string, Location>;
@@ -93,7 +95,7 @@ export default function AircraftCard({
   defects,
   bookings,
   worstSeverity,
-  airworthy,
+  status,
   bookedEventIds,
   bookedDefectIds,
   locationsById,
@@ -122,6 +124,9 @@ export default function AircraftCard({
 }: Props) {
   const [togglingAirworthy, setTogglingAirworthy] = useState(false);
   const cardRef = useRef<HTMLElement | null>(null);
+
+  const airworthy = status === "airworthy";
+  const outOfProduction = status === "out-of-production";
 
   const onPrint = () => {
     const card = cardRef.current;
@@ -171,7 +176,9 @@ export default function AircraftCard({
 
   const stripeClass = airworthy
     ? stripe[worstSeverity]
-    : "border-l-destructive";
+    : outOfProduction
+      ? "border-l-foreground/40"
+      : "border-l-destructive";
 
   return (
     <section
@@ -213,7 +220,7 @@ export default function AircraftCard({
               </h3>
               <div className="flex items-center gap-1.5 flex-wrap">
                 {readOnly ? (
-                  <AirworthyChip airworthy={airworthy} />
+                  <StatusChip status={status} />
                 ) : (
                   <button
                     type="button"
@@ -221,12 +228,12 @@ export default function AircraftCard({
                     disabled={togglingAirworthy}
                     title={
                       airworthy
-                        ? "Click to mark as grounded"
-                        : "Click to mark as airworthy"
+                        ? "Click to ground or mark out of production"
+                        : "Click to return to service"
                     }
                     className="disabled:opacity-50"
                   >
-                    <AirworthyChip airworthy={airworthy} />
+                    <StatusChip status={status} />
                   </button>
                 )}
                 {inHangar && (
@@ -346,7 +353,7 @@ export default function AircraftCard({
       </div>
 
       {/* ─── ALERTS (conditional) ────────────────────────────────────────── */}
-      {!airworthy && aircraft.groundingCauseType && (
+      {status === "grounded" && aircraft.groundingCauseType && (
         <GroundingBanner
           causeType={aircraft.groundingCauseType}
           reason={aircraft.groundingReason ?? null}
@@ -354,6 +361,11 @@ export default function AircraftCard({
           linkedEvent={linkedEvent}
           onOpenLinkedDefect={onOpenLinkedDefect}
           onOpenLinkedEvent={onOpenLinkedEvent}
+        />
+      )}
+      {outOfProduction && (
+        <OutOfProductionBanner
+          reason={aircraft.outOfProductionReason ?? null}
         />
       )}
       {aircraft.note && (
@@ -411,23 +423,41 @@ export default function AircraftCard({
 
 // ─── Sub-components ──────────────────────────────────────────────────────
 
-function AirworthyChip({ airworthy }: { airworthy: boolean }) {
+function StatusChip({ status }: { status: AircraftStatus }) {
+  const config = {
+    airworthy: {
+      className:
+        "border-sev-green-edge/60 bg-sev-green-bg text-sev-green-fg hover:bg-sev-green-bg/80",
+      icon: ShieldCheck,
+      label: "Airworthy",
+      title: "Aircraft is airworthy",
+    },
+    grounded: {
+      className:
+        "border-sev-red-edge/60 bg-sev-red-bg text-sev-red-fg hover:bg-sev-red-bg/80",
+      icon: ShieldOff,
+      label: "Grounded",
+      title: "Aircraft is grounded",
+    },
+    "out-of-production": {
+      className:
+        "border-foreground/25 bg-foreground/[0.06] text-muted-foreground hover:bg-foreground/[0.1]",
+      icon: Ban,
+      label: "Out of production",
+      title: "Aircraft is out of production",
+    },
+  }[status];
+  const Icon = config.icon;
   return (
     <span
       className={cn(
         "inline-flex items-center gap-1.5 border px-2 py-1 text-[10px] font-bold uppercase tracking-spec transition-colors",
-        airworthy
-          ? "border-sev-green-edge/60 bg-sev-green-bg text-sev-green-fg hover:bg-sev-green-bg/80"
-          : "border-sev-red-edge/60 bg-sev-red-bg text-sev-red-fg hover:bg-sev-red-bg/80",
+        config.className,
       )}
-      title={airworthy ? "Aircraft is airworthy" : "Aircraft is grounded"}
+      title={config.title}
     >
-      {airworthy ? (
-        <ShieldCheck className="h-3.5 w-3.5" />
-      ) : (
-        <ShieldOff className="h-3.5 w-3.5" />
-      )}
-      {airworthy ? "Airworthy" : "Grounded"}
+      <Icon className="h-3.5 w-3.5" />
+      {config.label}
     </span>
   );
 }
@@ -758,6 +788,30 @@ function GroundingBanner({
         </div>
       )}
     </Wrap>
+  );
+}
+
+// Neutral counterpart to the (red) GroundingBanner. Out-of-production is a
+// deliberate, non-urgent status, so this reads as an informational strip — no
+// severity color, no click-through — carrying the reason the aircraft is parked.
+function OutOfProductionBanner({ reason }: { reason: string | null }) {
+  return (
+    <div className="flex items-stretch border-t border-foreground/10 bg-foreground/[0.05] text-foreground/80">
+      <div className="flex flex-col items-center justify-center border-r border-foreground/15 px-2.5 py-1.5">
+        <Ban className="h-3.5 w-3.5 mb-0.5" />
+        <span className="text-[8px] font-bold uppercase tracking-spec">
+          Out
+        </span>
+      </div>
+      <div className="flex flex-1 items-center gap-2 px-3 py-1.5 min-w-0">
+        <span className="text-[10px] font-bold uppercase tracking-spec shrink-0">
+          Out of production:
+        </span>
+        <span className="text-xs min-w-0 whitespace-pre-wrap break-words">
+          {reason ?? "(no reason recorded)"}
+        </span>
+      </div>
+    </div>
   );
 }
 

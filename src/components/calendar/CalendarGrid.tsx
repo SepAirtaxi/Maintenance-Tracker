@@ -2,6 +2,7 @@ import { Fragment, useMemo } from "react";
 import { format, getISOWeek, isSameDay, isToday } from "date-fns";
 import { Building2, Check, MapPin, StickyNote } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getAircraftStatus } from "@/lib/aircraftStatus";
 import {
   buildBookingGroups,
   describeBookingGroups,
@@ -219,7 +220,10 @@ export default function CalendarGrid({
       {/* Tail rows */}
       {fleet.map((a, rowIdx) => {
         const tailBookings = bookingsByTail.get(a.tailNumber) ?? [];
-        const grounded = a.airworthy === false;
+        const status = getAircraftStatus(a);
+        const grounded = status === "grounded";
+        const outOfProduction = status === "out-of-production";
+        const offline = grounded || outOfProduction;
         return (
           <div
             key={a.tailNumber}
@@ -227,7 +231,9 @@ export default function CalendarGrid({
               "relative grid border-b last:border-b-0 border-foreground/10",
               grounded
                 ? "bg-sev-red-bg/30"
-                : rowIdx % 2 === 1 && "bg-foreground/[0.02]",
+                : outOfProduction
+                  ? "bg-foreground/[0.05]"
+                  : rowIdx % 2 === 1 && "bg-foreground/[0.02]",
             )}
             style={{ gridTemplateColumns: gridTemplate, height: ROW_HEIGHT_PX }}
           >
@@ -235,12 +241,18 @@ export default function CalendarGrid({
               className={cn(
                 "border-r border-foreground/15 px-2 flex flex-col justify-center font-mono text-xs font-bold tabular-nums tracking-stamp",
                 grounded && "text-sev-red-fg",
+                outOfProduction && "text-muted-foreground",
               )}
             >
               <span className="truncate leading-tight">{a.tailNumber}</span>
               {grounded && (
                 <span className="text-[8px] font-bold uppercase tracking-spec text-sev-red-fg/80 leading-none">
                   Grounded
+                </span>
+              )}
+              {outOfProduction && (
+                <span className="text-[8px] font-bold uppercase tracking-spec text-muted-foreground leading-none">
+                  Out of prod
                 </span>
               )}
             </div>
@@ -258,10 +270,16 @@ export default function CalendarGrid({
                     !readOnly &&
                       (grounded
                         ? "hover:bg-sev-red-bg/50"
-                        : "hover:bg-accent/15"),
+                        : outOfProduction
+                          ? "hover:bg-foreground/[0.09]"
+                          : "hover:bg-accent/15"),
                     weekend &&
-                      (grounded ? "bg-sev-red-bg/40" : "bg-foreground/[0.03]"),
-                    today && !grounded && "bg-accent/10",
+                      (grounded
+                        ? "bg-sev-red-bg/40"
+                        : outOfProduction
+                          ? "bg-foreground/[0.07]"
+                          : "bg-foreground/[0.03]"),
+                    today && !offline && "bg-accent/10",
                     readOnly && "cursor-default",
                   )}
                   aria-label={`Book ${a.tailNumber} on ${format(d, "PP")}`}

@@ -9,9 +9,14 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { groundAircraft } from "@/services/aircraft";
+import { groundAircraft, setOutOfProduction } from "@/services/aircraft";
 import { useAuth } from "@/context/AuthContext";
 import type { Aircraft, Defect, MaintenanceEvent } from "@/types";
+
+// "ground" = urgent/AOG grounding that needs a cause and can auto-lift.
+// "out-of-production" = a deliberate, non-urgent parking (not yet enrolled,
+// pending legal work, long-term storage) that only lifts on return to service.
+type Mode = "ground" | "out-of-production";
 
 type CauseKind = "defect" | "event" | "other";
 
@@ -36,10 +41,12 @@ export default function GroundingDialog({
   onClose,
 }: Props) {
   const { user } = useAuth();
+  const [mode, setMode] = useState<Mode>("ground");
   const [kind, setKind] = useState<CauseKind>("defect");
   const [defectId, setDefectId] = useState<string>("");
   const [eventId, setEventId] = useState<string>("");
   const [reason, setReason] = useState("");
+  const [oopReason, setOopReason] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,10 +61,12 @@ export default function GroundingDialog({
 
   useEffect(() => {
     if (aircraft) {
+      setMode("ground");
       setKind(defaultKind);
       setDefectId(openDefects[0]?.id ?? "");
       setEventId(openEvents[0]?.id ?? "");
       setReason("");
+      setOopReason("");
       setError(null);
       setSaving(false);
     }
@@ -74,6 +83,17 @@ export default function GroundingDialog({
     setError(null);
     setSaving(true);
     try {
+      if (mode === "out-of-production") {
+        const trimmed = oopReason.trim();
+        if (!trimmed) {
+          setError("A reason is required.");
+          setSaving(false);
+          return;
+        }
+        await setOutOfProduction(aircraft.tailNumber, trimmed, user.uid);
+        onClose();
+        return;
+      }
       if (kind === "defect") {
         const d = openDefects.find((x) => x.id === defectId);
         if (!d) {
@@ -131,17 +151,54 @@ export default function GroundingDialog({
       <DialogContent>
         <form onSubmit={onSubmit}>
           <DialogHeader>
-            <DialogTitle>Ground {aircraft.tailNumber}</DialogTitle>
+            <DialogTitle>
+              {mode === "ground" ? "Ground" : "Take out of production"}{" "}
+              {aircraft.tailNumber}
+            </DialogTitle>
             <DialogDescription>
-              Every grounding needs a cause. Link it to the open defect or
-              event that's keeping the aircraft on the ground, or pick "other"
-              for cases that don't fit (e.g. parts AOG without an event yet).
-              Resolving a linked defect or closing a linked event will
-              auto-lift the grounding.
+              {mode === "ground"
+                ? "A grounding is for an unserviceable / AOG aircraft that needs attention. Every grounding needs a cause — link it to the open defect or event keeping the aircraft down, or pick \"other\". Resolving a linked defect or closing a linked event auto-lifts the grounding."
+                : "Out of production is for an aircraft deliberately parked outside the operational cycle for non-urgent reasons — not yet enrolled, pending legal work, long-term storage. It won't be flagged for attention and only clears when you return it to service."}
             </DialogDescription>
           </DialogHeader>
 
           <div className="py-4 space-y-4">
+            <fieldset className="space-y-1.5">
+              <legend className="text-sm font-medium mb-1">Status</legend>
+              <div className="flex flex-wrap gap-2">
+                {(
+                  [
+                    { value: "ground", label: "Ground (AOG)" },
+                    {
+                      value: "out-of-production",
+                      label: "Out of production",
+                    },
+                  ] as const
+                ).map((opt) => (
+                  <label
+                    key={opt.value}
+                    className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm cursor-pointer transition-colors ${
+                      mode === opt.value
+                        ? "border-primary bg-primary/5"
+                        : "hover:bg-secondary/60"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="statusMode"
+                      value={opt.value}
+                      checked={mode === opt.value}
+                      onChange={() => setMode(opt.value)}
+                      className="accent-primary"
+                    />
+                    {opt.label}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+
+            {mode === "ground" && (
+            <>
             <fieldset className="space-y-1.5">
               <legend className="text-sm font-medium mb-1">Cause type</legend>
               <div className="flex flex-wrap gap-2">
@@ -260,6 +317,34 @@ export default function GroundingDialog({
                 </p>
               </div>
             )}
+            </>
+            )}
+
+            {mode === "out-of-production" && (
+              <div className="space-y-2">
+                <Label htmlFor="oopReason">Reason</Label>
+                <textarea
+                  id="oopReason"
+                  value={oopReason}
+                  onChange={(e) =>
+                    setOopReason(e.target.value.slice(0, MAX_REASON_LENGTH))
+                  }
+                  rows={3}
+                  autoFocus
+                  placeholder="e.g. Not yet enrolled in the tracker · Pending legal work post-assembly"
+                  className="flex w-full rounded-md border border-input bg-card px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
+                />
+                <p className="text-[11px] text-muted-foreground text-right tabular-nums">
+                  {MAX_REASON_LENGTH - oopReason.length} characters left
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Out-of-production aircraft aren't flagged for attention and
+                  drop out of the severity, missing-events and booking checks.
+                  Return to service from the status chip when they're back in
+                  the cycle.
+                </p>
+              </div>
+            )}
 
             {error && (
               <p className="text-sm text-destructive" role="alert">
@@ -278,7 +363,13 @@ export default function GroundingDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={saving}>
-              {saving ? "Grounding…" : "Ground aircraft"}
+              {mode === "ground"
+                ? saving
+                  ? "Grounding…"
+                  : "Ground aircraft"
+                : saving
+                  ? "Saving…"
+                  : "Mark out of production"}
             </Button>
           </DialogFooter>
         </form>

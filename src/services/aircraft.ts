@@ -16,8 +16,7 @@ import { db } from "@/lib/firebase";
 import { logAudit } from "@/services/audit";
 import { formatMinutesAsDuration } from "@/lib/time";
 import { normaliseTailNumber } from "@/lib/tails";
-import { getEventSeverity } from "@/lib/eventStatus";
-import type { Aircraft, GroundingCauseType, MaintenanceEvent } from "@/types";
+import type { Aircraft, GroundingCauseType } from "@/types";
 
 export { normaliseTailNumber };
 
@@ -73,6 +72,10 @@ export async function createAircraft(input: {
     groundingReason: null,
     groundedAt: null,
     groundedBy: null,
+    outOfProduction: false,
+    outOfProductionReason: null,
+    outOfProductionAt: null,
+    outOfProductionBy: null,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -135,6 +138,11 @@ export async function groundAircraft(
     throw new Error("A grounding reason is required.");
   }
 
+  // Grounding and out-of-production are mutually exclusive statuses. If this
+  // tail was previously out of production, clear those fields so the status
+  // resolves cleanly to "grounded".
+  const wasOutOfProduction = prev.outOfProduction === true;
+
   await updateDoc(aircraftDoc(tail), {
     airworthy: false,
     groundingCauseType: causeType,
@@ -142,6 +150,10 @@ export async function groundAircraft(
     groundingReason: reason,
     groundedAt: serverTimestamp(),
     groundedBy: byUid,
+    outOfProduction: false,
+    outOfProductionReason: null,
+    outOfProductionAt: null,
+    outOfProductionBy: null,
     updatedAt: serverTimestamp(),
   });
 
@@ -149,9 +161,60 @@ export async function groundAircraft(
   logAudit(tail, {
     action: "update",
     entity: "aircraft",
-    summary: wasAirworthy
-      ? `Grounded — cause: ${causeDesc}`
-      : `Grounding cause updated: ${causeDesc}`,
+    summary: wasOutOfProduction
+      ? `Grounded (was out of production) — cause: ${causeDesc}`
+      : wasAirworthy
+        ? `Grounded — cause: ${causeDesc}`
+        : `Grounding cause updated: ${causeDesc}`,
+  });
+}
+
+const MAX_OUT_OF_PRODUCTION_REASON = 300;
+
+// Mark an aircraft out of production — a deliberate, non-urgent parking outside
+// the operational cycle (not yet enrolled, pending legal work, long-term
+// storage). Unlike a grounding this has no defect/event cause and never
+// auto-lifts; it clears only when the aircraft is returned to service. Sets
+// `airworthy: false` so the aircraft drops out of the operational sweeps
+// (severity, missing-events, booking reminders) just like a grounding, but the
+// `outOfProduction` flag keeps the UI neutral rather than alarming.
+export async function setOutOfProduction(
+  tailNumber: string,
+  reason: string,
+  byUid: string,
+): Promise<void> {
+  const tail = normaliseTailNumber(tailNumber);
+  const trimmed = reason.trim().slice(0, MAX_OUT_OF_PRODUCTION_REASON);
+  if (!trimmed) {
+    throw new Error("An out-of-production reason is required.");
+  }
+
+  const existing = await getDoc(aircraftDoc(tail));
+  if (!existing.exists()) throw new Error(`Aircraft ${tail} not found.`);
+  const prev = existing.data() as Aircraft;
+  const wasOutOfProduction = prev.outOfProduction === true;
+
+  await updateDoc(aircraftDoc(tail), {
+    airworthy: false,
+    // Out of production has no structured cause — clear any grounding link.
+    groundingCauseType: null,
+    groundingCauseId: null,
+    groundingReason: null,
+    groundedAt: null,
+    groundedBy: null,
+    outOfProduction: true,
+    outOfProductionReason: trimmed,
+    outOfProductionAt: serverTimestamp(),
+    outOfProductionBy: byUid,
+    updatedAt: serverTimestamp(),
+  });
+
+  logAudit(tail, {
+    action: "update",
+    entity: "aircraft",
+    summary: wasOutOfProduction
+      ? `Out-of-production reason updated: ${trimmed}`
+      : `Marked out of production — ${trimmed}`,
   });
 }
 
@@ -160,9 +223,11 @@ export type LiftGroundingReason =
   | { kind: "defect-resolved"; defectTitle: string; workOrder: string | null }
   | { kind: "event-closed"; eventTitle: string; workOrder: string | null };
 
-// Lift a grounding. `reason` distinguishes manual ungrounding from auto-lifts
-// triggered when a linked defect/event is resolved, so the audit summary
-// reads naturally on both paths.
+// Return an aircraft to service, clearing both a grounding and an
+// out-of-production status (they're mutually exclusive, so at most one is set).
+// `reason` distinguishes a manual return from auto-lifts triggered when a
+// linked defect/event is resolved, so the audit summary reads naturally on
+// every path. Kept named `liftGrounding` since that's still the common case.
 export async function liftGrounding(
   tailNumber: string,
   reason: LiftGroundingReason = { kind: "manual" },
@@ -172,6 +237,7 @@ export async function liftGrounding(
   if (!existing.exists()) return;
   const prev = existing.data() as Aircraft;
   const wasGrounded = prev.airworthy === false;
+  const wasOutOfProduction = prev.outOfProduction === true;
 
   await updateDoc(aircraftDoc(tail), {
     airworthy: true,
@@ -180,11 +246,17 @@ export async function liftGrounding(
     groundingReason: null,
     groundedAt: null,
     groundedBy: null,
+    outOfProduction: false,
+    outOfProductionReason: null,
+    outOfProductionAt: null,
+    outOfProductionBy: null,
     updatedAt: serverTimestamp(),
   });
 
   if (!wasGrounded) return;
-  let summary = "Ungrounded";
+  let summary = wasOutOfProduction
+    ? "Returned to service (was out of production)"
+    : "Ungrounded";
   if (reason.kind === "defect-resolved") {
     const woSuffix = reason.workOrder ? ` (WO ${reason.workOrder})` : "";
     summary = `Ungrounded — linked defect "${reason.defectTitle}" resolved${woSuffix}`;
@@ -213,60 +285,6 @@ export async function findAircraftGroundedByCause(
   );
   const snap = await getDocs(q);
   return snap.docs.map((d) => (d.data() as Aircraft).tailNumber);
-}
-
-// Scans airworthy aircraft and grounds any with at least one open event whose
-// severity is red (date or hours expired). Picks the earliest-expiring red
-// event as the grounding cause. Skips aircraft that are already grounded.
-// Returns the (tail, event) pairs that were grounded so the caller can raise
-// matching notifications.
-export async function autoGroundExpired(
-  byUid: string,
-  aircraft: Aircraft[],
-  events: MaintenanceEvent[],
-): Promise<{ tail: string; event: MaintenanceEvent }[]> {
-  const eventsByTail = new Map<string, MaintenanceEvent[]>();
-  for (const e of events) {
-    if (e.resolvedAt) continue;
-    const arr = eventsByTail.get(e.tailNumber) ?? [];
-    arr.push(e);
-    eventsByTail.set(e.tailNumber, arr);
-  }
-
-  const grounded: { tail: string; event: MaintenanceEvent }[] = [];
-  for (const ac of aircraft) {
-    if (ac.airworthy === false) continue;
-    const tailEvents = eventsByTail.get(ac.tailNumber);
-    if (!tailEvents || tailEvents.length === 0) continue;
-
-    const redEvents = tailEvents.filter(
-      (e) => getEventSeverity(e, ac.totalTimeMinutes) === "red",
-    );
-    if (redEvents.length === 0) continue;
-
-    // Pick the cause as the red event with the earliest expiryDate
-    // (date-expired events take precedence over hours-only red events).
-    redEvents.sort((a, b) => {
-      const da = a.expiryDate?.toMillis() ?? Number.POSITIVE_INFINITY;
-      const db = b.expiryDate?.toMillis() ?? Number.POSITIVE_INFINITY;
-      return da - db;
-    });
-    const cause = redEvents[0];
-
-    await groundAircraft(
-      ac.tailNumber,
-      {
-        type: "event",
-        eventId: cause.id,
-        eventTitle: cause.warning,
-        workOrderNumber: cause.workOrderNumber,
-      },
-      byUid,
-    );
-    grounded.push({ tail: ac.tailNumber, event: cause });
-  }
-
-  return grounded;
 }
 
 export async function updateAircraftModel(
@@ -426,6 +444,10 @@ export async function upsertAircraftIfMissing(input: {
     groundingReason: null,
     groundedAt: null,
     groundedBy: null,
+    outOfProduction: false,
+    outOfProductionReason: null,
+    outOfProductionAt: null,
+    outOfProductionBy: null,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });

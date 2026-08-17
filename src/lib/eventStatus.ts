@@ -153,8 +153,9 @@ export type NeedsBookingMatch = {
 //     If the aircraft has no current TTAF, the event is skipped (we can't tell
 //     how close it is).
 //   • Date-only (event has expiryDate but no TTAF timer): 0 ≤ days left ≤ 14.
-// Events already expired (negative remaining) are handled by the separate
-// auto-grounding sweep and intentionally excluded here.
+// Events already expired (negative remaining) are intentionally excluded here —
+// an overdue event is surfaced by its own red severity on the card, not by a
+// booking reminder.
 export function getNeedsBookingMatches(
   events: ReadonlyArray<MaintenanceEvent>,
   ttafByTail: ReadonlyMap<string, number | null>,
