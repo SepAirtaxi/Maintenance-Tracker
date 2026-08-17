@@ -420,6 +420,9 @@ function EventRow({
               · by <span className="font-mono">{resolverInitials}</span>
             </span>
           )}
+          {event.resolutionNote && (
+            <span className="italic">· {event.resolutionNote}</span>
+          )}
         </div>
       )}
     </div>

@@ -75,6 +75,7 @@ function docToEvent(
       (data.resolutionWorkOrder as string | undefined) ?? null,
     resolutionTtafMinutes:
       (data.resolutionTtafMinutes as number | undefined) ?? null,
+    resolutionNote: (data.resolutionNote as string | undefined) ?? null,
     resolvedAt: (data.resolvedAt as Timestamp | undefined) ?? null,
     resolvedBy: (data.resolvedBy as string | undefined) ?? null,
     createdAt: data.createdAt as Timestamp,
@@ -137,6 +138,7 @@ export async function createEvent(
     resolvedDate: null,
     resolutionWorkOrder: null,
     resolutionTtafMinutes: null,
+    resolutionNote: null,
     resolvedAt: null,
     resolvedBy: null,
     createdAt: serverTimestamp(),
@@ -271,6 +273,10 @@ export type ResolveEventInput = {
   // calendar-only events (AMP/ARC) have no meaningful TTAF; admin closes
   // typically don't either.
   resolutionTtafMinutes: number | null;
+  // Optional free-text reason, stored on the event and appended to the audit
+  // summary. Used by administrative closes that need a stated justification —
+  // e.g. the bulk "Wiped due to stale data" cleanup.
+  reason?: string | null;
 };
 
 export async function resolveEvent(
@@ -285,6 +291,7 @@ export async function resolveEvent(
     throw new Error("Resolution date is required.");
   }
   const wo = input.resolutionWorkOrder?.trim() || null;
+  const reason = input.reason?.trim() || null;
 
   const snap = await getDoc(eventDoc(id));
   if (!snap.exists()) throw new Error("Event not found.");
@@ -295,6 +302,7 @@ export async function resolveEvent(
     resolvedDate: Timestamp.fromDate(input.resolvedDate),
     resolutionWorkOrder: wo,
     resolutionTtafMinutes: input.resolutionTtafMinutes,
+    resolutionNote: reason,
     resolvedAt: serverTimestamp(),
     resolvedBy: byUid,
     updatedAt: serverTimestamp(),
@@ -314,13 +322,14 @@ export async function resolveEvent(
       ? ` (due at TTAF ${formatMinutesAsDuration(prev.timerExpiryTimeMinutes)})`
       : "";
   const closeDetail = wo ? `WO ${wo}` : "administrative — no WO";
+  const reasonSuffix = reason ? ` — ${reason}` : "";
   logAudit(prev.tailNumber, {
     action: "update",
     entity: "event",
     entityId: id,
     summary: `Event closed: "${prev.warning}" (${closeDetail}, on ${formatDate(
       Timestamp.fromDate(input.resolvedDate),
-    )})${ttafSuffix}`,
+    )})${ttafSuffix}${reasonSuffix}`,
   });
 
   // Auto-lift any groundings linked to this event. Same pattern as defect
@@ -500,6 +509,60 @@ export async function clearEventEstimate(id: string): Promise<void> {
     entityId: id,
     summary: `Event estimate cleared: "${prev.warning}"`,
   });
+}
+
+export type WipeEventsResult = {
+  // How many open events were found before the wipe ran.
+  total: number;
+  // How many were successfully closed.
+  closed: number;
+  // How many failed to close (each is left untouched and its error swallowed
+  // so one bad doc doesn't abort the whole run).
+  failed: number;
+};
+
+// Administratively closes every currently-open (unresolved) event, fleet-wide.
+// Nothing is deleted — each event is closed through the normal `resolveEvent`
+// path (no WO, no TTAF) with `reason` stored on the doc and appended to the
+// audit log, so groundings lift and notifications clear exactly as they would
+// on a manual close. Resolved events are already excluded from the overview and
+// are left untouched. Intended as a one-shot "start over" cleanup for stale
+// data; guarded behind a type-to-confirm dialog in Settings.
+export async function wipeOpenEvents(
+  byUid: string,
+  reason: string,
+): Promise<WipeEventsResult> {
+  // Fetch all events and filter client-side rather than querying
+  // `resolvedAt == null`: legacy docs that pre-date the resolution fields have
+  // no `resolvedAt` at all, and Firestore equality-on-null wouldn't return
+  // them. `docToEvent` normalises the missing field to null.
+  const snap = await getDocs(query(eventsCol()));
+  const open = snap.docs
+    .map((d) => docToEvent(d.id, d.data()))
+    .filter((e) => e.resolvedAt == null);
+
+  const resolvedDate = new Date();
+  let closed = 0;
+  let failed = 0;
+  for (const ev of open) {
+    try {
+      await resolveEvent(
+        ev.id,
+        {
+          resolvedDate,
+          resolutionWorkOrder: null,
+          resolutionTtafMinutes: null,
+          reason,
+        },
+        byUid,
+      );
+      closed += 1;
+    } catch {
+      failed += 1;
+    }
+  }
+
+  return { total: open.length, closed, failed };
 }
 
 export async function deleteEvent(id: string): Promise<void> {

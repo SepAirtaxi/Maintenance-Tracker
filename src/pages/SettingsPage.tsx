@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Building2,
   CalendarCheck2,
+  Database,
   MapPin,
   Pencil,
   Plane,
@@ -18,6 +19,7 @@ import LocationFormDialog from "@/components/settings/LocationFormDialog";
 import DeleteLocationDialog from "@/components/settings/DeleteLocationDialog";
 import EventTemplateFormDialog from "@/components/settings/EventTemplateFormDialog";
 import DeleteEventTemplateDialog from "@/components/settings/DeleteEventTemplateDialog";
+import WipeEventsDialog from "@/components/settings/WipeEventsDialog";
 import {
   subscribeAircraft,
   updateSyncTtafFromFlightlogger,
@@ -26,9 +28,15 @@ import { subscribeLocations } from "@/services/locations";
 import { subscribeEventTemplates } from "@/services/eventTemplates";
 import { seedFleet } from "@/services/seed";
 import { classifyEngineType } from "@/lib/tails";
+import { useAuth } from "@/context/AuthContext";
 import type { Aircraft, EventTemplate, Location } from "@/types";
 
-type Section = "aircraft" | "locations" | "scheduledEvents" | "flightlogger";
+type Section =
+  | "aircraft"
+  | "locations"
+  | "scheduledEvents"
+  | "flightlogger"
+  | "data";
 
 export default function SettingsPage() {
   const [section, setSection] = useState<Section>("aircraft");
@@ -79,12 +87,20 @@ export default function SettingsPage() {
         >
           Flightlogger sync
         </SectionTab>
+        <SectionTab
+          active={section === "data"}
+          onClick={() => setSection("data")}
+          icon={<Database className="h-3.5 w-3.5" />}
+        >
+          Data
+        </SectionTab>
       </div>
 
       {section === "aircraft" && <AircraftSection />}
       {section === "locations" && <LocationsSection />}
       {section === "scheduledEvents" && <ScheduledEventsSection />}
       {section === "flightlogger" && <FlightloggerSyncSection />}
+      {section === "data" && <DataSection />}
     </div>
   );
 }
@@ -114,6 +130,51 @@ function SectionTab({
       {icon}
       {children}
     </button>
+  );
+}
+
+function DataSection() {
+  const { isViewer } = useAuth();
+  const [wipeOpen, setWipeOpen] = useState(false);
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-1">
+        <h2 className="font-display text-sm font-bold uppercase tracking-spec">
+          Data maintenance
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Bulk operations for resetting stale data. These act across the whole
+          fleet — use with care.
+        </p>
+      </div>
+
+      <div className="border border-sev-red-edge/40 bg-sev-red-bg/30 divide-y divide-foreground/10">
+        <div className="flex items-start justify-between gap-4 px-4 py-3">
+          <div className="space-y-1">
+            <div className="text-sm font-semibold">Wipe open events</div>
+            <p className="text-xs text-muted-foreground max-w-prose">
+              Administratively closes every currently-open event, fleet-wide,
+              stamping a close note (default “Wiped due to stale data”). Nothing
+              is deleted — closed events stay on the aircraft history and audit
+              log. Use this to start over after a long gap.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={() => setWipeOpen(true)}
+            disabled={isViewer}
+            title={isViewer ? "Sign in as a member to run this" : undefined}
+            className="shrink-0"
+          >
+            Wipe open events
+          </Button>
+        </div>
+      </div>
+
+      <WipeEventsDialog open={wipeOpen} onOpenChange={setWipeOpen} />
+    </div>
   );
 }
 

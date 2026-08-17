@@ -181,6 +181,11 @@ export type MaintenanceEvent = {
   // the Missing → Events "last completed" hint and the history dialog so
   // SEP can see when each templated inspection last happened in TTAF terms.
   resolutionTtafMinutes: number | null;
+  // Free-text note captured at close time. Used for administrative closes that
+  // need a stated reason — e.g. the bulk "Wiped due to stale data" cleanup.
+  // Null for events closed through the normal WO flow. Surfaced in the history
+  // dialog alongside the other resolution metadata.
+  resolutionNote: string | null;
   resolvedAt: Timestamp | null;
   resolvedBy: string | null;
   createdAt: Timestamp;
