@@ -32,6 +32,9 @@ export default function DeleteEventTemplateDialog({
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete.");
+    } finally {
+      // Dialog stays mounted between deletions — always clear `working` or the
+      // button stays stuck on "Deleting…" the next time it opens.
       setWorking(false);
     }
   };

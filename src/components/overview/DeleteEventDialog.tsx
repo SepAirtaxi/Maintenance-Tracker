@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -20,16 +20,6 @@ export default function DeleteEventDialog({ event, onClose }: Props) {
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // The dialog stays mounted between deletions (it's controlled by the `event`
-  // prop), so its state persists after a close. Reset each time a new event is
-  // opened, otherwise the button stays stuck on "Deleting…" from the last run.
-  useEffect(() => {
-    if (event) {
-      setWorking(false);
-      setError(null);
-    }
-  }, [event]);
-
   const onConfirm = async () => {
     if (!event) return;
     setWorking(true);
@@ -39,6 +29,10 @@ export default function DeleteEventDialog({ event, onClose }: Props) {
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete.");
+    } finally {
+      // This dialog stays mounted between deletions (controlled by the `event`
+      // prop), so its state persists after close. Always clear `working` here,
+      // otherwise the button stays stuck on "Deleting…" the next time it opens.
       setWorking(false);
     }
   };
