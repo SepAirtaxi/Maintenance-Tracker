@@ -94,16 +94,26 @@ export default function EventFormDialog({
     setTemplateId(isEdit ? (event?.templateId ?? null) : null);
   }, [open, event, isEdit]);
 
-  // When a template is picked in create mode, seed the warning field with the
-  // template's title — but only if the user hasn't typed something custom
-  // already. On edit, we never overwrite an existing title silently.
-  useEffect(() => {
-    if (!open || isEdit) return;
-    if (templateId == null) return;
-    const tpl = templates?.find((t) => t.id === templateId);
-    if (!tpl) return;
-    setWarning((current) => (current.trim() === "" ? tpl.title : current));
-  }, [open, isEdit, templateId, templates]);
+  // Picking (or switching) a template pre-fills the title with the template's
+  // title. We only replace the title when it's still auto-filled — empty, or
+  // exactly equal to the previously-selected template's title — so switching
+  // 50h → 100h updates the title, but a title the user hand-typed is never
+  // clobbered. Handling this in the select's onChange (rather than an effect)
+  // avoids stale-closure re-seeding when the shared dialog is reopened.
+  const handleTemplateChange = (nextId: string | null) => {
+    const prevTpl = templates?.find((t) => t.id === templateId);
+    const nextTpl = nextId
+      ? templates?.find((t) => t.id === nextId)
+      : null;
+    setTemplateId(nextId);
+    if (nextTpl == null) return; // cleared to "none" — leave the title as-is
+    setWarning((current) => {
+      const trimmed = current.trim();
+      const isAutoFilled =
+        trimmed === "" || (prevTpl != null && trimmed === prevTpl.title);
+      return isAutoFilled ? nextTpl.title : current;
+    });
+  };
 
   const timerDetectedMode = detectTtafFormat(timerExpiry);
 
@@ -180,7 +190,7 @@ export default function EventFormDialog({
                 <select
                   id="templatePicker"
                   value={templateId ?? ""}
-                  onChange={(e) => setTemplateId(e.target.value || null)}
+                  onChange={(e) => handleTemplateChange(e.target.value || null)}
                   className={cn(
                     "flex h-9 w-full border border-input bg-transparent px-3 py-1 text-sm shadow-sm",
                     "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
