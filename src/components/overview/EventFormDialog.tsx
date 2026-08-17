@@ -26,11 +26,19 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   tailNumber: string;
   event: MaintenanceEvent | null; // null = create
+  // Seed values for a fresh event (create mode only, ignored on edit). Used by
+  // the Forecast page's "Create event" shortcut to carry over a due date /
+  // TTAF from a forecast row without the user re-typing them.
+  prefill?: { expiryDate?: Date | null; timerMinutes?: number | null } | null;
 };
 
 function timestampToInputDate(ts: Timestamp | null): string {
   if (!ts) return "";
-  const d = ts.toDate();
+  return dateToInputValue(ts.toDate());
+}
+
+function dateToInputValue(d: Date | null | undefined): string {
+  if (!d) return "";
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
@@ -49,6 +57,7 @@ export default function EventFormDialog({
   onOpenChange,
   tailNumber,
   event,
+  prefill,
 }: Props) {
   const isEdit = event !== null;
   const [warning, setWarning] = useState("");
@@ -80,11 +89,21 @@ export default function EventFormDialog({
   useEffect(() => {
     if (!open) return;
     setWarning(event?.warning ?? "");
-    setExpiryDate(timestampToInputDate(event?.expiryDate ?? null));
+    // On create, seed the due date / TTAF from `prefill` (Forecast shortcut);
+    // on edit, mirror the existing event. Everything else stays blank.
+    setExpiryDate(
+      isEdit
+        ? timestampToInputDate(event?.expiryDate ?? null)
+        : dateToInputValue(prefill?.expiryDate ?? null),
+    );
     setTimerExpiry(
-      event?.timerExpiryTimeMinutes != null
-        ? formatMinutesAsDuration(event.timerExpiryTimeMinutes)
-        : "",
+      isEdit
+        ? event?.timerExpiryTimeMinutes != null
+          ? formatMinutesAsDuration(event.timerExpiryTimeMinutes)
+          : ""
+        : prefill?.timerMinutes != null
+          ? formatMinutesAsDuration(prefill.timerMinutes)
+          : "",
     );
     setWorkOrderNumber(event?.workOrderNumber ?? "");
     setRequisitionNumber(event?.requisitionNumber ?? "");
@@ -92,7 +111,7 @@ export default function EventFormDialog({
     setSaving(false);
     // Pre-select the event's existing template (edit) or null (create).
     setTemplateId(isEdit ? (event?.templateId ?? null) : null);
-  }, [open, event, isEdit]);
+  }, [open, event, isEdit, prefill]);
 
   // Picking (or switching) a template pre-fills the title with the template's
   // title. We only replace the title when it's still auto-filled — empty, or

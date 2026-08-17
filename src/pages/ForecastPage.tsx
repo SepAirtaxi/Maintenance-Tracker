@@ -1,7 +1,8 @@
-import { useMemo, useRef, useState } from "react";
+import { createContext, useContext, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import {
   AlertTriangle,
+  CalendarPlus,
   ChevronDown,
   ChevronRight,
   FileText,
@@ -11,6 +12,7 @@ import {
   Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import EventFormDialog from "@/components/overview/EventFormDialog";
 import { cn } from "@/lib/utils";
 import {
   severityFromDays,
@@ -49,6 +51,14 @@ type LoadedForecast = {
   // raw names + needs-review badges.
   modelKnown: boolean;
 };
+
+// Lets a deeply-nested forecast row open the shared event dialog without
+// drilling a callback through every band panel. Provided by ForecastResult.
+type CreateEventFn = (args: {
+  dueDate: Date | null;
+  dueHours: number | null;
+}) => void;
+const CreateEventContext = createContext<CreateEventFn | null>(null);
 
 export default function ForecastPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -189,7 +199,23 @@ function ForecastResult({ loaded }: { loaded: LoadedForecast }) {
   const { header } = unresolved;
   const needsReview = rows.filter((r) => r.needsReview).length;
 
+  const eventTail = aircraft?.tailNumber ?? header.tailNumber ?? "";
+  const [eventOpen, setEventOpen] = useState(false);
+  const [eventPrefill, setEventPrefill] = useState<{
+    expiryDate: Date | null;
+    timerMinutes: number | null;
+  } | null>(null);
+
+  const createEvent: CreateEventFn = ({ dueDate, dueHours }) => {
+    setEventPrefill({
+      expiryDate: dueDate,
+      timerMinutes: dueHours != null ? Math.round(dueHours * 60) : null,
+    });
+    setEventOpen(true);
+  };
+
   return (
+    <CreateEventContext.Provider value={createEvent}>
     <div className="space-y-4">
       {/* Header summary */}
       <section className="border border-foreground/20 bg-card">
@@ -298,7 +324,18 @@ function ForecastResult({ loaded }: { loaded: LoadedForecast }) {
       {consolidation.unclassified.length > 0 && (
         <UnclassifiedPanel rows={consolidation.unclassified} />
       )}
+
+      {eventTail && (
+        <EventFormDialog
+          open={eventOpen}
+          onOpenChange={setEventOpen}
+          tailNumber={eventTail}
+          event={null}
+          prefill={eventPrefill}
+        />
+      )}
     </div>
+    </CreateEventContext.Provider>
   );
 }
 
@@ -705,10 +742,14 @@ function ConsolidatedRowItem({
   const dHours = hoursLeft(row.due?.hours, currentTtafHours);
   const daysSev = severityFromDays(dDays);
   const hoursSev = severityFromMinutes(dHours != null ? dHours * 60 : null);
+  const onCreateEvent = useContext(CreateEventContext);
+  const canCreate =
+    onCreateEvent != null &&
+    (row.due?.date != null || row.due?.hours != null);
   return (
     <li
       className={cn(
-        "grid grid-cols-12 items-center gap-3 px-3 py-2 text-sm",
+        "group grid grid-cols-12 items-center gap-3 px-3 py-2 text-sm",
         BAND_STYLES[row.band],
         muted && "opacity-80",
       )}
@@ -809,6 +850,22 @@ function ConsolidatedRowItem({
           <div className="text-[9px] uppercase tracking-spec text-muted-foreground mt-0.5">
             estimated
           </div>
+        )}
+        {canCreate && (
+          <button
+            type="button"
+            onClick={() =>
+              onCreateEvent!({
+                dueDate: row.due?.date ?? null,
+                dueHours: row.due?.hours ?? null,
+              })
+            }
+            title="Create an overview event pre-filled with this due date / TTAF"
+            className="mt-1 inline-flex items-center gap-1 border border-foreground/20 bg-card px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-spec text-muted-foreground opacity-0 transition-opacity hover:bg-foreground/[0.05] hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
+          >
+            <CalendarPlus className="h-3 w-3" />
+            Create event
+          </button>
         )}
       </div>
     </li>
