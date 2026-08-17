@@ -512,7 +512,7 @@ export async function clearEventEstimate(id: string): Promise<void> {
 }
 
 export type WipeEventsResult = {
-  // How many open events were found before the wipe ran.
+  // How many events we were asked to close.
   total: number;
   // How many were successfully closed.
   closed: number;
@@ -521,33 +521,30 @@ export type WipeEventsResult = {
   failed: number;
 };
 
-// Administratively closes every currently-open (unresolved) event, fleet-wide.
-// Nothing is deleted — each event is closed through the normal `resolveEvent`
-// path (no WO, no TTAF) with `reason` stored on the doc and appended to the
-// audit log, so groundings lift and notifications clear exactly as they would
-// on a manual close. Resolved events are already excluded from the overview and
-// are left untouched. Intended as a one-shot "start over" cleanup for stale
-// data; guarded behind a type-to-confirm dialog in Settings.
-export async function wipeOpenEvents(
+// Administratively closes the given events by id. Nothing is deleted — each is
+// closed through the normal `resolveEvent` path (no WO, no TTAF) with `reason`
+// stored on the doc and appended to the audit log, so groundings lift and
+// notifications clear exactly as they would on a manual close.
+//
+// The caller supplies the ids from the app's live event subscription (the same
+// one the Overview uses) rather than this function running its own collection
+// read — a one-shot `getDocs` here was observed returning an empty snapshot
+// even while the live listener held the events, so we close exactly what the UI
+// shows. `resolveEvent` reads each doc by id, which is reliable. Intended as a
+// one-shot "start over" cleanup for stale data; guarded behind a type-to-
+// confirm dialog in Settings.
+export async function bulkCloseEvents(
+  eventIds: string[],
   byUid: string,
   reason: string,
 ): Promise<WipeEventsResult> {
-  // Fetch all events and filter client-side rather than querying
-  // `resolvedAt == null`: legacy docs that pre-date the resolution fields have
-  // no `resolvedAt` at all, and Firestore equality-on-null wouldn't return
-  // them. `docToEvent` normalises the missing field to null.
-  const snap = await getDocs(query(eventsCol()));
-  const open = snap.docs
-    .map((d) => docToEvent(d.id, d.data()))
-    .filter((e) => e.resolvedAt == null);
-
   const resolvedDate = new Date();
   let closed = 0;
   let failed = 0;
-  for (const ev of open) {
+  for (const id of eventIds) {
     try {
       await resolveEvent(
-        ev.id,
+        id,
         {
           resolvedDate,
           resolutionWorkOrder: null,
@@ -562,7 +559,7 @@ export async function wipeOpenEvents(
     }
   }
 
-  return { total: open.length, closed, failed };
+  return { total: eventIds.length, closed, failed };
 }
 
 export async function deleteEvent(id: string): Promise<void> {

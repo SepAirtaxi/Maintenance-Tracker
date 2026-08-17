@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import {
   Dialog,
@@ -11,8 +11,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { wipeOpenEvents, type WipeEventsResult } from "@/services/events";
+import {
+  bulkCloseEvents,
+  subscribeEvents,
+  type WipeEventsResult,
+} from "@/services/events";
 import { useAuth } from "@/context/AuthContext";
+import type { MaintenanceEvent } from "@/types";
 
 const DEFAULT_REASON = "Wiped due to stale data";
 const CONFIRM_WORD = "WIPE";
@@ -24,11 +29,22 @@ type Props = {
 
 export default function WipeEventsDialog({ open, onOpenChange }: Props) {
   const { user } = useAuth();
+  const [allEvents, setAllEvents] = useState<MaintenanceEvent[]>([]);
   const [reason, setReason] = useState(DEFAULT_REASON);
   const [confirmText, setConfirmText] = useState("");
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<WipeEventsResult | null>(null);
+
+  // Read the same live event feed the Overview uses, so the wipe closes exactly
+  // the events the app shows. Kept live the whole time the dialog is mounted.
+  useEffect(() => subscribeEvents(setAllEvents), []);
+
+  // Open = not yet closed. Mirrors the Overview's `if (e.resolvedAt) continue`.
+  const openEvents = useMemo(
+    () => allEvents.filter((e) => e.resolvedAt == null),
+    [allEvents],
+  );
 
   // Reset every time the dialog is opened — it stays mounted between uses.
   useEffect(() => {
@@ -43,7 +59,12 @@ export default function WipeEventsDialog({ open, onOpenChange }: Props) {
 
   const trimmedReason = reason.trim();
   const confirmed = confirmText.trim().toUpperCase() === CONFIRM_WORD;
-  const canRun = confirmed && trimmedReason.length > 0 && !working && !!user;
+  const canRun =
+    confirmed &&
+    trimmedReason.length > 0 &&
+    openEvents.length > 0 &&
+    !working &&
+    !!user;
 
   const onConfirm = async () => {
     if (!user) {
@@ -54,7 +75,11 @@ export default function WipeEventsDialog({ open, onOpenChange }: Props) {
     setWorking(true);
     setError(null);
     try {
-      const res = await wipeOpenEvents(user.uid, trimmedReason);
+      const res = await bulkCloseEvents(
+        openEvents.map((e) => e.id),
+        user.uid,
+        trimmedReason,
+      );
       setResult(res);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Wipe failed.");
@@ -94,6 +119,21 @@ export default function WipeEventsDialog({ open, onOpenChange }: Props) {
           </div>
         ) : (
           <div className="space-y-3">
+            <div className="border border-foreground/15 bg-muted/40 px-3 py-2 text-sm">
+              {openEvents.length === 0 ? (
+                <span className="text-muted-foreground">
+                  No open events to close.
+                </span>
+              ) : (
+                <>
+                  This will close{" "}
+                  <span className="font-mono font-semibold">
+                    {openEvents.length}
+                  </span>{" "}
+                  open event{openEvents.length === 1 ? "" : "s"}.
+                </>
+              )}
+            </div>
             <div className="space-y-1.5">
               <Label htmlFor="wipe-reason">Close note (stored on each event)</Label>
               <Input
