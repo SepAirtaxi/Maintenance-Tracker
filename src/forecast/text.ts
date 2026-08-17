@@ -1,5 +1,6 @@
-// Text utilities mirroring forecast_project/extractor.py — kept in lockstep so
-// runtime lookups hit the same canonicalization the dictionary was built with.
+// Text utilities mirroring the offline Python extractor that built the
+// glossary — kept in lockstep so runtime lookups hit the same
+// canonicalization the dictionary was generated with.
 
 import type { EngineSide } from "./types";
 

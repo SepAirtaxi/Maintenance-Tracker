@@ -67,8 +67,7 @@ export type Aircraft = {
   totalLandings?: number | null;
   // Per-aircraft utilization rate in flight hours per month. Consumed by the
   // Forecast module to convert calendar deadlines into hour deadlines. Null =
-  // use the module's default constant. Editing UI is deferred (see
-  // forecast_project/PLAN.md "Open items").
+  // use the module's default constant. Editing UI is deferred.
   utilizationHoursPerMonth?: number | null;
   // Free-text remark shown in the aircraft header. Used for context that
   // doesn't belong on a specific event/defect (e.g. "grounded — waiting on

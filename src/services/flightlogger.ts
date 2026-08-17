@@ -2,7 +2,6 @@ import {
   Timestamp,
   collection,
   doc,
-  getDoc,
   getDocs,
   onSnapshot,
   serverTimestamp,
@@ -62,12 +61,6 @@ export type SyncResult = {
 
 const META_DOC_PATH = ["meta", "flightloggerSync"] as const;
 const metaDocRef = () => doc(db, META_DOC_PATH[0], META_DOC_PATH[1]);
-
-export async function getSyncMeta(): Promise<FlightloggerSyncMeta | null> {
-  const snap = await getDoc(metaDocRef());
-  if (!snap.exists()) return null;
-  return snap.data() as FlightloggerSyncMeta;
-}
 
 export function subscribeSyncMeta(
   callback: (meta: FlightloggerSyncMeta | null) => void,

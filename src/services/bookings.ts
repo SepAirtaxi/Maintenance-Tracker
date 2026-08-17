@@ -400,16 +400,6 @@ export async function deleteBooking(id: string): Promise<void> {
   }
 }
 
-// Returns the booking that's active *now* (today within range) on the given
-// tail, otherwise the next future booking, otherwise null.
-export function nextBookingForTail(
-  bookings: Booking[],
-  tail: string,
-  now: Date = new Date(),
-): Booking | null {
-  return upcomingBookingsForTail(bookings, tail, now)[0] ?? null;
-}
-
 // All active + future bookings for the tail, sorted: currently-active first,
 // then upcoming by `from` ascending. Past bookings are excluded.
 export function upcomingBookingsForTail(

@@ -4,7 +4,6 @@ import {
   collection,
   deleteDoc,
   doc,
-  getDoc,
   getDocs,
   onSnapshot,
   orderBy,
@@ -50,14 +49,6 @@ export function subscribeEventTemplates(
   return onSnapshot(q, (snap) => {
     callback(snap.docs.map((d) => docToTemplate(d.id, d.data())));
   });
-}
-
-export async function getEventTemplate(
-  id: string,
-): Promise<EventTemplate | null> {
-  const snap = await getDoc(templateDoc(id));
-  if (!snap.exists()) return null;
-  return docToTemplate(snap.id, snap.data());
 }
 
 function normaliseInput(input: EventTemplateInput): {

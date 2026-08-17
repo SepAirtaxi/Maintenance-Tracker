@@ -4,7 +4,6 @@ import {
   collection,
   deleteDoc,
   doc,
-  getDoc,
   onSnapshot,
   orderBy,
   query,
@@ -77,10 +76,4 @@ export async function updateLocation(
 
 export async function deleteLocation(id: string): Promise<void> {
   await deleteDoc(locationDoc(id));
-}
-
-export async function getLocation(id: string): Promise<Location | null> {
-  const snap = await getDoc(locationDoc(id));
-  if (!snap.exists()) return null;
-  return docToLocation(snap.id, snap.data());
 }

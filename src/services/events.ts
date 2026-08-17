@@ -5,13 +5,11 @@ import {
   deleteDoc,
   doc,
   getDoc,
-  getDocs,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
   updateDoc,
-  where,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { normaliseTailNumber } from "@/lib/tails";
@@ -90,20 +88,6 @@ export function subscribeEvents(
   return onSnapshot(q, (snap) => {
     callback(snap.docs.map((d) => docToEvent(d.id, d.data())));
   });
-}
-
-export async function findEventByTailAndWarning(
-  tailNumber: string,
-  warning: string,
-): Promise<MaintenanceEvent | null> {
-  const q = query(
-    eventsCol(),
-    where("tailNumber", "==", normaliseTailNumber(tailNumber)),
-    where("warning", "==", warning),
-  );
-  const snap = await getDocs(q);
-  const first = snap.docs[0];
-  return first ? docToEvent(first.id, first.data()) : null;
 }
 
 export async function createEvent(

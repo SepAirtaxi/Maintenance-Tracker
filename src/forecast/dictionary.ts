@@ -1,9 +1,10 @@
-// Loads forecast_project/event_dictionary.json (the locked canonical mapping
-// produced during the glossary phase) and builds keyed indexes so the runtime
-// parser can resolve raw forecast rows to canonical names without re-running
-// the consolidation logic.
+// Loads event_dictionary.json (the locked canonical mapping produced during
+// the glossary phase) and builds keyed indexes so the runtime parser can
+// resolve raw forecast rows to canonical names without re-running the
+// consolidation logic. This is a locked, generated artifact — it was produced
+// offline from a corpus of CAMO ForecastList exports and is checked in as data.
 
-import dictRaw from "../../forecast_project/event_dictionary.json";
+import dictRaw from "./event_dictionary.json";
 import type { EngineSide, ForecastSection } from "./types";
 import { normalize, parseAdNumber, stripModelVariant } from "./text";
 

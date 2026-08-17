@@ -1,6 +1,6 @@
 // Consolidation engine: turn parsed forecast rows into a proposed Work Order
-// against the live aircraft state. See forecast_project/PLAN.md
-// "Consolidation model" — Rule #1 (deadlines never exceeded), anchor = next
+// against the live aircraft state. Consolidation model:
+// Rule #1 (deadlines never exceeded), anchor = next
 // 50 hr inspection, four bands (green / amber / forced-but-awkward / defer),
 // direction labels, calendar→hour conversion via utilization rate.
 //

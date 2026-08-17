@@ -73,8 +73,8 @@ export type ForecastParse = {
 };
 
 // ---- Consolidation model ---------------------------------------------------
-// Produced by src/forecast/consolidation.ts. See forecast_project/PLAN.md
-// "Consolidation model" — Rule #1, anchor = next 50 hr, four bands, direction.
+// Produced by src/forecast/consolidation.ts. Consolidation model:
+// Rule #1, anchor = next 50 hr, four bands, direction.
 
 export type ForecastBand =
   | "green"           // |gap| ≤ green tolerance (default 5 h)

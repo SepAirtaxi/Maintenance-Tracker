@@ -2,6 +2,9 @@ node_modules
 dist
 dist-ssr
 *.local
+
+# Build caches / generated artifacts — should never be committed
+*.tsbuildinfo
 .env
 .env.local
 
