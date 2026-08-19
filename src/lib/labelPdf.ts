@@ -60,39 +60,40 @@ function drawLabel(pdf: jsPDF, x: number, y: number, label: FolderLabel) {
     });
   };
 
-  // The label is divided into three stacked zones that together span the full
-  // height. Content is anchored to zone tops/bottoms so the whole face is used
-  // rather than crowding the top quarter.
+  // Fixed vertical rhythm. Three stacked zones (aircraft / work order / task)
+  // spread down the full height. Every eyebrow sits EYE_GAP above its value so
+  // the label→value pairing reads consistently; the larger gaps between zones
+  // give each section room to breathe without any overlap.
+  const EYE_GAP = 4; // eyebrow top → value top
 
   // --- Aircraft / tail number (top zone) ---
-  eyebrow("Aircraft", y + 4.5);
-  setInk("bold", 32, INK);
-  pdf.text(label.tail.toUpperCase() || "OY-", left, y + 9.5, {
+  const aircraftEyeY = y + 5;
+  eyebrow("Aircraft", aircraftEyeY);
+  setInk("bold", 30, INK);
+  pdf.text(label.tail.toUpperCase() || "OY-", left, aircraftEyeY + EYE_GAP, {
     baseline: "top",
   });
 
   // hairline divider between identity and the WO/task ledger
-  const divY = y + 23;
+  const divY = y + 19;
   pdf.setDrawColor(HAIR[0], HAIR[1], HAIR[2]);
   pdf.setLineWidth(0.2);
   pdf.line(left, divY, x + LABEL_W - pad, divY);
 
   // --- Work order (middle zone) ---
-  eyebrow("Work Order", divY + 3);
-  setInk("bold", 22, INK);
+  const woEyeY = divY + 3;
+  eyebrow("Work Order", woEyeY);
+  setInk("bold", 21, INK);
   const woText = label.wo ? "WO " + label.wo : "WO ————";
-  pdf.text(woText, left, divY + 7.5, { baseline: "top" });
+  pdf.text(woText, left, woEyeY + EYE_GAP, { baseline: "top" });
 
   // --- Task description (bottom zone, adaptive) ---
-  // The task usually runs 1–2 lines, so size it up to fill the remaining
-  // space when short and step down only when it actually needs to wrap.
-  const taskEyebrowY = y + 37;
-  eyebrow("Task", taskEyebrowY);
+  // The task usually runs 1–2 lines, so size it up to fill the space when
+  // short and step down only when it actually needs to wrap to a second line.
+  const taskEyeY = y + 35;
+  eyebrow("Task", taskEyeY);
 
   const taskText = (label.task || "").toUpperCase();
-  const taskBottom = y + LABEL_H - pad; // baseline the block sits above
-
-  // Try large first; fall back a step at a time until it fits in ≤2 lines.
   const CANDIDATES = [17, 15, 13, 11, 10];
   let taskSize = CANDIDATES[CANDIDATES.length - 1];
   let taskLines: string[] = [];
@@ -104,18 +105,14 @@ function drawLabel(pdf: jsPDF, x: number, y: number, label: FolderLabel) {
       taskLines = lines;
       break;
     }
-    // keep the smallest candidate's 2 lines as the last-resort fallback
+    // smallest candidate: accept its first two lines as a last resort
     taskSize = size;
     taskLines = lines.slice(0, 2);
   }
 
   setInk("bold", taskSize, INK);
   const lineH = taskSize * PT_TO_MM * 1.18;
-  // Bottom-align the task block to the bottom padding line so a single big
-  // line drops to the floor and a two-line block stacks up from there.
-  let ty = taskBottom - taskLines.length * lineH;
-  // Never collide with the eyebrow.
-  ty = Math.max(ty, taskEyebrowY + 4);
+  let ty = taskEyeY + EYE_GAP;
   for (const line of taskLines) {
     pdf.text(line, left, ty, { baseline: "top" });
     ty += lineH;
