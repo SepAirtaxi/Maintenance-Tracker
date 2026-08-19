@@ -28,9 +28,13 @@ const INK: [number, number, number] = [26, 26, 26];
 const MUTED: [number, number, number] = [130, 130, 130];
 const HAIR: [number, number, number] = [150, 150, 150];
 
+// Approx. mm height of a line of text at a given point size (1pt = 0.3528mm).
+const PT_TO_MM = 0.3528;
+
 function drawLabel(pdf: jsPDF, x: number, y: number, label: FolderLabel) {
-  const pad = 5;
+  const pad = 6;
   const innerW = LABEL_W - 2 * pad;
+  const left = x + pad;
 
   // Frame — hairline, zero radius (doubles as the cut line).
   pdf.setDrawColor(INK[0], INK[1], INK[2]);
@@ -48,45 +52,73 @@ function drawLabel(pdf: jsPDF, x: number, y: number, label: FolderLabel) {
   };
 
   const eyebrow = (text: string, ty: number) => {
-    setInk("bold", 6.5, MUTED);
+    setInk("bold", 7, MUTED);
     // fake letter-spacing for the small-caps spec look
-    pdf.text(text.toUpperCase(), x + pad, ty, {
+    pdf.text(text.toUpperCase(), left, ty, {
       baseline: "top",
-      charSpace: 0.5,
+      charSpace: 0.6,
     });
   };
 
-  // --- Aircraft / tail number ---
-  eyebrow("Aircraft", y + 4);
-  setInk("bold", 26, INK);
-  pdf.text(label.tail.toUpperCase() || "OY-", x + pad, y + 8, {
+  // The label is divided into three stacked zones that together span the full
+  // height. Content is anchored to zone tops/bottoms so the whole face is used
+  // rather than crowding the top quarter.
+
+  // --- Aircraft / tail number (top zone) ---
+  eyebrow("Aircraft", y + 4.5);
+  setInk("bold", 32, INK);
+  pdf.text(label.tail.toUpperCase() || "OY-", left, y + 9.5, {
     baseline: "top",
   });
 
-  // hairline divider
-  const divY = y + 18;
+  // hairline divider between identity and the WO/task ledger
+  const divY = y + 23;
   pdf.setDrawColor(HAIR[0], HAIR[1], HAIR[2]);
   pdf.setLineWidth(0.2);
-  pdf.line(x + pad, divY, x + LABEL_W - pad, divY);
+  pdf.line(left, divY, x + LABEL_W - pad, divY);
 
-  // --- Work order ---
-  eyebrow("Work Order", divY + 2.5);
-  setInk("bold", 18, INK);
+  // --- Work order (middle zone) ---
+  eyebrow("Work Order", divY + 3);
+  setInk("bold", 22, INK);
   const woText = label.wo ? "WO " + label.wo : "WO ————";
-  pdf.text(woText, x + pad, divY + 6, { baseline: "top" });
+  pdf.text(woText, left, divY + 7.5, { baseline: "top" });
 
-  // --- Task description ---
-  eyebrow("Task", divY + 14);
-  setInk("bold", 10.5, INK);
-  const taskLines = pdf.splitTextToSize(
-    (label.task || "").toUpperCase(),
-    innerW,
-  );
-  let ty = divY + 17.5;
-  // cap at 2 lines so a long task never overruns the frame
-  for (const line of taskLines.slice(0, 2)) {
-    pdf.text(line, x + pad, ty, { baseline: "top" });
-    ty += 4.8;
+  // --- Task description (bottom zone, adaptive) ---
+  // The task usually runs 1–2 lines, so size it up to fill the remaining
+  // space when short and step down only when it actually needs to wrap.
+  const taskEyebrowY = y + 37;
+  eyebrow("Task", taskEyebrowY);
+
+  const taskText = (label.task || "").toUpperCase();
+  const taskBottom = y + LABEL_H - pad; // baseline the block sits above
+
+  // Try large first; fall back a step at a time until it fits in ≤2 lines.
+  const CANDIDATES = [17, 15, 13, 11, 10];
+  let taskSize = CANDIDATES[CANDIDATES.length - 1];
+  let taskLines: string[] = [];
+  for (const size of CANDIDATES) {
+    pdf.setFontSize(size);
+    const lines = pdf.splitTextToSize(taskText, innerW);
+    if (lines.length <= 2) {
+      taskSize = size;
+      taskLines = lines;
+      break;
+    }
+    // keep the smallest candidate's 2 lines as the last-resort fallback
+    taskSize = size;
+    taskLines = lines.slice(0, 2);
+  }
+
+  setInk("bold", taskSize, INK);
+  const lineH = taskSize * PT_TO_MM * 1.18;
+  // Bottom-align the task block to the bottom padding line so a single big
+  // line drops to the floor and a two-line block stacks up from there.
+  let ty = taskBottom - taskLines.length * lineH;
+  // Never collide with the eyebrow.
+  ty = Math.max(ty, taskEyebrowY + 4);
+  for (const line of taskLines) {
+    pdf.text(line, left, ty, { baseline: "top" });
+    ty += lineH;
   }
 }
 
