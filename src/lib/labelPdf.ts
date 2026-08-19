@@ -74,14 +74,15 @@ function drawLabel(pdf: jsPDF, x: number, y: number, label: FolderLabel) {
     baseline: "top",
   });
 
-  // hairline divider between identity and the WO/task ledger
-  const divY = y + 19;
+  // hairline divider between identity and the WO/task ledger. Sits clear of the
+  // tail's baseline with a comfortable gap above, grouped to the WO zone below.
+  const divY = y + 20.5;
   pdf.setDrawColor(HAIR[0], HAIR[1], HAIR[2]);
   pdf.setLineWidth(0.2);
   pdf.line(left, divY, x + LABEL_W - pad, divY);
 
   // --- Work order (middle zone) ---
-  const woEyeY = divY + 3;
+  const woEyeY = divY + 2.5;
   eyebrow("Work Order", woEyeY);
   setInk("bold", 21, INK);
   const woText = label.wo ? "WO " + label.wo : "WO ————";
