@@ -147,8 +147,9 @@ export type NeedsBookingMatch = {
 };
 
 // Returns the events that should trigger the "needs booking" reminder. An
-// event qualifies when it's unresolved, on an airworthy aircraft, has no
-// future/active booking linked, and is within the threshold:
+// event qualifies when it's unresolved, on an airworthy aircraft, still
+// unplanned (no work order cut yet), not linked to a future/active booking,
+// and within the threshold:
 //   • Hours-based (event has a TTAF timer): 0 ≤ minutes left ≤ 20 hours.
 //     If the aircraft has no current TTAF, the event is skipped (we can't tell
 //     how close it is).
@@ -156,6 +157,11 @@ export type NeedsBookingMatch = {
 // Events already expired (negative remaining) are intentionally excluded here —
 // an overdue event is surfaced by its own red severity on the card, not by a
 // booking reminder.
+//
+// Planned events (a WO already exists) are treated as accounted for and skipped
+// even if no calendar slot is linked yet: once the planner has cut a work order
+// the item is on their radar, and nagging to also book a slot is noise. Only
+// truly unplanned events need the "did anyone act on this?" reminder.
 export function getNeedsBookingMatches(
   events: ReadonlyArray<MaintenanceEvent>,
   ttafByTail: ReadonlyMap<string, number | null>,
@@ -166,6 +172,7 @@ export function getNeedsBookingMatches(
   for (const e of events) {
     if (e.resolvedAt) continue;
     if (!airworthyTails.has(e.tailNumber)) continue;
+    if (e.workOrderNumber?.trim()) continue;
     if (bookedEventIds.has(e.id)) continue;
 
     if (e.timerExpiryTimeMinutes != null) {
