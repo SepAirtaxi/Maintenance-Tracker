@@ -563,6 +563,17 @@ export default function OverviewPage() {
     return set;
   }, [aircraft]);
 
+  // Out-of-production aircraft are parked, not in the flying cycle — excluded
+  // from the "missing scheduled inspection" check. (Grounded aircraft, which
+  // also carry airworthy:false, are deliberately kept.)
+  const outOfProductionTails = useMemo(() => {
+    const set = new Set<string>();
+    for (const a of aircraft ?? []) {
+      if (a.outOfProduction) set.add(a.tailNumber);
+    }
+    return set;
+  }, [aircraft]);
+
   // Full list, including "snoozed" rows (held back by a lower per-event window).
   // The dialog shows these so they stay adjustable; count + banners use only the
   // active subset below.
@@ -607,8 +618,14 @@ export default function OverviewPage() {
   };
 
   const missingEventMatches: MissingEventMatch[] = useMemo(
-    () => getMissingEventMatches(allTemplates, allEvents, airworthyTails),
-    [allTemplates, allEvents, airworthyTails],
+    () =>
+      getMissingEventMatches(
+        allTemplates,
+        allEvents,
+        airworthyTails,
+        outOfProductionTails,
+      ),
+    [allTemplates, allEvents, airworthyTails, outOfProductionTails],
   );
 
   const missingTotal =

@@ -283,15 +283,20 @@ export function getMissingEventMatches(
   templates: ReadonlyArray<EventTemplate>,
   events: ReadonlyArray<MaintenanceEvent>,
   airworthyTails: ReadonlySet<string>,
+  outOfProductionTails: ReadonlySet<string> = new Set(),
 ): MissingEventMatch[] {
   // Index active inspection templates by tail. Inactive templates and any
   // template outside the inspection set don't gate the check — an aircraft
-  // with only AMP/ARC templates assigned is skipped entirely.
+  // with only AMP/ARC templates assigned is skipped entirely. Out-of-production
+  // aircraft are excluded outright: they're parked, not in the flying cycle, so
+  // "no scheduled inspection" isn't a gap that needs planning. Grounded
+  // aircraft (temporarily unserviceable) still surface — they're expected back.
   const tplsByTail = new Map<string, EventTemplate[]>();
   for (const tpl of templates) {
     if (!tpl.active) continue;
     if (!isMissingInspectionTemplate(tpl)) continue;
     for (const tail of tpl.tailNumbers) {
+      if (outOfProductionTails.has(tail)) continue;
       const arr = tplsByTail.get(tail) ?? [];
       arr.push(tpl);
       tplsByTail.set(tail, arr);
