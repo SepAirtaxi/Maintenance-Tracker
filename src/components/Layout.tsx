@@ -4,9 +4,11 @@ import { cn } from "@/lib/utils";
 import {
   CalendarDays,
   Eye,
+  FileText,
   LayoutGrid,
   LogOut,
   Settings,
+  Tag,
   Telescope,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -97,9 +99,25 @@ const navItems = [
     viewerVisible: false,
   },
   {
+    to: "/statement",
+    label: "Statement",
+    code: "05",
+    icon: FileText,
+    end: false,
+    viewerVisible: false,
+  },
+  {
+    to: "/labels",
+    label: "Labels",
+    code: "06",
+    icon: Tag,
+    end: false,
+    viewerVisible: false,
+  },
+  {
     to: "/settings",
     label: "Settings",
-    code: "04",
+    code: "07",
     icon: Settings,
     end: false,
     viewerVisible: false,

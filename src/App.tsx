@@ -6,6 +6,8 @@ import OverviewPage from "@/pages/OverviewPage";
 import CalendarPage from "@/pages/CalendarPage";
 import SettingsPage from "@/pages/SettingsPage";
 import ForecastPage from "@/pages/ForecastPage";
+import StatementPage from "@/pages/StatementPage";
+import LabelsPage from "@/pages/LabelsPage";
 import LoginPage from "@/pages/LoginPage";
 import ProfilePage from "@/pages/ProfilePage";
 
@@ -36,6 +38,22 @@ export default function App() {
             element={
               <ProtectedRoute membersOnly>
                 <SettingsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/statement"
+            element={
+              <ProtectedRoute membersOnly>
+                <StatementPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/labels"
+            element={
+              <ProtectedRoute membersOnly>
+                <LabelsPage />
               </ProtectedRoute>
             }
           />
