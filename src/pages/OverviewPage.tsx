@@ -36,7 +36,11 @@ import MissingDialog from "@/components/overview/MissingDialog";
 import HistoryDialog from "@/components/overview/HistoryDialog";
 import { useAuth } from "@/context/AuthContext";
 import { subscribeAircraft } from "@/services/aircraft";
-import { subscribeEvents } from "@/services/events";
+import {
+  clearEventBookingWindow,
+  setEventBookingWindow,
+  subscribeEvents,
+} from "@/services/events";
 import { subscribeDefects } from "@/services/defects";
 import {
   clearBookingReminder,
@@ -559,6 +563,9 @@ export default function OverviewPage() {
     return set;
   }, [aircraft]);
 
+  // Full list, including "snoozed" rows (held back by a lower per-event window).
+  // The dialog shows these so they stay adjustable; count + banners use only the
+  // active subset below.
   const needsBookingMatches: NeedsBookingMatch[] = useMemo(() => {
     if (!aircraft) return [];
     const ttafByTail = new Map<string, number | null>();
@@ -573,22 +580,39 @@ export default function OverviewPage() {
     );
   }, [aircraft, allEvents, airworthyTails, bookedIds.eventIds]);
 
+  const activeBookingMatches: NeedsBookingMatch[] = useMemo(
+    () => needsBookingMatches.filter((m) => !m.snoozed),
+    [needsBookingMatches],
+  );
+
   const needsBookingByTail: Map<string, NeedsBookingMatch[]> = useMemo(() => {
     const m = new Map<string, NeedsBookingMatch[]>();
-    for (const match of needsBookingMatches) {
+    for (const match of activeBookingMatches) {
       const arr = m.get(match.event.tailNumber) ?? [];
       arr.push(match);
       m.set(match.event.tailNumber, arr);
     }
     return m;
-  }, [needsBookingMatches]);
+  }, [activeBookingMatches]);
+
+  const handleSetBookingWindow = async (
+    eventId: string,
+    hours: number | null,
+  ) => {
+    if (hours == null) {
+      await clearEventBookingWindow(eventId);
+    } else {
+      await setEventBookingWindow(eventId, hours);
+    }
+  };
 
   const missingEventMatches: MissingEventMatch[] = useMemo(
     () => getMissingEventMatches(allTemplates, allEvents, airworthyTails),
     [allTemplates, allEvents, airworthyTails],
   );
 
-  const missingTotal = needsBookingMatches.length + missingEventMatches.length;
+  const missingTotal =
+    activeBookingMatches.length + missingEventMatches.length;
 
   // Reconciliation sweep: raises one booking-reminder banner per tail that has
   // qualifying events, and cleans up *acknowledged* banners for any tail that
@@ -1269,6 +1293,7 @@ export default function OverviewPage() {
         readOnly={isViewer}
         onBook={openAddBooking}
         onAddEvent={openAddEvent}
+        onSetThreshold={handleSetBookingWindow}
       />
     </div>
   );

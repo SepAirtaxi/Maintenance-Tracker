@@ -144,6 +144,15 @@ export type NeedsBookingMatch = {
   reason: NeedsBookingReason;
   // Minutes remaining when reason === "hours"; days remaining when "days".
   remaining: number;
+  // Effective hours-window applied to this event, in minutes (the per-event
+  // override if set, else the fleet default). Null for date-only ("days")
+  // matches. Lets the dialog show "warns at 5h" and pre-fill the editor.
+  thresholdMinutes: number | null;
+  // True when the event sits inside the fleet-DEFAULT window but a lower
+  // per-event override is holding the active warning back. Snoozed rows are
+  // shown (muted) in the Missing dialog so the planner can still see and adjust
+  // them, but they don't count toward the badge and don't raise banners.
+  snoozed: boolean;
 };
 
 // Returns the events that should trigger the "needs booking" reminder. An
@@ -181,8 +190,32 @@ export function getNeedsBookingMatches(
         ttafByTail.get(e.tailNumber) ?? null,
       );
       if (minutes == null) continue;
-      if (minutes < 0 || minutes > NEEDS_BOOKING_MINUTES_THRESHOLD) continue;
-      out.push({ event: e, reason: "hours", remaining: minutes });
+      if (minutes < 0) continue;
+      const effective =
+        e.bookingWindowOverrideMinutes ?? NEEDS_BOOKING_MINUTES_THRESHOLD;
+      if (minutes <= effective) {
+        // Inside the effective window → an active warning.
+        out.push({
+          event: e,
+          reason: "hours",
+          remaining: minutes,
+          thresholdMinutes: effective,
+          snoozed: false,
+        });
+      } else if (
+        e.bookingWindowOverrideMinutes != null &&
+        minutes <= NEEDS_BOOKING_MINUTES_THRESHOLD
+      ) {
+        // A lower override is suppressing what would otherwise be an active
+        // warning. Keep it visible-but-quiet so it stays adjustable.
+        out.push({
+          event: e,
+          reason: "hours",
+          remaining: minutes,
+          thresholdMinutes: effective,
+          snoozed: true,
+        });
+      }
       continue;
     }
 
@@ -190,7 +223,13 @@ export function getNeedsBookingMatches(
       const days = computeDaysLeft(e);
       if (days == null) continue;
       if (days < 0 || days > NEEDS_BOOKING_DAYS_THRESHOLD) continue;
-      out.push({ event: e, reason: "days", remaining: days });
+      out.push({
+        event: e,
+        reason: "days",
+        remaining: days,
+        thresholdMinutes: null,
+        snoozed: false,
+      });
     }
   }
   return out;

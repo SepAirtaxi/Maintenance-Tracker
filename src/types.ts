@@ -179,6 +179,13 @@ export type MaintenanceEvent = {
   // interval — see `services/events.ts#extendEvent`. Null = no extension.
   // The original due time is never mutated; render time adds these together.
   extensionMinutes: number | null;
+  // Per-event override of the "needs booking" warning window, in minutes. An
+  // ad-hoc setting the planner enters from the Missing dialog when they know a
+  // particular airframe won't reach its limit on the fleet-default schedule
+  // (e.g. a low-utilisation helicopter warned at 5h instead of the usual 20h).
+  // Null = use the fleet default (NEEDS_BOOKING_MINUTES_THRESHOLD). Only applies
+  // to hours-based events; date-only warnings are certain and aren't overridden.
+  bookingWindowOverrideMinutes: number | null;
   // Planner estimate. `estimated` = the planner has reviewed this item;
   // `estimatedManHours` = work-time guess (man-hours, NOT flight hours).
   // The two are independent so an item can be reviewed without committing to

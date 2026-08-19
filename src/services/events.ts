@@ -22,6 +22,7 @@ import {
 } from "@/services/aircraft";
 import { clearNotification } from "@/services/notifications";
 import { snapshotItemResolution } from "@/services/bookings";
+import { NEEDS_BOOKING_MINUTES_THRESHOLD } from "@/lib/eventStatus";
 import type { EventStatus, MaintenanceEvent } from "@/types";
 
 const eventsCol = () => collection(db, "events");
@@ -64,6 +65,8 @@ function docToEvent(
     source: (data.source as "import" | "manual") ?? "manual",
     extensionMinutes:
       (data.extensionMinutes as number | undefined) ?? null,
+    bookingWindowOverrideMinutes:
+      (data.bookingWindowOverrideMinutes as number | null | undefined) ?? null,
     estimated: (data.estimated as boolean | undefined) ?? false,
     estimatedManHours:
       (data.estimatedManHours as number | null | undefined) ?? null,
@@ -116,6 +119,7 @@ export async function createEvent(
     status: statusFromWo(wo),
     source: opts.source,
     extensionMinutes: null,
+    bookingWindowOverrideMinutes: null,
     estimated: false,
     estimatedManHours: null,
     templateId: input.templateId ?? null,
@@ -410,6 +414,82 @@ export async function clearEventExtension(id: string): Promise<void> {
     entity: "event",
     entityId: id,
     summary: `Event extension removed: "${prev.warning}" — was +${prevHours}h`,
+  });
+}
+
+// Renders a booking-window value (minutes) as a compact hours label for audit
+// entries — "5h", "7.5h" — dropping the decimal when it's a whole number.
+function windowHoursLabel(minutes: number): string {
+  const hours = minutes / 60;
+  return `${Number.isInteger(hours) ? hours : hours.toFixed(1)}h`;
+}
+
+// Sets (or replaces) the per-event "needs booking" warning window. `hours` is a
+// positive number that overrides the fleet default
+// (NEEDS_BOOKING_MINUTES_THRESHOLD) for this one event — the ad-hoc "warn me at
+// 5h instead of 20h" the planner sets from the Missing dialog for a
+// low-utilisation airframe. Stored as integer minutes. Use
+// `clearEventBookingWindow` to return to the fleet default.
+export async function setEventBookingWindow(
+  id: string,
+  hours: number,
+): Promise<void> {
+  if (!Number.isFinite(hours) || hours <= 0) {
+    throw new Error("Warning window must be a positive number of hours.");
+  }
+
+  const snap = await getDoc(eventDoc(id));
+  if (!snap.exists()) throw new Error("Event not found.");
+  const prev = docToEvent(id, snap.data());
+  if (prev.resolvedAt) {
+    throw new Error("Cannot set a warning window on a closed event.");
+  }
+
+  const minutes = Math.round(hours * 60);
+  if (minutes === prev.bookingWindowOverrideMinutes) return;
+
+  await updateDoc(eventDoc(id), {
+    bookingWindowOverrideMinutes: minutes,
+    updatedAt: serverTimestamp(),
+  });
+
+  const defaultLabel = windowHoursLabel(NEEDS_BOOKING_MINUTES_THRESHOLD);
+  const summary =
+    prev.bookingWindowOverrideMinutes != null
+      ? `Booking warning window updated: "${prev.warning}" — was ${windowHoursLabel(
+          prev.bookingWindowOverrideMinutes,
+        )}, now ${windowHoursLabel(minutes)}`
+      : `Booking warning window set: "${prev.warning}" — warns at ${windowHoursLabel(
+          minutes,
+        )} left (fleet default ${defaultLabel})`;
+
+  logAudit(prev.tailNumber, {
+    action: "update",
+    entity: "event",
+    entityId: id,
+    summary,
+  });
+}
+
+// Clears a per-event booking-window override, returning the event to the fleet
+// default. No-op (and no audit entry) when no override was set.
+export async function clearEventBookingWindow(id: string): Promise<void> {
+  const snap = await getDoc(eventDoc(id));
+  if (!snap.exists()) throw new Error("Event not found.");
+  const prev = docToEvent(id, snap.data());
+  if (prev.bookingWindowOverrideMinutes == null) return;
+
+  const prevLabel = windowHoursLabel(prev.bookingWindowOverrideMinutes);
+  await updateDoc(eventDoc(id), {
+    bookingWindowOverrideMinutes: null,
+    updatedAt: serverTimestamp(),
+  });
+
+  logAudit(prev.tailNumber, {
+    action: "update",
+    entity: "event",
+    entityId: id,
+    summary: `Booking warning window reset to fleet default: "${prev.warning}" — was ${prevLabel}`,
   });
 }
 
