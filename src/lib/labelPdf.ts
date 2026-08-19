@@ -26,7 +26,6 @@ const PER_PAGE = COLS * ROWS;
 
 const INK: [number, number, number] = [26, 26, 26];
 const MUTED: [number, number, number] = [130, 130, 130];
-const HAIR: [number, number, number] = [150, 150, 150];
 
 // Approx. mm height of a line of text at a given point size (1pt = 0.3528mm).
 const PT_TO_MM = 0.3528;
@@ -74,15 +73,8 @@ function drawLabel(pdf: jsPDF, x: number, y: number, label: FolderLabel) {
     baseline: "top",
   });
 
-  // hairline divider between identity and the WO/task ledger. Sits clear of the
-  // tail's baseline with a comfortable gap above, grouped to the WO zone below.
-  const divY = y + 20.5;
-  pdf.setDrawColor(HAIR[0], HAIR[1], HAIR[2]);
-  pdf.setLineWidth(0.2);
-  pdf.line(left, divY, x + LABEL_W - pad, divY);
-
   // --- Work order (middle zone) ---
-  const woEyeY = divY + 2.5;
+  const woEyeY = y + 23;
   eyebrow("Work Order", woEyeY);
   setInk("bold", 21, INK);
   const woText = label.wo ? "WO " + label.wo : "WO ————";
