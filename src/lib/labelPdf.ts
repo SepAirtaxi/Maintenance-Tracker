@@ -27,8 +27,25 @@ const PER_PAGE = COLS * ROWS;
 const INK: [number, number, number] = [26, 26, 26];
 const MUTED: [number, number, number] = [130, 130, 130];
 
-// Approx. mm height of a line of text at a given point size (1pt = 0.3528mm).
+// mm per point; cap-height ≈ 0.72em, line advance ≈ 1.16em for helvetica bold.
 const PT_TO_MM = 0.3528;
+const CAP = 0.72;
+const LINE = 1.16;
+const capH = (pt: number) => pt * PT_TO_MM * CAP;
+const lineH = (pt: number) => pt * PT_TO_MM * LINE;
+
+// Type scale.
+const EYEBROW_PT = 7; // all titles, identical
+const VALUE_MAX_PT = 30; // aircraft + WO share one size, capped here
+const TASK_MAX_PT = 20; // task can be smaller, never larger than the values
+const TITLE_TO_VALUE = 2; // gap below every title (uniform)
+
+// One title + its value, pre-measured so the layout can place blocks by height.
+interface Block {
+  title: string;
+  size: number;
+  lines: string[];
+}
 
 function drawLabel(pdf: jsPDF, x: number, y: number, label: FolderLabel) {
   const pad = 6;
@@ -40,75 +57,88 @@ function drawLabel(pdf: jsPDF, x: number, y: number, label: FolderLabel) {
   pdf.setLineWidth(0.3);
   pdf.rect(x, y, LABEL_W, LABEL_H);
 
-  const setInk = (
-    style: string,
-    size: number,
-    color: [number, number, number],
-  ) => {
-    pdf.setFont("helvetica", style);
+  const setInk = (size: number, color: [number, number, number]) => {
+    pdf.setFont("helvetica", "bold");
     pdf.setFontSize(size);
     pdf.setTextColor(color[0], color[1], color[2]);
   };
 
-  const eyebrow = (text: string, ty: number) => {
-    setInk("bold", 7, MUTED);
-    // fake letter-spacing for the small-caps spec look
-    pdf.text(text.toUpperCase(), left, ty, {
+  const widthAt = (text: string, size: number) => {
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(size);
+    return pdf.getTextWidth(text);
+  };
+
+  // --- Content ---
+  const tailText = label.tail.toUpperCase() || "OY-";
+  const woText = label.wo ? "WO " + label.wo : "WO ————";
+  const taskText = (label.task || "").toUpperCase();
+
+  // Aircraft + Work Order share one size: the largest (≤ cap) that fits both.
+  let valueSize = VALUE_MAX_PT;
+  while (
+    valueSize > 12 &&
+    (widthAt(tailText, valueSize) > innerW || widthAt(woText, valueSize) > innerW)
+  ) {
+    valueSize -= 1;
+  }
+
+  // Task is adaptive: largest size (≤ its own cap and the value size) that fits
+  // on one line; if nothing fits on one line, the largest that fits on two.
+  const taskCap = Math.min(TASK_MAX_PT, valueSize);
+  let taskSize = 9;
+  let taskLines: string[] = [taskText];
+  const chooseTask = (maxLines: number) => {
+    for (let s = taskCap; s >= 9; s--) {
+      pdf.setFontSize(s);
+      const lines = pdf.splitTextToSize(taskText, innerW);
+      if (lines.length <= maxLines) {
+        taskSize = s;
+        taskLines = lines;
+        return true;
+      }
+    }
+    return false;
+  };
+  if (!chooseTask(1) && !chooseTask(2)) {
+    // pathological: force smallest size, keep first two lines
+    pdf.setFontSize(9);
+    taskSize = 9;
+    taskLines = pdf.splitTextToSize(taskText, innerW).slice(0, 2);
+  }
+
+  const blocks: Block[] = [
+    { title: "Aircraft", size: valueSize, lines: [tailText] },
+    { title: "Work Order", size: valueSize, lines: [woText] },
+    { title: "Task", size: taskSize, lines: taskLines },
+  ];
+
+  // Height of one block = title + gap + value line(s).
+  const eyeH = capH(EYEBROW_PT);
+  const blockHeight = (b: Block) =>
+    eyeH + TITLE_TO_VALUE + capH(b.size) + (b.lines.length - 1) * lineH(b.size);
+
+  // Distribute the leftover height as ONE uniform gap that appears above every
+  // block and below the last — so top pad, inter-block gaps and bottom pad are
+  // all equal, and every title has the same space above and below it.
+  const used = blocks.reduce((sum, b) => sum + blockHeight(b), 0);
+  const gap = Math.max((LABEL_H - used) / (blocks.length + 1), 2);
+
+  let cursor = y + gap;
+  for (const b of blocks) {
+    setInk(EYEBROW_PT, MUTED);
+    pdf.text(b.title.toUpperCase(), left, cursor, {
       baseline: "top",
       charSpace: 0.6,
     });
-  };
 
-  // Fixed vertical rhythm. Three stacked zones (aircraft / work order / task)
-  // spread down the full height. Every eyebrow sits EYE_GAP above its value so
-  // the label→value pairing reads consistently; the larger gaps between zones
-  // give each section room to breathe without any overlap.
-  const EYE_GAP = 4; // eyebrow top → value top
-
-  // --- Aircraft / tail number (top zone) ---
-  const aircraftEyeY = y + 5;
-  eyebrow("Aircraft", aircraftEyeY);
-  setInk("bold", 30, INK);
-  pdf.text(label.tail.toUpperCase() || "OY-", left, aircraftEyeY + EYE_GAP, {
-    baseline: "top",
-  });
-
-  // --- Work order (middle zone) ---
-  const woEyeY = y + 23;
-  eyebrow("Work Order", woEyeY);
-  setInk("bold", 21, INK);
-  const woText = label.wo ? "WO " + label.wo : "WO ————";
-  pdf.text(woText, left, woEyeY + EYE_GAP, { baseline: "top" });
-
-  // --- Task description (bottom zone, adaptive) ---
-  // The task usually runs 1–2 lines, so size it up to fill the space when
-  // short and step down only when it actually needs to wrap to a second line.
-  const taskEyeY = y + 35;
-  eyebrow("Task", taskEyeY);
-
-  const taskText = (label.task || "").toUpperCase();
-  const CANDIDATES = [17, 15, 13, 11, 10];
-  let taskSize = CANDIDATES[CANDIDATES.length - 1];
-  let taskLines: string[] = [];
-  for (const size of CANDIDATES) {
-    pdf.setFontSize(size);
-    const lines = pdf.splitTextToSize(taskText, innerW);
-    if (lines.length <= 2) {
-      taskSize = size;
-      taskLines = lines;
-      break;
+    let vy = cursor + eyeH + TITLE_TO_VALUE;
+    setInk(b.size, INK);
+    for (const line of b.lines) {
+      pdf.text(line, left, vy, { baseline: "top" });
+      vy += lineH(b.size);
     }
-    // smallest candidate: accept its first two lines as a last resort
-    taskSize = size;
-    taskLines = lines.slice(0, 2);
-  }
-
-  setInk("bold", taskSize, INK);
-  const lineH = taskSize * PT_TO_MM * 1.18;
-  let ty = taskEyeY + EYE_GAP;
-  for (const line of taskLines) {
-    pdf.text(line, left, ty, { baseline: "top" });
-    ty += lineH;
+    cursor += blockHeight(b) + gap;
   }
 }
 
