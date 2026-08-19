@@ -187,18 +187,15 @@ export default function StatementPage() {
   };
 
   return (
-    <div>
-      <div className="border border-foreground/20 bg-card p-6 sm:p-8">
-      <div className="mx-auto max-w-2xl space-y-8">
-      <header className="space-y-1 text-center">
-        <div className="flex items-center justify-center gap-3">
-          <span className="h-px w-8 bg-foreground/15" />
+    <div className="space-y-6">
+      <header className="space-y-1">
+        <div className="flex items-center gap-3">
           <span className="font-mono text-[10px] uppercase tracking-spec text-muted-foreground">
             05 / Temporary Statement
           </span>
-          <span className="h-px w-8 bg-foreground/15" />
+          <span className="h-px flex-1 bg-foreground/15 w-12" />
         </div>
-        <h1 className="font-display text-2xl font-semibold tracking-tight">
+        <h1 className="font-display text-2xl font-semibold tracking-tight leading-none">
           Temporary Maintenance Statement
         </h1>
         <p className="text-sm text-muted-foreground">
@@ -207,6 +204,7 @@ export default function StatementPage() {
         </p>
       </header>
 
+      <div className="mx-auto max-w-2xl space-y-8 border border-foreground/20 bg-card p-6 sm:p-8">
       <Section code="01" title="Aircraft">
         <div className="grid grid-cols-2 gap-4">
           <label className="block">
@@ -306,14 +304,13 @@ export default function StatementPage() {
         />
       </Section>
 
-      <div className="flex flex-col items-center gap-3 border-t border-foreground/15 pt-6">
+      <div className="flex flex-col items-start gap-3 border-t border-foreground/15 pt-6">
         <Button size="lg" onClick={onGenerate} disabled={generating}>
           {generating ? "Generating…" : "Generate PDF"}
         </Button>
         <span className="text-xs text-muted-foreground">
           Saves <span className="font-mono">TEMP MS {doc.reg} {new Date().toISOString().slice(0, 10)}.pdf</span>
         </span>
-      </div>
       </div>
       </div>
     </div>

@@ -38,18 +38,15 @@ export default function LabelsPage() {
   };
 
   return (
-    <div>
-      <div className="border border-foreground/20 bg-card p-6 sm:p-8">
-      <div className="mx-auto max-w-3xl space-y-8">
-      <header className="space-y-1 text-center">
-        <div className="flex items-center justify-center gap-3">
-          <span className="h-px w-8 bg-foreground/15" />
+    <div className="space-y-6">
+      <header className="space-y-1">
+        <div className="flex items-center gap-3">
           <span className="font-mono text-[10px] uppercase tracking-spec text-muted-foreground">
             06 / Folder Labels
           </span>
-          <span className="h-px w-8 bg-foreground/15" />
+          <span className="h-px flex-1 bg-foreground/15 w-12" />
         </div>
-        <h1 className="font-display text-2xl font-semibold tracking-tight">
+        <h1 className="font-display text-2xl font-semibold tracking-tight leading-none">
           Folder Labels
         </h1>
         <p className="text-sm text-muted-foreground">
@@ -58,6 +55,7 @@ export default function LabelsPage() {
         </p>
       </header>
 
+      <div className="mx-auto max-w-3xl space-y-8 border border-foreground/20 bg-card p-6 sm:p-8">
       {/* Column header */}
       <div className="space-y-2.5">
         <div className="hidden grid-cols-[2.5rem_8rem_7rem_1fr_2.25rem] items-center gap-3 px-1 text-[10px] font-bold uppercase tracking-spec text-muted-foreground sm:grid">
@@ -112,8 +110,8 @@ export default function LabelsPage() {
         ))}
       </div>
 
-      <div className="flex flex-col items-center gap-4 border-t border-foreground/15 pt-6">
-        <div className="flex flex-wrap items-center justify-center gap-4">
+      <div className="flex flex-col items-start gap-4 border-t border-foreground/15 pt-6">
+        <div className="flex flex-wrap items-center gap-4">
           <Button variant="outline" size="sm" onClick={addRow}>
             <Plus className="h-3.5 w-3.5" />
             Add label
@@ -125,7 +123,6 @@ export default function LabelsPage() {
         <span className="text-xs text-muted-foreground">
           {ready.length} of {rows.length} label{rows.length === 1 ? "" : "s"} ready
         </span>
-      </div>
       </div>
       </div>
     </div>
