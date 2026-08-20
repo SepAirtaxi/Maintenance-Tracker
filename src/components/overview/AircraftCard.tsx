@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { format } from "date-fns";
 import {
   Ban,
   CalendarDays,
@@ -6,6 +7,7 @@ import {
   Gauge,
   History,
   Pencil,
+  PlaneTakeoff,
   Plus,
   Printer,
   ShieldAlert,
@@ -17,7 +19,7 @@ import {
 import { cn } from "@/lib/utils";
 import { formatBookingRange, formatDate } from "@/lib/format";
 import { formatMinutesAsDuration } from "@/lib/time";
-import { type Severity } from "@/lib/eventStatus";
+import { type CloseoutCandidate, type Severity } from "@/lib/eventStatus";
 import { liftGrounding } from "@/services/aircraft";
 import { isBookingActive } from "@/services/bookings";
 import {
@@ -53,6 +55,9 @@ type Props = {
   status: AircraftStatus;
   bookedEventIds: ReadonlySet<string>;
   bookedDefectIds: ReadonlySet<string>;
+  // Open, work-ordered events on this tail whose hangar booking has already
+  // ended — the plane has rolled out but the WO hasn't been closed here yet.
+  closeouts: CloseoutCandidate[];
   locationsById: ReadonlyMap<string, Location>;
   readOnly?: boolean;
   onOpenEditLog: () => void;
@@ -98,6 +103,7 @@ export default function AircraftCard({
   status,
   bookedEventIds,
   bookedDefectIds,
+  closeouts,
   locationsById,
   readOnly = false,
   onOpenEditLog,
@@ -373,6 +379,13 @@ export default function AircraftCard({
           note={aircraft.note}
           readOnly={readOnly}
           onEdit={onEditNote}
+        />
+      )}
+      {closeouts.length > 0 && (
+        <CloseoutBanner
+          candidates={closeouts}
+          readOnly={readOnly}
+          onResolve={onResolveEvent}
         />
       )}
 
@@ -845,6 +858,81 @@ function NoteBanner({
           <Pencil className="h-3 w-3" />
         </button>
       )}
+    </div>
+  );
+}
+
+// "Rolled out — awaiting closeout" strip. Deliberately NOT a severity color:
+// nothing is wrong, this is housekeeping. A solid dark instrument-style left
+// rail makes it read as a deliberate to-do that stands out against the paper
+// card without borrowing red/yellow/green. Each candidate is its own
+// click-through that opens the resolve dialog for that event; the strip
+// vanishes the moment the event is resolved (it's derived, never dismissed).
+function CloseoutBanner({
+  candidates,
+  readOnly,
+  onResolve,
+}: {
+  candidates: CloseoutCandidate[];
+  readOnly: boolean;
+  onResolve: (event: MaintenanceEvent) => void;
+}) {
+  return (
+    <div className="flex items-stretch border-t border-foreground/10 bg-foreground/[0.04] text-foreground/85">
+      <div className="flex flex-col items-center justify-center border-r border-foreground/15 bg-foreground px-2.5 py-1.5 text-background">
+        <PlaneTakeoff className="h-3.5 w-3.5 mb-0.5" />
+        <span className="text-[8px] font-bold uppercase tracking-spec">
+          Rolled out
+        </span>
+      </div>
+      <div className="flex flex-1 flex-col min-w-0 divide-y divide-foreground/10">
+        {candidates.map((c) => {
+          const wo = c.event.workOrderNumber?.trim();
+          const body = (
+            <>
+              <span className="text-[10px] font-bold uppercase tracking-spec shrink-0">
+                Awaiting closeout:
+              </span>
+              {wo && (
+                <span className="font-mono text-[11px] opacity-80 shrink-0">
+                  WO {wo}
+                </span>
+              )}
+              <span
+                className="text-xs font-medium min-w-0 truncate"
+                title={c.event.warning}
+              >
+                {c.event.warning}
+              </span>
+              <span className="ml-auto shrink-0 font-mono text-[10px] tabular-nums text-muted-foreground whitespace-nowrap">
+                Visit ended {format(c.bookingEndedAt, "dd.MM")}
+              </span>
+            </>
+          );
+          if (readOnly) {
+            return (
+              <div
+                key={c.event.id}
+                className="flex flex-1 items-center gap-2 px-3 py-1.5 min-w-0"
+              >
+                {body}
+              </div>
+            );
+          }
+          return (
+            <button
+              key={c.event.id}
+              type="button"
+              onClick={() => onResolve(c.event)}
+              title="Confirm the work order is closed and resolve this event"
+              className="flex flex-1 items-center gap-2 px-3 py-1.5 min-w-0 text-left transition-colors hover:bg-foreground/[0.07]"
+            >
+              {body}
+              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-foreground/50" />
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

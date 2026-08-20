@@ -397,3 +397,66 @@ export function buildBookedIdSets(
   }
   return { eventIds, defectIds };
 }
+
+// ─── Closeout candidates ─────────────────────────────────────────────────
+// An open, work-ordered event whose linked hangar booking has already ended
+// (the aircraft has "rolled out") but which hasn't been resolved in the
+// tracker yet. Surfaces the housekeeping nudge: the visit is over on paper, so
+// confirm the work order is closed and resolve the event. Purely derived from
+// live state — it clears the instant the event is resolved, and it never
+// persists or requires acknowledgement (unlike the ack-based notification
+// banners). The app never auto-resolves; it only prompts.
+//
+// Qualifying conditions (all required):
+//   • the event is open (not resolved)
+//   • the event has a work-order number
+//   • the event is NOT currently booked — reuse `bookedEventIds`, which only
+//     holds events on an active/future booking, so a re-booked event drops out
+//     automatically and an event still in the hangar today doesn't nudge
+//   • the event is linked to at least one booking with a fixed end date (`to`)
+//     that is before today. Open-ended bookings (`to == null`) never qualify —
+//     there is no confirmed rollout. This fires the day after the booking's
+//     last date, the same boundary at which `buildBookedIdSets` stops counting
+//     the booking as live.
+export type CloseoutCandidate = {
+  event: MaintenanceEvent;
+  // End date of the most recent ended booking linked to this event.
+  bookingEndedAt: Date;
+};
+
+export function getCloseoutCandidates(
+  events: ReadonlyArray<MaintenanceEvent>,
+  bookings: ReadonlyArray<Booking>,
+  bookedEventIds: ReadonlySet<string>,
+  now: Date = new Date(),
+): CloseoutCandidate[] {
+  const startOfToday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+  ).getTime();
+
+  // eventId → most recent ended-booking end time (millis). Only ended,
+  // fixed-end bookings count; open-ended and still-live ones are skipped.
+  const endedByEvent = new Map<string, number>();
+  for (const b of bookings) {
+    if (b.to == null) continue; // open-ended → no confirmed rollout
+    const toMs = b.to.toMillis();
+    if (toMs >= startOfToday) continue; // still live (active or future)
+    for (const eid of b.eventIds ?? []) {
+      const prev = endedByEvent.get(eid);
+      if (prev == null || toMs > prev) endedByEvent.set(eid, toMs);
+    }
+  }
+
+  const out: CloseoutCandidate[] = [];
+  for (const e of events) {
+    if (e.resolvedAt) continue;
+    if (!e.workOrderNumber?.trim()) continue;
+    if (bookedEventIds.has(e.id)) continue; // still on an active/future slot
+    const endedMs = endedByEvent.get(e.id);
+    if (endedMs == null) continue;
+    out.push({ event: e, bookingEndedAt: new Date(endedMs) });
+  }
+  return out;
+}

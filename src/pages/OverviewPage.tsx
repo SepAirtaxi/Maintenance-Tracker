@@ -5,6 +5,7 @@ import {
   ArrowUp,
   Ban,
   CalendarClock,
+  PlaneTakeoff,
   RefreshCw,
   ShieldOff,
 } from "lucide-react";
@@ -33,6 +34,7 @@ import EstimateDialog, {
 } from "@/components/overview/EstimateDialog";
 import UpcomingEventsDialog from "@/components/overview/UpcomingEventsDialog";
 import MissingDialog from "@/components/overview/MissingDialog";
+import CloseoutDialog from "@/components/overview/CloseoutDialog";
 import HistoryDialog from "@/components/overview/HistoryDialog";
 import { useAuth } from "@/context/AuthContext";
 import { subscribeAircraft } from "@/services/aircraft";
@@ -64,11 +66,13 @@ import { subscribeEventTemplates } from "@/services/eventTemplates";
 import {
   buildBookedIdSets,
   daysSinceDeferred,
+  getCloseoutCandidates,
   getDeferralStatus,
   getEventSeverity,
   getMissingEventMatches,
   getNeedsBookingMatches,
   worstSeverity,
+  type CloseoutCandidate,
   type MissingEventMatch,
   type NeedsBookingMatch,
   type Severity,
@@ -400,6 +404,7 @@ export default function OverviewPage() {
   const [historyTail, setHistoryTail] = useState<string | null>(null);
   const [upcomingOpen, setUpcomingOpen] = useState(false);
   const [missingOpen, setMissingOpen] = useState(false);
+  const [closeoutOpen, setCloseoutOpen] = useState(false);
 
   useEffect(() => subscribeAircraft(setAircraft), []);
   useEffect(() => subscribeEvents(setAllEvents), []);
@@ -630,6 +635,24 @@ export default function OverviewPage() {
 
   const missingTotal =
     activeBookingMatches.length + missingEventMatches.length;
+
+  // Rolled-out events awaiting closeout: open + work-ordered + their hangar
+  // booking already ended. Reuses bookedIds so an event still on a live slot
+  // (or re-booked) never appears here. Grouped by tail for the card banners.
+  const closeoutCandidates: CloseoutCandidate[] = useMemo(
+    () => getCloseoutCandidates(allEvents, allBookings, bookedIds.eventIds),
+    [allEvents, allBookings, bookedIds.eventIds],
+  );
+
+  const closeoutByTail: Map<string, CloseoutCandidate[]> = useMemo(() => {
+    const m = new Map<string, CloseoutCandidate[]>();
+    for (const c of closeoutCandidates) {
+      const arr = m.get(c.event.tailNumber) ?? [];
+      arr.push(c);
+      m.set(c.event.tailNumber, arr);
+    }
+    return m;
+  }, [closeoutCandidates]);
 
   // Reconciliation sweep: raises one booking-reminder banner per tail that has
   // qualifying events, and cleans up *acknowledged* banners for any tail that
@@ -948,6 +971,7 @@ export default function OverviewPage() {
       status={s.status}
       bookedEventIds={bookedIds.eventIds}
       bookedDefectIds={bookedIds.defectIds}
+      closeouts={closeoutByTail.get(s.aircraft.tailNumber) ?? []}
       locationsById={locationsById}
       readOnly={isViewer}
       onOpenEditLog={() => setHistoryTail(s.aircraft.tailNumber)}
@@ -1049,6 +1073,20 @@ export default function OverviewPage() {
               </span>
             )}
           </Button>
+          {closeoutCandidates.length > 0 && (
+            <Button
+              onClick={() => setCloseoutOpen(true)}
+              size="sm"
+              variant="outline"
+              title="Aircraft that rolled out of the hangar with an open work order"
+            >
+              <PlaneTakeoff className="h-3.5 w-3.5" />
+              Closeout
+              <span className="ml-1 inline-flex items-center justify-center bg-accent text-accent-foreground px-1.5 min-w-[1.25rem] h-5 text-[10px] font-bold tabular-nums">
+                {closeoutCandidates.length}
+              </span>
+            </Button>
+          )}
           {!isViewer && (
             <Button
               onClick={() => void handleSync()}
@@ -1311,6 +1349,14 @@ export default function OverviewPage() {
         onBook={openAddBooking}
         onAddEvent={openAddEvent}
         onSetThreshold={handleSetBookingWindow}
+      />
+      <CloseoutDialog
+        open={closeoutOpen}
+        onOpenChange={setCloseoutOpen}
+        candidates={closeoutCandidates}
+        readOnly={isViewer}
+        onResolve={setResolveEventTarget}
+        onJump={jumpToTail}
       />
     </div>
   );
