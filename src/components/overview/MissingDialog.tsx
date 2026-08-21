@@ -623,7 +623,7 @@ function Section({
                 </span>
                 <span
                   className={cn(
-                    "inline-flex items-center self-start border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-spec",
+                    "inline-flex items-center border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-spec",
                     "border-sev-yellow-edge/60 bg-sev-yellow-bg text-sev-yellow-fg",
                   )}
                 >
