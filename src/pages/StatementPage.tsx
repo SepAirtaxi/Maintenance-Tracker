@@ -22,6 +22,19 @@ function parseNum(v: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+// ERP work orders read MX<yy>-<sequence>, e.g. MX26-2 — the sequence is not
+// zero-padded. The field takes whatever you type or paste and only uppercases
+// it, so an unexpected WO shape still reaches the PDF rather than being
+// silently swapped for the blank.
+function normalizeWo(v: string): string {
+  return v.toUpperCase();
+}
+// Prefix for the current year, used for the input placeholder and for the
+// fill-in-by-hand blank printed when the field is left empty.
+function woPrefix(today: Date): string {
+  return `MX${String(today.getFullYear() % 100).padStart(2, "0")}`;
+}
+
 // Section wrapper — small-caps numbered eyebrow + hairline rule, per the
 // Hangar design language.
 function Section({
@@ -162,8 +175,6 @@ export default function StatementPage() {
     if (ldgsN !== null && addC !== null)
       dueC = String(Math.round(ldgsN) + Math.round(addC));
 
-    const woClean = wo.replace(/\D/g, "");
-
     return {
       reg: reg.trim().toUpperCase() || "OY-",
       ttaf: ttafN !== null ? fmtHours(ttafN) : "—",
@@ -172,7 +183,7 @@ export default function StatementPage() {
       dueH,
       dueD: dueD ? fmtDate(dueD) : "—",
       dueC,
-      wo: woClean.length === 4 ? woClean : "XXXX",
+      wo: wo.trim() || `${woPrefix(today)}-____`,
       note,
     };
   }, [reg, ttaf, ldgs, wo, note, hStd, hVal, dStd, dVal, cStd, cVal]);
@@ -221,10 +232,10 @@ export default function StatementPage() {
             <FieldLabel>Work order no.</FieldLabel>
             <Input
               value={wo}
-              onChange={(e) => setWo(e.target.value.replace(/\D/g, ""))}
-              maxLength={4}
-              inputMode="numeric"
-              placeholder="0000"
+              onChange={(e) => setWo(normalizeWo(e.target.value))}
+              maxLength={24}
+              spellCheck={false}
+              placeholder={`${woPrefix(new Date())}-2`}
               className="font-mono"
             />
           </label>

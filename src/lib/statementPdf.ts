@@ -11,7 +11,7 @@ export interface StatementDoc {
   dueH: string; // hours due or "—"
   dueD: string; // calendar due or "—"
   dueC: string; // cycles due or "—"
-  wo: string; // "1234" or "XXXX"
+  wo: string; // whatever was entered, e.g. "MX26-2"; blank fallback when empty
   note: string; // raw note text (may be empty)
 }
 
