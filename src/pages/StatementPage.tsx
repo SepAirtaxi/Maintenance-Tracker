@@ -108,7 +108,9 @@ function FieldLabel({
   action?: React.ReactNode;
 }) {
   return (
-    <span className="mb-1.5 flex min-h-[1.1rem] items-center justify-between gap-2">
+    // min-h holds the row at the chip's height, so fields whose "use current"
+    // affordance is absent still line up with the ones that have it.
+    <span className="mb-1.5 flex min-h-[1.4rem] items-center justify-between gap-2">
       <span className="text-[10px] font-bold uppercase tracking-spec text-muted-foreground">
         {children}
       </span>
