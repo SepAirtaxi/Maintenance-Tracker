@@ -520,7 +520,7 @@ export default function StatementPage() {
               />
             }
           >
-            {variant === "temp" ? "TTAF (hours)" : "Current TTAF (hours)"}
+            Current TTAF (hours)
           </FieldLabel>
           <Input
             type="number"
@@ -543,7 +543,7 @@ export default function StatementPage() {
               />
             }
           >
-            {variant === "temp" ? "Landings" : "Current cycles"}
+            Current cycles
           </FieldLabel>
           <Input
             type="number"
