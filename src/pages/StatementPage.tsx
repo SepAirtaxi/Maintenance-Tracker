@@ -134,7 +134,7 @@ function UseCurrent({
       type="button"
       onClick={onApply}
       title={`${label}: ${value}`}
-      className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-spec text-muted-foreground transition-colors hover:text-primary"
+      className="inline-flex items-center gap-1 border border-foreground/20 bg-secondary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-spec text-secondary-foreground transition-colors hover:border-foreground/60 hover:bg-accent hover:text-accent-foreground"
     >
       <RefreshCw className="h-3 w-3" />
       {label}
