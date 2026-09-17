@@ -10,7 +10,8 @@ import {
   type StatementDoc,
 } from "@/lib/statementPdf";
 import { subscribeAircraft, normaliseTailNumber } from "@/services/aircraft";
-import type { Aircraft } from "@/types";
+import { useAuth } from "@/context/AuthContext";
+import type { Aircraft, UserProfile } from "@/types";
 
 function fmtDate(d: Date): string {
   return d.toLocaleDateString("en-US", {
@@ -44,8 +45,8 @@ function woPrefix(today: Date): string {
   return `MX${String(today.getFullYear() % 100).padStart(2, "0")}`;
 }
 
-// ---- DD-MM-YYYY handling for the actual statement's calendar deadline ------
-// Typed as digits; dashes are inserted for you. The PDF still prints the
+// ---- DD-MM-YYYY handling for every calendar deadline on the page ----------
+// Typed as digits; dashes are inserted for you. Both statements print the
 // long-form "Sep 17, 2026".
 function maskDmy(v: string): string {
   const d = v.replace(/\D/g, "").slice(0, 8);
@@ -71,6 +72,15 @@ function toIso(d: Date): string {
 function isoToDmy(iso: string): string {
   const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   return m ? `${m[3]}-${m[2]}-${m[1]}` : "";
+}
+
+// Who the PDF credits as the issuer. Members are held at the profile setup
+// gate until they have a display name, so the initials-only fallback should
+// only ever show for a profile that hasn't loaded yet.
+function issuerLabel(profile: UserProfile | null): string {
+  if (!profile) return "—";
+  const name = (profile.displayName ?? "").trim();
+  return name ? `${name} (${profile.initials})` : profile.initials;
 }
 
 // Section wrapper — small-caps numbered eyebrow + hairline rule, per the
@@ -218,21 +228,15 @@ function DueRow({
   standardLabel,
   standard,
   onStandardChange,
-  manualValue,
-  onManualChange,
-  manualType,
-  manualPlaceholder,
   computed,
+  children,
 }: {
   name: string;
   standardLabel: string;
   standard: boolean;
   onStandardChange: (v: boolean) => void;
-  manualValue: string;
-  onManualChange: (v: string) => void;
-  manualType: "number" | "date";
-  manualPlaceholder?: string;
   computed: string;
+  children: React.ReactNode;
 }) {
   return (
     <div className="border border-foreground/15 bg-background p-3">
@@ -260,17 +264,7 @@ function DueRow({
           {computed}
         </span>
       </div>
-      {!standard && (
-        <div className="mt-3 pl-24">
-          <Input
-            type={manualType}
-            value={manualValue}
-            onChange={(e) => onManualChange(e.target.value)}
-            placeholder={manualPlaceholder}
-            className="font-mono"
-          />
-        </div>
-      )}
+      {!standard && <div className="mt-3 pl-24">{children}</div>}
     </div>
   );
 }
@@ -323,7 +317,7 @@ export default function StatementPage() {
   // Shared across both variants — same aircraft, same WO, same readings.
   const [reg, setReg] = useState("OY-CAT");
   const [ttaf, setTtaf] = useState("");
-  const [ldgs, setLdgs] = useState("");
+  const [cycles, setCycles] = useState("");
   const [wo, setWo] = useState("");
   const [note, setNote] = useState("");
 
@@ -347,6 +341,9 @@ export default function StatementPage() {
 
   const [fleet, setFleet] = useState<Aircraft[]>([]);
   useEffect(() => subscribeAircraft(setFleet), []);
+
+  const { profile } = useAuth();
+  const issuedBy = issuerLabel(profile);
 
   // The fleet record behind whatever is typed in the registration field, if
   // any — the source of the "use current" readings.
@@ -374,7 +371,7 @@ export default function StatementPage() {
     filledFor.current = current.tailNumber;
     if (current.totalTimeMinutes != null)
       setTtaf(fmtHours(current.totalTimeMinutes / 60));
-    if (current.totalLandings != null) setLdgs(String(current.totalLandings));
+    if (current.totalLandings != null) setCycles(String(current.totalLandings));
   }, [current]);
 
   const regOut = reg.trim().toUpperCase() || "OY-";
@@ -383,7 +380,7 @@ export default function StatementPage() {
   const tempDoc = useMemo<StatementDoc>(() => {
     const today = new Date();
     const ttafN = parseNum(ttaf);
-    const ldgsN = parseNum(ldgs);
+    const cyclesN = parseNum(cycles);
 
     // hours due
     let dueH: string = "—";
@@ -396,33 +393,48 @@ export default function StatementPage() {
       dueD = new Date(today);
       dueD.setDate(dueD.getDate() + 30);
     } else if (dVal) {
-      dueD = new Date(dVal + "T00:00:00");
+      dueD = parseDmy(dVal);
     }
 
     // cycles due
     let dueC: string = "—";
     const addC = cStd ? 100 : parseNum(cVal);
-    if (ldgsN !== null && addC !== null)
-      dueC = String(Math.round(ldgsN) + Math.round(addC));
+    if (cyclesN !== null && addC !== null)
+      dueC = String(Math.round(cyclesN) + Math.round(addC));
 
     return {
       reg: regOut,
       ttaf: ttafN !== null ? fmtHours(ttafN) : "—",
-      ldgs: ldgsN !== null ? String(Math.round(ldgsN)) : "—",
+      cycles: cyclesN !== null ? String(Math.round(cyclesN)) : "—",
       printed: fmtDate(today),
       dueH,
       dueD: dueD ? fmtDate(dueD) : "—",
       dueC,
       wo: wo.trim() || `${woPrefix(today)}-____`,
       note,
+      issuedBy,
       fileBase,
     };
-  }, [regOut, ttaf, ldgs, wo, note, hStd, hVal, dStd, dVal, cStd, cVal, fileBase]);
+  }, [
+    regOut,
+    ttaf,
+    cycles,
+    wo,
+    note,
+    hStd,
+    hVal,
+    dStd,
+    dVal,
+    cStd,
+    cVal,
+    issuedBy,
+    fileBase,
+  ]);
 
   const actualDoc = useMemo<ActualStatementDoc>(() => {
     const today = new Date();
     const ttafN = parseNum(ttaf);
-    const ldgsN = parseNum(ldgs);
+    const cyclesN = parseNum(cycles);
     const hDueN = parseNum(hDue);
     const cDueN = parseNum(cDue);
     const dDueD = parseDmy(dDue);
@@ -430,7 +442,7 @@ export default function StatementPage() {
     return {
       reg: regOut,
       ttaf: ttafN !== null ? fmtHours(ttafN) : "—",
-      cycles: ldgsN !== null ? String(Math.round(ldgsN)) : "—",
+      cycles: cyclesN !== null ? String(Math.round(cyclesN)) : "—",
       wo: wo.trim() || "—",
       printed: fmtDate(today),
       dueH: {
@@ -446,12 +458,13 @@ export default function StatementPage() {
         value: cDueN !== null ? String(Math.round(cDueN)) : "—",
       },
       note,
+      issuedBy,
       fileBase,
     };
   }, [
     regOut,
     ttaf,
-    ldgs,
+    cycles,
     wo,
     note,
     hName,
@@ -460,6 +473,7 @@ export default function StatementPage() {
     dDue,
     cName,
     cDue,
+    issuedBy,
     fileBase,
   ]);
 
@@ -476,8 +490,7 @@ export default function StatementPage() {
   const fileName =
     variant === "temp" ? `MS ${fileBase} Temp.pdf` : `MS ${fileBase}.pdf`;
 
-  // Shared aircraft block — identical fields on both variants, only the
-  // landings/cycles wording differs.
+  // Shared aircraft block — identical on both variants.
   const aircraftSection = (
     <Section code="01" title="Aircraft">
       <div className="grid grid-cols-2 gap-4">
@@ -539,7 +552,7 @@ export default function StatementPage() {
               <UseCurrent
                 value={currentCycles}
                 label="Use current"
-                onApply={() => setLdgs(currentCycles ?? "")}
+                onApply={() => setCycles(currentCycles ?? "")}
               />
             }
           >
@@ -547,8 +560,8 @@ export default function StatementPage() {
           </FieldLabel>
           <Input
             type="number"
-            value={ldgs}
-            onChange={(e) => setLdgs(e.target.value)}
+            value={cycles}
+            onChange={(e) => setCycles(e.target.value)}
             step="1"
             min="0"
             inputMode="numeric"
@@ -689,41 +702,51 @@ export default function StatementPage() {
         >
           {aircraftSection}
 
-          <Section code="02" title="Validity — Next Due">
+          <Section code="02" title="Next Due">
             <div className="space-y-2.5">
               <DueRow
                 name="Hours"
                 standardLabel="+25 h"
                 standard={hStd}
                 onStandardChange={setHStd}
-                manualValue={hVal}
-                onManualChange={setHVal}
-                manualType="number"
-                manualPlaceholder="Hours to add"
                 computed={tempDoc.dueH}
-              />
+              >
+                <Input
+                  type="number"
+                  value={hVal}
+                  onChange={(e) => setHVal(e.target.value)}
+                  placeholder="Hours to add"
+                  className="font-mono"
+                />
+              </DueRow>
               <DueRow
                 name="Calendar"
                 standardLabel="+30 days"
                 standard={dStd}
                 onStandardChange={setDStd}
-                manualValue={dVal}
-                onManualChange={setDVal}
-                manualType="date"
                 computed={tempDoc.dueD}
-              />
+              >
+                <DateField value={dVal} onChange={setDVal} />
+              </DueRow>
               <DueRow
                 name="Cycles"
-                standardLabel="+100 ldgs"
+                standardLabel="+100 cycles"
                 standard={cStd}
                 onStandardChange={setCStd}
-                manualValue={cVal}
-                onManualChange={setCVal}
-                manualType="number"
-                manualPlaceholder="Landings to add"
                 computed={tempDoc.dueC}
-              />
+              >
+                <Input
+                  type="number"
+                  value={cVal}
+                  onChange={(e) => setCVal(e.target.value)}
+                  placeholder="Cycles to add"
+                  className="font-mono"
+                />
+              </DueRow>
             </div>
+            <p className="text-xs text-muted-foreground">
+              The statement is valid until the first of these is reached.
+            </p>
           </Section>
 
           {noteSection}

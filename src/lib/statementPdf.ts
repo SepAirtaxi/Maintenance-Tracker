@@ -6,13 +6,14 @@ import logoUrl from "@/img/logo.png";
 export interface StatementDoc {
   reg: string; // e.g. "OY-CAT"
   ttaf: string; // formatted TTAF or "—"
-  ldgs: string; // formatted landings or "—"
+  cycles: string; // formatted cycles or "—"
   printed: string; // printed date, formatted
   dueH: string; // hours due or "—"
   dueD: string; // calendar due or "—"
   dueC: string; // cycles due or "—"
   wo: string; // whatever was entered, e.g. "MX26-2"; blank fallback when empty
   note: string; // raw note text (may be empty)
+  issuedBy: string; // signed-in user, for the page-foot credit
   fileBase: string; // filename stem — saved as "MS <fileBase> Temp.pdf"
 }
 
@@ -25,7 +26,7 @@ export interface ActualDueRow {
 
 // The actual (non-temporary) statement. Same chrome as the temp version minus
 // the release/signature block, and the Next Due rows carry real event names
-// instead of the fixed Inspection/Component/AD-SB labels.
+// where the temp statement just prints TEMP.
 export interface ActualStatementDoc {
   reg: string;
   ttaf: string;
@@ -36,6 +37,7 @@ export interface ActualStatementDoc {
   dueD: ActualDueRow;
   dueC: ActualDueRow;
   note: string;
+  issuedBy: string; // signed-in user, for the page-foot credit
   fileBase: string; // filename stem — saved as "MS <fileBase>.pdf"
 }
 
@@ -63,6 +65,10 @@ const GRAY: [number, number, number] = [128, 128, 128];
 const LABEL: [number, number, number] = [85, 85, 85];
 const LEGAL: [number, number, number] = [51, 51, 51];
 const RED: [number, number, number] = [212, 0, 0];
+const FOOT: [number, number, number] = [150, 150, 150];
+
+// A4 is 297mm tall; the credit sits clear of the frame at the page foot.
+const FOOT_Y = 283;
 
 type SetFont = (
   style: string,
@@ -140,6 +146,64 @@ function drawAircraftData(
   }
 }
 
+// Right half of row 3 — the Next Due table. Three columns on both
+// statements: the deadline kind (Hours/Calendar/Cycles) under "Type", what
+// falls due under "Description", and the deadline itself under "Due". The temp
+// statement has no named events, so its description column just reads TEMP.
+function drawNextDue(
+  pdf: jsPDF,
+  F: SetFont,
+  y3: number,
+  rows: [string, ActualDueRow][],
+) {
+  const nx = SPLIT + PAD;
+  F("bold", 10.5, GRAY);
+  pdf.text("Next Due", SPLIT + (R - SPLIT) / 2, y3 + PAD, {
+    align: "center",
+    baseline: "top",
+  });
+
+  const cDesc = nx + 20,
+    cDue = nx + 77;
+  const descW = cDue - cDesc - 2;
+
+  let ny = y3 + PAD + 7.5;
+  F("bold", 9.5, DARK);
+  pdf.text("Type", nx, ny, { baseline: "top" });
+  pdf.text("Description", cDesc, ny, { baseline: "top" });
+  pdf.text("Due", cDue, ny, { baseline: "top" });
+  pdf.setDrawColor(187, 187, 187);
+  pdf.setLineWidth(0.21);
+  pdf.line(nx, ny + 4.6, R - PAD, ny + 4.6);
+  ny += 6.6;
+
+  // Event names are free text. Shrink a long one a couple of points before
+  // resorting to an ellipsis, so most real names still print in full.
+  const fitDesc = (text: string) => {
+    pdf.setFont("helvetica", "normal");
+    for (let size = 9.5; size >= 7.5; size -= 0.5) {
+      pdf.setFontSize(size);
+      if (pdf.getTextWidth(text) <= descW) return { text, size };
+    }
+    pdf.setFontSize(7.5);
+    let cut = text;
+    while (cut.length > 1 && pdf.getTextWidth(cut + "…") > descW)
+      cut = cut.slice(0, -1);
+    return { text: cut + "…", size: 7.5 };
+  };
+
+  for (const [type, row] of rows) {
+    F("normal", 9.5, DARK);
+    pdf.text(type, nx, ny, { baseline: "top" });
+    const desc = fitDesc(row.desc || "—");
+    F("normal", desc.size, DARK);
+    pdf.text(desc.text, cDesc, ny, { baseline: "top" });
+    F("bold", 9.5, DARK);
+    pdf.text(row.value || "—", cDue, ny, { baseline: "top" });
+    ny += 6.2;
+  }
+}
+
 // Note row — centred head plus the wrapped free text.
 function drawNote(pdf: jsPDF, F: SetFont, y4: number, noteLines: string[]) {
   F("bold", 10.5, GRAY);
@@ -150,6 +214,19 @@ function drawNote(pdf: jsPDF, F: SetFont, y4: number, noteLines: string[]) {
     pdf.text(line, M + PAD, noy, { baseline: "top" });
     noy += 5.2;
   }
+}
+
+// Page-foot credit, centred and light grey on both statements. Names whoever
+// generated the document — the frame above carries no signature on the actual
+// statement, so this is the only trace of who issued it.
+function drawIssuedBy(pdf: jsPDF, F: SetFont, issuedBy: string) {
+  F("normal", 8, FOOT);
+  pdf.text(
+    "This maintenance statement was issued by: " + issuedBy,
+    CX,
+    FOOT_Y,
+    { align: "center", baseline: "top" },
+  );
 }
 
 // WO references are free text, so strip anything Windows/macOS reject in a
@@ -238,9 +315,11 @@ export async function buildStatementPdf(doc: StatementDoc): Promise<void> {
     152,
   );
 
+  // H1/H2/H3 are shared with the actual statement so the two documents line
+  // up row-for-row; H3 fits the four-row aircraft-data ladder.
   const H1 = 36,
     H2 = 11,
-    H3 = 37;
+    H3 = 40;
   const H4 = Math.max(24, PAD + 7 + noteLines.length * 5.2 + PAD);
   const H5 =
     PAD +
@@ -288,42 +367,17 @@ export async function buildStatementPdf(doc: StatementDoc): Promise<void> {
   // ---- row 3 left: aircraft data ----
   drawAircraftData(pdf, F, y3, [
     ["TTAF", doc.ttaf],
-    ["Landings", doc.ldgs],
+    ["Cycles", doc.cycles],
+    ["Work Order", doc.wo],
     ["Printed Date", doc.printed],
   ]);
 
   // ---- row 3 right: next due ----
-  const nx = SPLIT + PAD;
-  F("bold", 10.5, GRAY);
-  pdf.text("Next Due", SPLIT + (R - SPLIT) / 2, y3 + PAD, {
-    align: "center",
-    baseline: "top",
-  });
-  const cType = nx + 20,
-    cDesc = nx + 47,
-    cDue = nx + 77;
-  let ny = y3 + PAD + 7.5;
-  F("bold", 9.5, DARK);
-  pdf.text("Type", cType, ny, { baseline: "top" });
-  pdf.text("Description", cDesc, ny, { baseline: "top" });
-  pdf.text("Due", cDue, ny, { baseline: "top" });
-  pdf.setDrawColor(187, 187, 187);
-  pdf.setLineWidth(0.21);
-  pdf.line(nx, ny + 4.6, R - PAD, ny + 4.6);
-  ny += 6.6;
-  for (const r of [
-    ["Hours", "Inspection", "TEMP", doc.dueH],
-    ["Calendar", "Component", "TEMP", doc.dueD],
-    ["Cycles", "AD/SB", "TEMP", doc.dueC],
-  ]) {
-    F("normal", 9.5, DARK);
-    pdf.text(r[0], nx, ny, { baseline: "top" });
-    pdf.text(r[1], cType, ny, { baseline: "top" });
-    pdf.text(r[2], cDesc, ny, { baseline: "top" });
-    F("bold", 9.5, DARK);
-    pdf.text(r[3], cDue, ny, { baseline: "top" });
-    ny += 6.2;
-  }
+  drawNextDue(pdf, F, y3, [
+    ["Hours", { desc: "TEMP", value: doc.dueH }],
+    ["Calendar", { desc: "TEMP", value: doc.dueD }],
+    ["Cycles", { desc: "TEMP", value: doc.dueC }],
+  ]);
 
   // ---- row 4: note ----
   drawNote(pdf, F, y4, noteLines);
@@ -348,6 +402,8 @@ export async function buildStatementPdf(doc: StatementDoc): Promise<void> {
   pdf.setLineWidth(0.35);
   pdf.line(CX - 55, ry, CX + 55, ry);
 
+  drawIssuedBy(pdf, F, doc.issuedBy);
+
   saveAs(pdf, "MS " + doc.fileBase + " Temp.pdf");
 }
 
@@ -367,9 +423,7 @@ export async function buildActualStatementPdf(
     ? pdf.splitTextToSize(doc.note, CW - 2 * PAD)
     : [];
 
-  // H3 is 3mm taller than on the temp statement: the left ladder carries a
-  // fourth row (Work Order), which has nowhere else to live now that the
-  // paragraph naming it is gone.
+  // Same as the temp statement — see the note there.
   const H1 = 36,
     H2 = 11,
     H3 = 40;
@@ -412,61 +466,16 @@ export async function buildActualStatementPdf(
   ]);
 
   // ---- row 3 right: next due ----
-  const nx = SPLIT + PAD;
-  F("bold", 10.5, GRAY);
-  pdf.text("Next Due", SPLIT + (R - SPLIT) / 2, y3 + PAD, {
-    align: "center",
-    baseline: "top",
-  });
-  // The fixed Inspection/Component/AD-SB column is dropped here — the event's
-  // own name takes that width instead, so "Type" now heads the
-  // Hours/Calendar/Cycles column it actually describes.
-  const cDesc = nx + 20,
-    cDue = nx + 77;
-  const descW = cDue - cDesc - 2;
-  let ny = y3 + PAD + 7.5;
-  F("bold", 9.5, DARK);
-  pdf.text("Type", nx, ny, { baseline: "top" });
-  pdf.text("Description", cDesc, ny, { baseline: "top" });
-  pdf.text("Due", cDue, ny, { baseline: "top" });
-  pdf.setDrawColor(187, 187, 187);
-  pdf.setLineWidth(0.21);
-  pdf.line(nx, ny + 4.6, R - PAD, ny + 4.6);
-  ny += 6.6;
-
-  // Event names are free text. Shrink a long one a couple of points before
-  // resorting to an ellipsis, so most real names still print in full.
-  const fitDesc = (text: string) => {
-    pdf.setFont("helvetica", "normal");
-    for (let size = 9.5; size >= 7.5; size -= 0.5) {
-      pdf.setFontSize(size);
-      if (pdf.getTextWidth(text) <= descW) return { text, size };
-    }
-    pdf.setFontSize(7.5);
-    let cut = text;
-    while (cut.length > 1 && pdf.getTextWidth(cut + "…") > descW)
-      cut = cut.slice(0, -1);
-    return { text: cut + "…", size: 7.5 };
-  };
-
-  const dueRows: [string, ActualDueRow][] = [
+  drawNextDue(pdf, F, y3, [
     ["Hours", doc.dueH],
     ["Calendar", doc.dueD],
     ["Cycles", doc.dueC],
-  ];
-  for (const [type, row] of dueRows) {
-    F("normal", 9.5, DARK);
-    pdf.text(type, nx, ny, { baseline: "top" });
-    const desc = fitDesc(row.desc || "—");
-    F("normal", desc.size, DARK);
-    pdf.text(desc.text, cDesc, ny, { baseline: "top" });
-    F("bold", 9.5, DARK);
-    pdf.text(row.value || "—", cDue, ny, { baseline: "top" });
-    ny += 6.2;
-  }
+  ]);
 
   // ---- row 4: note ----
   drawNote(pdf, F, y4, noteLines);
+
+  drawIssuedBy(pdf, F, doc.issuedBy);
 
   saveAs(pdf, "MS " + doc.fileBase + ".pdf");
 }

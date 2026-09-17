@@ -30,16 +30,26 @@ export default function ProfilePage() {
     setStatus("idle");
     setErrorMsg(null);
     const trimmedInitials = initials.trim().toUpperCase();
+    const trimmedName = displayName.trim();
     if (!/^[A-Z]{2,5}$/.test(trimmedInitials)) {
       setStatus("error");
       setErrorMsg("Initials must be 2–5 letters.");
       setSaving(false);
       return;
     }
+    // Required, not optional: this is what prints as the issuer on a
+    // maintenance statement, and clearing it would send you back to the
+    // setup gate on the next load.
+    if (!trimmedName) {
+      setStatus("error");
+      setErrorMsg("Enter the name that should appear on maintenance statements.");
+      setSaving(false);
+      return;
+    }
     try {
       await updateUserProfile(user.uid, {
         initials: trimmedInitials,
-        displayName: displayName.trim() || null,
+        displayName: trimmedName,
       });
       setStatus("saved");
     } catch (err) {
@@ -83,13 +93,16 @@ export default function ProfilePage() {
           </p>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="displayName">Display name (optional)</Label>
+          <Label htmlFor="displayName">Display name</Label>
           <Input
             id="displayName"
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
             placeholder="e.g. Søren Pedersen"
           />
+          <p className="text-xs text-muted-foreground">
+            Printed as the issuer on maintenance statements.
+          </p>
         </div>
 
         {status === "error" && errorMsg && (

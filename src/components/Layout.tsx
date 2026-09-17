@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import ProfileSetupGate from "@/components/ProfileSetupGate";
 import { cn } from "@/lib/utils";
 import {
   CalendarDays,
@@ -144,9 +145,20 @@ export default function Layout() {
     navigate("/login", { replace: true });
   };
 
-  const visibleNavItems = isViewer
-    ? navItems.filter((item) => item.viewerVisible)
-    : navItems;
+  // A member who has never named themselves is held at the setup gate: their
+  // name goes on the maintenance statements they issue. Viewers have no
+  // profile at all and are never gated, and the gate stays down until the
+  // profile has actually loaded so it can't flash on a slow connection.
+  const needsProfileSetup =
+    !isViewer && !!profile && !(profile.displayName ?? "").trim();
+
+  // The section index is hidden behind the gate — every route would render the
+  // gate anyway, so offering the links would just be a dead end.
+  const visibleNavItems = needsProfileSetup
+    ? []
+    : isViewer
+      ? navItems.filter((item) => item.viewerVisible)
+      : navItems;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -238,7 +250,8 @@ export default function Layout() {
                 View only
               </span>
             ) : (
-              profile && (
+              profile &&
+              !needsProfileSetup && (
                 <NavLink
                   to="/profile"
                   className="group flex items-center gap-2 border border-transparent px-2 py-1 transition-colors hover:border-foreground/25 hover:bg-card"
@@ -266,8 +279,14 @@ export default function Layout() {
       </header>
 
       <main className="container flex-1 py-6 space-y-3">
-        <NotificationBannerStack />
-        <Outlet />
+        {needsProfileSetup && profile ? (
+          <ProfileSetupGate profile={profile} />
+        ) : (
+          <>
+            <NotificationBannerStack />
+            <Outlet />
+          </>
+        )}
       </main>
     </div>
   );
