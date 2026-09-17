@@ -1,7 +1,7 @@
 import { jsPDF } from "jspdf";
 import logoUrl from "@/img/logo.png";
 
-// Display strings for the statement document. These are the already-formatted
+// Display strings for the temporary statement. These are the already-formatted
 // values that get drawn into the PDF (mirrors the prototype's DOM textContent).
 export interface StatementDoc {
   reg: string; // e.g. "OY-CAT"
@@ -13,6 +13,30 @@ export interface StatementDoc {
   dueC: string; // cycles due or "—"
   wo: string; // whatever was entered, e.g. "MX26-2"; blank fallback when empty
   note: string; // raw note text (may be empty)
+  fileBase: string; // filename stem — saved as "MS <fileBase> Temp.pdf"
+}
+
+// One line of the actual statement's Next Due block: the event's own name plus
+// its deadline. Both already formatted for print.
+export interface ActualDueRow {
+  desc: string;
+  value: string;
+}
+
+// The actual (non-temporary) statement. Same chrome as the temp version minus
+// the release/signature block, and the Next Due rows carry real event names
+// instead of the fixed Inspection/Component/AD-SB labels.
+export interface ActualStatementDoc {
+  reg: string;
+  ttaf: string;
+  cycles: string;
+  wo: string;
+  printed: string;
+  dueH: ActualDueRow;
+  dueD: ActualDueRow;
+  dueC: ActualDueRow;
+  note: string;
+  fileBase: string; // filename stem — saved as "MS <fileBase>.pdf"
 }
 
 // Fixed maintenance-organisation legal block. 1-to-1 with the original template.
@@ -24,6 +48,35 @@ const LEGAL_LINES = [
   "Ph. Office: +45 46191114",
   "CAMO@AIRCAT.DK",
 ];
+
+// Page geometry. Shared by both variants so the two documents line up
+// column-for-column when held next to each other.
+const M = 14; // page margin
+const R = 196; // right edge
+const CW = R - M; // content width
+const SPLIT = M + CW * 0.42; // column divider
+const PAD = 3.5; // cell padding
+const CX = M + CW / 2; // page centre
+
+const DARK: [number, number, number] = [26, 26, 26];
+const GRAY: [number, number, number] = [128, 128, 128];
+const LABEL: [number, number, number] = [85, 85, 85];
+const LEGAL: [number, number, number] = [51, 51, 51];
+const RED: [number, number, number] = [212, 0, 0];
+
+type SetFont = (
+  style: string,
+  size: number,
+  color: [number, number, number],
+) => void;
+
+const mkF =
+  (pdf: jsPDF): SetFont =>
+  (style, size, color) => {
+    pdf.setFont("helvetica", style);
+    pdf.setFontSize(size);
+    pdf.setTextColor(color[0], color[1], color[2]);
+  };
 
 let logoPromise: Promise<HTMLImageElement> | null = null;
 function loadLogo(): Promise<HTMLImageElement> {
@@ -38,31 +91,80 @@ function loadLogo(): Promise<HTMLImageElement> {
   return logoPromise;
 }
 
+// Row 1 — logo left of the divider, right-aligned legal block after it.
+function drawMasthead(
+  pdf: jsPDF,
+  F: SetFont,
+  logo: HTMLImageElement,
+  y1: number,
+  H1: number,
+) {
+  const logoW = 62;
+  const logoH = (logoW * logo.naturalHeight) / logo.naturalWidth;
+  pdf.addImage(
+    logo,
+    "PNG",
+    M + (SPLIT - M - logoW) / 2,
+    y1 + (H1 - logoH) / 2,
+    logoW,
+    logoH,
+  );
+
+  let ly = y1 + (H1 - LEGAL_LINES.length * 4.8) / 2 + 0.5;
+  LEGAL_LINES.forEach((line, i) => {
+    F(i === 0 ? "bold" : "normal", 8.5, i === 0 ? DARK : LEGAL);
+    pdf.text(line, R - PAD, ly, { align: "right", baseline: "top" });
+    ly += 4.8;
+  });
+}
+
+// Left half of row 3 — the label/value ladder under the "Aircraft Data" head.
+function drawAircraftData(
+  pdf: jsPDF,
+  F: SetFont,
+  y3: number,
+  rows: [string, string][],
+) {
+  F("bold", 10.5, GRAY);
+  pdf.text("Aircraft Data", M + (SPLIT - M) / 2, y3 + PAD, {
+    align: "center",
+    baseline: "top",
+  });
+  let ky = y3 + PAD + 7.5;
+  for (const [k, v] of rows) {
+    F("normal", 9.5, LABEL);
+    pdf.text(k, M + PAD, ky, { baseline: "top" });
+    F("bold", 9.5, DARK);
+    pdf.text(v, M + PAD + 30, ky, { baseline: "top" });
+    ky += 6.2;
+  }
+}
+
+// Note row — centred head plus the wrapped free text.
+function drawNote(pdf: jsPDF, F: SetFont, y4: number, noteLines: string[]) {
+  F("bold", 10.5, GRAY);
+  pdf.text("Note", CX, y4 + PAD, { align: "center", baseline: "top" });
+  let noy = y4 + PAD + 7;
+  F("normal", 9.5, DARK);
+  for (const line of noteLines) {
+    pdf.text(line, M + PAD, noy, { baseline: "top" });
+    noy += 5.2;
+  }
+}
+
+// WO references are free text, so strip anything Windows/macOS reject in a
+// filename before handing the name to the browser.
+function saveAs(pdf: jsPDF, name: string) {
+  pdf.save(name.replace(/[\\/:*?"<>|]/g, "-"));
+}
+
 // Draws the Temporary Maintenance Statement onto a fresh A4 and triggers a
 // download. The document layout is a faithful port of the approved standalone
 // generator — only the surrounding app UI was redesigned, not this output.
 export async function buildStatementPdf(doc: StatementDoc): Promise<void> {
   const logo = await loadLogo();
   const pdf = new jsPDF({ unit: "mm", format: "a4", compress: true });
-
-  const M = 14; // page margin
-  const R = 196; // right edge
-  const CW = R - M; // content width
-  const SPLIT = M + CW * 0.42; // column divider
-  const PAD = 3.5; // cell padding
-  const CX = M + CW / 2; // page centre
-
-  const DARK: [number, number, number] = [26, 26, 26];
-  const GRAY: [number, number, number] = [128, 128, 128];
-  const LABEL: [number, number, number] = [85, 85, 85];
-  const LEGAL: [number, number, number] = [51, 51, 51];
-  const RED: [number, number, number] = [212, 0, 0];
-
-  const F = (style: string, size: number, color: [number, number, number]) => {
-    pdf.setFont("helvetica", style);
-    pdf.setFontSize(size);
-    pdf.setTextColor(color[0], color[1], color[2]);
-  };
+  const F = mkF(pdf);
 
   // word-level layout so the bold WO number can sit inside a wrapped, centred paragraph
   type RichSeg = { text: string; bold: boolean };
@@ -172,23 +274,7 @@ export async function buildStatementPdf(doc: StatementDoc): Promise<void> {
   pdf.rect(M, y1, CW, yEnd - y1);
 
   // ---- row 1: logo + legal ----
-  const logoW = 62;
-  const logoH = (logoW * logo.naturalHeight) / logo.naturalWidth;
-  pdf.addImage(
-    logo,
-    "PNG",
-    M + (SPLIT - M - logoW) / 2,
-    y1 + (H1 - logoH) / 2,
-    logoW,
-    logoH,
-  );
-
-  let ly = y1 + (H1 - LEGAL_LINES.length * 4.8) / 2 + 0.5;
-  LEGAL_LINES.forEach((line, i) => {
-    F(i === 0 ? "bold" : "normal", 8.5, i === 0 ? DARK : LEGAL);
-    pdf.text(line, R - PAD, ly, { align: "right", baseline: "top" });
-    ly += 4.8;
-  });
+  drawMasthead(pdf, F, logo, y1, H1);
 
   // ---- row 2: title ----
   F("bold", 12, RED);
@@ -200,23 +286,11 @@ export async function buildStatementPdf(doc: StatementDoc): Promise<void> {
   );
 
   // ---- row 3 left: aircraft data ----
-  F("bold", 10.5, GRAY);
-  pdf.text("Aircraft Data", M + (SPLIT - M) / 2, y3 + PAD, {
-    align: "center",
-    baseline: "top",
-  });
-  let ky = y3 + PAD + 7.5;
-  for (const [k, v] of [
+  drawAircraftData(pdf, F, y3, [
     ["TTAF", doc.ttaf],
     ["Landings", doc.ldgs],
     ["Printed Date", doc.printed],
-  ]) {
-    F("normal", 9.5, LABEL);
-    pdf.text(k, M + PAD, ky, { baseline: "top" });
-    F("bold", 9.5, DARK);
-    pdf.text(v, M + PAD + 30, ky, { baseline: "top" });
-    ky += 6.2;
-  }
+  ]);
 
   // ---- row 3 right: next due ----
   const nx = SPLIT + PAD;
@@ -252,14 +326,7 @@ export async function buildStatementPdf(doc: StatementDoc): Promise<void> {
   }
 
   // ---- row 4: note ----
-  F("bold", 10.5, GRAY);
-  pdf.text("Note", CX, y4 + PAD, { align: "center", baseline: "top" });
-  let noy = y4 + PAD + 7;
-  F("normal", 9.5, DARK);
-  for (const line of noteLines) {
-    pdf.text(line, M + PAD, noy, { baseline: "top" });
-    noy += 5.2;
-  }
+  drawNote(pdf, F, y4, noteLines);
 
   // ---- row 5: release ----
   let ry = y5 + PAD + 1;
@@ -281,6 +348,125 @@ export async function buildStatementPdf(doc: StatementDoc): Promise<void> {
   pdf.setLineWidth(0.35);
   pdf.line(CX - 55, ry, CX + 55, ry);
 
-  const reg = doc.reg.trim() || "TMS";
-  pdf.save("TEMP MS " + reg + " " + new Date().toISOString().slice(0, 10) + ".pdf");
+  saveAs(pdf, "MS " + doc.fileBase + " Temp.pdf");
+}
+
+// Draws the actual (non-temporary) Maintenance Statement. Identical chrome to
+// the temp version through the Note row; the release/signature block is not
+// part of this document at all, so the frame simply ends after the note.
+export async function buildActualStatementPdf(
+  doc: ActualStatementDoc,
+): Promise<void> {
+  const logo = await loadLogo();
+  const pdf = new jsPDF({ unit: "mm", format: "a4", compress: true });
+  const F = mkF(pdf);
+
+  // ---- measure variable rows ----
+  F("normal", 9.5, DARK);
+  const noteLines = doc.note.trim()
+    ? pdf.splitTextToSize(doc.note, CW - 2 * PAD)
+    : [];
+
+  // H3 is 3mm taller than on the temp statement: the left ladder carries a
+  // fourth row (Work Order), which has nowhere else to live now that the
+  // paragraph naming it is gone.
+  const H1 = 36,
+    H2 = 11,
+    H3 = 40;
+  const H4 = Math.max(24, PAD + 7 + noteLines.length * 5.2 + PAD);
+
+  const y1 = 14,
+    y2 = y1 + H1,
+    y3 = y2 + H2,
+    y4 = y3 + H3;
+  const yEnd = y4 + H4;
+
+  // ---- borders ----
+  pdf.setDrawColor(153, 153, 153);
+  pdf.setLineWidth(0.21);
+  pdf.line(M, y2, R, y2);
+  pdf.line(M, y3, R, y3);
+  pdf.line(M, y4, R, y4);
+  pdf.line(SPLIT, y1, SPLIT, y2);
+  pdf.line(SPLIT, y3, SPLIT, y4);
+  pdf.setDrawColor(26, 26, 26);
+  pdf.setLineWidth(0.53);
+  pdf.rect(M, y1, CW, yEnd - y1);
+
+  // ---- row 1: logo + legal ----
+  drawMasthead(pdf, F, logo, y1, H1);
+
+  // ---- row 2: title ----
+  F("bold", 12, RED);
+  pdf.text("CAMO Maintenance Statement: " + doc.reg, CX, y2 + H2 / 2, {
+    align: "center",
+    baseline: "middle",
+  });
+
+  // ---- row 3 left: aircraft data ----
+  drawAircraftData(pdf, F, y3, [
+    ["TTAF", doc.ttaf],
+    ["Cycles", doc.cycles],
+    ["Work Order", doc.wo],
+    ["Printed Date", doc.printed],
+  ]);
+
+  // ---- row 3 right: next due ----
+  const nx = SPLIT + PAD;
+  F("bold", 10.5, GRAY);
+  pdf.text("Next Due", SPLIT + (R - SPLIT) / 2, y3 + PAD, {
+    align: "center",
+    baseline: "top",
+  });
+  // The fixed Inspection/Component/AD-SB column is dropped here — the event's
+  // own name takes that width instead, so "Type" now heads the
+  // Hours/Calendar/Cycles column it actually describes.
+  const cDesc = nx + 20,
+    cDue = nx + 77;
+  const descW = cDue - cDesc - 2;
+  let ny = y3 + PAD + 7.5;
+  F("bold", 9.5, DARK);
+  pdf.text("Type", nx, ny, { baseline: "top" });
+  pdf.text("Description", cDesc, ny, { baseline: "top" });
+  pdf.text("Due", cDue, ny, { baseline: "top" });
+  pdf.setDrawColor(187, 187, 187);
+  pdf.setLineWidth(0.21);
+  pdf.line(nx, ny + 4.6, R - PAD, ny + 4.6);
+  ny += 6.6;
+
+  // Event names are free text. Shrink a long one a couple of points before
+  // resorting to an ellipsis, so most real names still print in full.
+  const fitDesc = (text: string) => {
+    pdf.setFont("helvetica", "normal");
+    for (let size = 9.5; size >= 7.5; size -= 0.5) {
+      pdf.setFontSize(size);
+      if (pdf.getTextWidth(text) <= descW) return { text, size };
+    }
+    pdf.setFontSize(7.5);
+    let cut = text;
+    while (cut.length > 1 && pdf.getTextWidth(cut + "…") > descW)
+      cut = cut.slice(0, -1);
+    return { text: cut + "…", size: 7.5 };
+  };
+
+  const dueRows: [string, ActualDueRow][] = [
+    ["Hours", doc.dueH],
+    ["Calendar", doc.dueD],
+    ["Cycles", doc.dueC],
+  ];
+  for (const [type, row] of dueRows) {
+    F("normal", 9.5, DARK);
+    pdf.text(type, nx, ny, { baseline: "top" });
+    const desc = fitDesc(row.desc || "—");
+    F("normal", desc.size, DARK);
+    pdf.text(desc.text, cDesc, ny, { baseline: "top" });
+    F("bold", 9.5, DARK);
+    pdf.text(row.value || "—", cDue, ny, { baseline: "top" });
+    ny += 6.2;
+  }
+
+  // ---- row 4: note ----
+  drawNote(pdf, F, y4, noteLines);
+
+  saveAs(pdf, "MS " + doc.fileBase + ".pdf");
 }
