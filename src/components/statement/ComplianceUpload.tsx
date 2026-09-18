@@ -36,8 +36,23 @@ export function ComplianceUpload({
 
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap items-center gap-3 border border-foreground/15 bg-background p-3">
-        <FileUp className="h-4 w-4 shrink-0 text-muted-foreground" />
+      <div
+        className={
+          report
+            ? "flex flex-wrap items-center gap-3 border border-foreground/15 bg-background p-3"
+            : // No report yet — the bar wears the solid accent amber (the same
+              // fill the "use current" chips take on hover) so the one action
+              // the page is waiting on reads as the next step.
+              "flex flex-wrap items-center gap-3 border border-foreground/20 bg-accent p-3"
+        }
+      >
+        <FileUp
+          className={
+            report
+              ? "h-4 w-4 shrink-0 text-muted-foreground"
+              : "h-4 w-4 shrink-0 text-accent-foreground"
+          }
+        />
         <div className="min-w-0 flex-1">
           {report ? (
             <>
@@ -51,7 +66,7 @@ export function ComplianceUpload({
               </span>
             </>
           ) : (
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs font-medium text-accent-foreground">
               {parsing
                 ? "Reading report…"
                 : "Upload the aircraft status report to list what's next due."}
