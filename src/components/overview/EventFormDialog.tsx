@@ -26,10 +26,6 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   tailNumber: string;
   event: MaintenanceEvent | null; // null = create
-  // Seed values for a fresh event (create mode only, ignored on edit). Used by
-  // the Forecast page's "Create event" shortcut to carry over a due date /
-  // TTAF from a forecast row without the user re-typing them.
-  prefill?: { expiryDate?: Date | null; timerMinutes?: number | null } | null;
 };
 
 function timestampToInputDate(ts: Timestamp | null): string {
@@ -57,7 +53,6 @@ export default function EventFormDialog({
   onOpenChange,
   tailNumber,
   event,
-  prefill,
 }: Props) {
   const isEdit = event !== null;
   const [warning, setWarning] = useState("");
@@ -89,21 +84,12 @@ export default function EventFormDialog({
   useEffect(() => {
     if (!open) return;
     setWarning(event?.warning ?? "");
-    // On create, seed the due date / TTAF from `prefill` (Forecast shortcut);
-    // on edit, mirror the existing event. Everything else stays blank.
-    setExpiryDate(
-      isEdit
-        ? timestampToInputDate(event?.expiryDate ?? null)
-        : dateToInputValue(prefill?.expiryDate ?? null),
-    );
+    // On edit, mirror the existing event; on create everything starts blank.
+    setExpiryDate(isEdit ? timestampToInputDate(event?.expiryDate ?? null) : "");
     setTimerExpiry(
-      isEdit
-        ? event?.timerExpiryTimeMinutes != null
-          ? formatMinutesAsDuration(event.timerExpiryTimeMinutes)
-          : ""
-        : prefill?.timerMinutes != null
-          ? formatMinutesAsDuration(prefill.timerMinutes)
-          : "",
+      isEdit && event?.timerExpiryTimeMinutes != null
+        ? formatMinutesAsDuration(event.timerExpiryTimeMinutes)
+        : "",
     );
     setWorkOrderNumber(event?.workOrderNumber ?? "");
     setRequisitionNumber(event?.requisitionNumber ?? "");
@@ -111,7 +97,7 @@ export default function EventFormDialog({
     setSaving(false);
     // Pre-select the event's existing template (edit) or null (create).
     setTemplateId(isEdit ? (event?.templateId ?? null) : null);
-  }, [open, event, isEdit, prefill]);
+  }, [open, event, isEdit]);
 
   // Picking (or switching) a template pre-fills the title with the template's
   // title. We only replace the title when it's still auto-filled — empty, or

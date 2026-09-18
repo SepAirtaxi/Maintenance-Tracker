@@ -11,7 +11,7 @@ export interface StatementDoc {
   dueH: string; // hours due or "—"
   dueD: string; // calendar due or "—"
   dueC: string; // cycles due or "—"
-  wo: string; // whatever was entered, e.g. "MX26-2"; blank fallback when empty
+  wo: string; // free text, printed exactly as typed; required by the form
   note: string; // raw note text (may be empty)
   issuedBy: string; // signed-in user, for the page-foot credit
   fileBase: string; // filename stem — saved as "MS <fileBase> Temp.pdf"

@@ -1,8 +1,7 @@
 // PDF → positioned text runs.
 //
 // The only file in this module that knows about pdfjs, so the parsing logic
-// stays testable without a PDF engine — the same split docx.ts gives the
-// forecast module.
+// stays testable without a PDF engine.
 
 import type { TextItem } from "./types";
 

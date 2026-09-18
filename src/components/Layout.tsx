@@ -10,7 +10,6 @@ import {
   LogOut,
   Settings,
   Tag,
-  Telescope,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import NotificationBannerStack from "@/components/notifications/NotificationBannerStack";
@@ -92,17 +91,9 @@ const navItems = [
     viewerVisible: true,
   },
   {
-    to: "/forecast",
-    label: "Forecast",
-    code: "03",
-    icon: Telescope,
-    end: false,
-    viewerVisible: false,
-  },
-  {
     to: "/statement",
     label: "Statement",
-    code: "05",
+    code: "03",
     icon: FileText,
     end: false,
     viewerVisible: false,
@@ -110,7 +101,7 @@ const navItems = [
   {
     to: "/labels",
     label: "Labels",
-    code: "06",
+    code: "04",
     icon: Tag,
     end: false,
     viewerVisible: false,
@@ -118,7 +109,7 @@ const navItems = [
   {
     to: "/settings",
     label: "Settings",
-    code: "07",
+    code: "05",
     icon: Settings,
     end: false,
     viewerVisible: false,

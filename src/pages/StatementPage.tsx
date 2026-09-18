@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+import { Input, type InputProps } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   buildActualStatementPdf,
@@ -54,17 +55,12 @@ function daysBetween(a: Date, b: Date): number {
   return Math.round((a.getTime() - b.getTime()) / 86_400_000);
 }
 
-// ERP work orders read MX<yy>-<sequence>, e.g. MX26-2 — the sequence is not
-// zero-padded. The field takes whatever you type or paste and only uppercases
-// it, so an unexpected WO shape still reaches the PDF rather than being
-// silently swapped for the blank.
-function normalizeWo(v: string): string {
-  return v.toUpperCase();
-}
-// Prefix for the current year, used for the input placeholder and for the
-// fill-in-by-hand blank printed when the field is left empty.
-function woPrefix(today: Date): string {
-  return `MX${String(today.getFullYear() % 100).padStart(2, "0")}`;
+// The work order field is free text — whatever is typed reaches the PDF
+// unchanged, no shape enforced and nothing substituted. This is only the
+// greyed example shown in the empty box, kept on the current year so it
+// doesn't age; it never touches the output.
+function woHint(today: Date): string {
+  return `MX${String(today.getFullYear() % 100).padStart(2, "0")}-2`;
 }
 
 // ---- DD-MM-YYYY handling for every calendar deadline on the page ----------
@@ -132,12 +128,26 @@ function Section({
   );
 }
 
+// Every box on this page carries an example of the expected shape. Those
+// examples sit a shade fainter than typed input so nothing on an untouched
+// form reads as already filled in.
+function HintInput({ className, ...props }: InputProps) {
+  return (
+    <Input
+      {...props}
+      className={cn("placeholder:text-muted-foreground/50", className)}
+    />
+  );
+}
+
 function FieldLabel({
   children,
   action,
+  required,
 }: {
   children: React.ReactNode;
   action?: React.ReactNode;
+  required?: boolean;
 }) {
   return (
     // min-h holds the row at the chip's height, so fields whose "use current"
@@ -145,6 +155,7 @@ function FieldLabel({
     <span className="mb-1.5 flex min-h-[1.4rem] items-center justify-between gap-2">
       <span className="text-[10px] font-bold uppercase tracking-spec text-muted-foreground">
         {children}
+        {required && <span className="ml-1 text-sev-red-fg">*</span>}
       </span>
       {action}
     </span>
@@ -202,7 +213,7 @@ function DateField({
   return (
     <div>
       <div className="relative">
-        <Input
+        <HintInput
           value={value}
           onChange={(e) => onChange(maskDmy(e.target.value))}
           placeholder="DD-MM-YYYY"
@@ -319,7 +330,7 @@ function ActualDueRow({
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_12rem]">
         <label className="block">
           <FieldLabel>Event</FieldLabel>
-          <Input
+          <HintInput
             value={desc}
             onChange={(e) => onDescChange(e.target.value)}
             placeholder={descPlaceholder}
@@ -341,7 +352,7 @@ export default function StatementPage() {
   const [variant, setVariant] = useState<Variant>("actual");
 
   // Shared across both variants — same aircraft, same WO, same readings.
-  const [reg, setReg] = useState("OY-CAT");
+  const [reg, setReg] = useState("");
   const [ttaf, setTtaf] = useState("");
   const [cycles, setCycles] = useState("");
   const [wo, setWo] = useState("");
@@ -433,8 +444,12 @@ export default function StatementPage() {
     if (current.totalLandings != null) setCycles(String(current.totalLandings));
   }, [current]);
 
-  const regOut = reg.trim().toUpperCase() || "OY-";
-  const fileBase = wo.trim() || regOut;
+  const regOut = reg.trim().toUpperCase();
+  const woOut = wo.trim();
+  // Both are required before anything can be generated, so neither statement
+  // can be printed with a placeholder standing in for a real value.
+  const ready = regOut !== "" && woOut !== "";
+  const fileBase = woOut || regOut;
 
   const tempDoc = useMemo<StatementDoc>(() => {
     const today = new Date();
@@ -469,7 +484,7 @@ export default function StatementPage() {
       dueH,
       dueD: dueD ? fmtDate(dueD) : "—",
       dueC,
-      wo: wo.trim() || `${woPrefix(today)}-____`,
+      wo: woOut,
       note,
       issuedBy,
       fileBase,
@@ -478,7 +493,7 @@ export default function StatementPage() {
     regOut,
     ttaf,
     cycles,
-    wo,
+    woOut,
     note,
     hStd,
     hVal,
@@ -502,7 +517,7 @@ export default function StatementPage() {
       reg: regOut,
       ttaf: ttafN !== null ? fmtHours(ttafN) : "—",
       cycles: cyclesN !== null ? String(Math.round(cyclesN)) : "—",
-      wo: wo.trim() || "—",
+      wo: woOut,
       printed: fmtDate(today),
       dueH: {
         desc: hName.trim() || "—",
@@ -524,7 +539,7 @@ export default function StatementPage() {
     regOut,
     ttaf,
     cycles,
-    wo,
+    woOut,
     note,
     hName,
     hDue,
@@ -611,6 +626,7 @@ export default function StatementPage() {
   );
 
   const onGenerate = async () => {
+    if (!ready) return;
     setGenerating(true);
     try {
       if (variant === "temp") await buildStatementPdf(tempDoc);
@@ -623,17 +639,25 @@ export default function StatementPage() {
   const fileName =
     variant === "temp" ? `MS ${fileBase} Temp.pdf` : `MS ${fileBase}.pdf`;
 
+  const missingLabel =
+    regOut === "" && woOut === ""
+      ? "Registration and work order number are"
+      : regOut === ""
+        ? "A registration is"
+        : "A work order number is";
+
   // Shared aircraft block — identical on both variants.
   const aircraftSection = (
     <Section code="01" title="Aircraft">
       <div className="grid grid-cols-2 gap-4">
         <label className="block">
-          <FieldLabel>Registration</FieldLabel>
-          <Input
+          <FieldLabel required>Registration</FieldLabel>
+          <HintInput
             value={reg}
             onChange={(e) => setReg(e.target.value.toUpperCase())}
             maxLength={10}
             spellCheck={false}
+            placeholder="OY-CAT"
             list="statement-fleet-tails"
             className="font-mono"
           />
@@ -646,13 +670,13 @@ export default function StatementPage() {
           </datalist>
         </label>
         <label className="block">
-          <FieldLabel>Work order no.</FieldLabel>
-          <Input
+          <FieldLabel required>Work order no.</FieldLabel>
+          <HintInput
             value={wo}
-            onChange={(e) => setWo(normalizeWo(e.target.value))}
+            onChange={(e) => setWo(e.target.value)}
             maxLength={24}
             spellCheck={false}
-            placeholder={`${woPrefix(new Date())}-2`}
+            placeholder={woHint(new Date())}
             className="font-mono"
           />
         </label>
@@ -668,7 +692,7 @@ export default function StatementPage() {
           >
             Current TTAF (hours)
           </FieldLabel>
-          <Input
+          <HintInput
             type="number"
             value={ttaf}
             onChange={(e) => setTtaf(e.target.value)}
@@ -691,7 +715,7 @@ export default function StatementPage() {
           >
             Current cycles
           </FieldLabel>
-          <Input
+          <HintInput
             type="number"
             value={cycles}
             onChange={(e) => setCycles(e.target.value)}
@@ -706,7 +730,9 @@ export default function StatementPage() {
       <p className="text-xs text-muted-foreground">
         {current
           ? "TTAF and cycles are prefilled from the last Flightlogger sync — edit them if the statement needs different readings."
-          : `${regOut} isn't in the fleet, so there are no readings to prefill.`}
+          : regOut
+            ? `${regOut} isn't in the fleet, so there are no readings to prefill.`
+            : "Type a registration to prefill TTAF and cycles from the last Flightlogger sync."}
       </p>
     </Section>
   );
@@ -718,18 +744,26 @@ export default function StatementPage() {
         onChange={(e) => setNote(e.target.value)}
         rows={3}
         placeholder="Optional free text…"
-        className="flex w-full border border-foreground/30 bg-card px-3 py-2 text-sm transition-colors placeholder:italic placeholder:text-muted-foreground focus-visible:border-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+        className="flex w-full border border-foreground/30 bg-card px-3 py-2 text-sm transition-colors placeholder:italic placeholder:text-muted-foreground/50 focus-visible:border-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
       />
     </Section>
   );
 
   const footer = (
     <div className="flex flex-col items-start gap-3 border-t border-foreground/15 pt-6">
-      <Button size="lg" onClick={onGenerate} disabled={generating}>
+      <Button size="lg" onClick={onGenerate} disabled={generating || !ready}>
         {generating ? "Generating…" : "Generate PDF"}
       </Button>
       <span className="text-xs text-muted-foreground">
-        Saves <span className="font-mono">{fileName}</span>
+        {ready ? (
+          <>
+            Saves <span className="font-mono">{fileName}</span>
+          </>
+        ) : (
+          <>
+            {missingLabel} required before the statement can be generated.
+          </>
+        )}
       </span>
     </div>
   );
@@ -739,7 +773,7 @@ export default function StatementPage() {
       <header className="space-y-1">
         <div className="flex items-center gap-3">
           <span className="font-mono text-[10px] uppercase tracking-spec text-muted-foreground">
-            05 / {variant === "temp" ? "Temporary Statement" : "Maintenance Statement"}
+            03 / {variant === "temp" ? "Temporary Statement" : "Maintenance Statement"}
           </span>
           <span className="h-px flex-1 bg-foreground/15 w-12" />
         </div>
@@ -792,7 +826,7 @@ export default function StatementPage() {
                 deadlineLabel="Due at TTAF"
                 picker={hoursPicker}
               >
-                <Input
+                <HintInput
                   type="number"
                   value={hDue}
                   onChange={(e) => setHDue(e.target.value)}
@@ -821,7 +855,7 @@ export default function StatementPage() {
                 deadlineLabel="Due at cycles"
                 picker={cyclesPicker}
               >
-                <Input
+                <HintInput
                   type="number"
                   value={cDue}
                   onChange={(e) => setCDue(e.target.value)}
@@ -858,7 +892,7 @@ export default function StatementPage() {
                 onStandardChange={setHStd}
                 computed={tempDoc.dueH}
               >
-                <Input
+                <HintInput
                   type="number"
                   value={hVal}
                   onChange={(e) => setHVal(e.target.value)}
@@ -882,7 +916,7 @@ export default function StatementPage() {
                 onStandardChange={setCStd}
                 computed={tempDoc.dueC}
               >
-                <Input
+                <HintInput
                   type="number"
                   value={cVal}
                   onChange={(e) => setCVal(e.target.value)}

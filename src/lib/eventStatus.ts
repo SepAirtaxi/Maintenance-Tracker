@@ -238,7 +238,7 @@ export function getNeedsBookingMatches(
 // Templates whose absence triggers a Missing → Events flag. Match is by
 // title, case-insensitive, trimmed. Deliberately narrow: most CAMO-recurring
 // items (AMP Review, ARC Renewal, ARC Review, …) are calendar-driven and
-// planned out of the forecast, not from this dialog. Only the recurring
+// planned out of CAMO's own schedule, not from this dialog. Only the recurring
 // flight-hour inspections need a "did anyone schedule the next one?" check.
 // Extend this set when another recurring inspection should join the cycle.
 export const MISSING_INSPECTION_TEMPLATE_TITLES: ReadonlySet<string> = new Set([

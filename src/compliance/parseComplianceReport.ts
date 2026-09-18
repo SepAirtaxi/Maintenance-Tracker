@@ -1,9 +1,9 @@
 // Orchestrator: ERP "Aircraft Status" PDF → header + records + the three
 // candidate lists the maintenance statement picks from.
 //
-// Split in two phases like the forecast module, so a caller can read the tail
-// number off the header and check it against the aircraft on screen before
-// doing anything with the contents.
+// Split in two phases so a caller can read the tail number off the header and
+// check it against the aircraft on screen before doing anything with the
+// contents.
 
 import { extractTextItems } from "./pdf";
 import { parseComplianceHeader } from "./parseHeader";

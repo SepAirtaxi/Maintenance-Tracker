@@ -118,8 +118,9 @@ export default function LoginPage() {
             Tracker.
           </h1>
           <p className="max-w-md text-sm leading-relaxed text-primary-foreground/75">
-            Fleet status, hangar bookings, defect register, and CAMO forecast —
-            one operational picture for the people keeping the airplanes flying.
+            Fleet status, hangar bookings, defect register, and maintenance
+            statements — one operational picture for the people keeping the
+            airplanes flying.
           </p>
         </div>
 
@@ -134,7 +135,7 @@ export default function LoginPage() {
           </div>
           <div className="space-y-1">
             <div className="text-primary-foreground/40">03</div>
-            <div>Forecast</div>
+            <div>Statement</div>
           </div>
         </div>
       </div>
