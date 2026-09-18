@@ -12,6 +12,13 @@ import {
 import { subscribeAircraft, normaliseTailNumber } from "@/services/aircraft";
 import { useAuth } from "@/context/AuthContext";
 import type { Aircraft, UserProfile } from "@/types";
+import { parseComplianceReport } from "@/compliance/parseComplianceReport";
+import type { Candidate, ComplianceReport } from "@/compliance/types";
+import { ComplianceUpload } from "@/components/statement/ComplianceUpload";
+import {
+  CompliancePicker,
+  type PickerRow,
+} from "@/components/statement/CompliancePicker";
 
 function fmtDate(d: Date): string {
   return d.toLocaleDateString("en-US", {
@@ -30,6 +37,21 @@ function fmtHours(n: number): string {
 function parseNum(v: string): number | null {
   const n = parseFloat(v);
   return Number.isFinite(n) ? n : null;
+}
+function dateToDmy(d: Date): string {
+  return `${String(d.getDate()).padStart(2, "0")}-${String(
+    d.getMonth() + 1,
+  ).padStart(2, "0")}-${d.getFullYear()}`;
+}
+// Distance from the row above in a picker list. Deliberately coarse — it is
+// there so a 50 hr and a 100 hr inspection falling 50 hours apart read as a
+// pair at a glance, not to be a precise figure.
+function fmtGap(delta: number): string {
+  if (delta <= 0) return "";
+  return delta < 10 ? `+${delta.toFixed(1)}` : `+${Math.round(delta)}`;
+}
+function daysBetween(a: Date, b: Date): number {
+  return Math.round((a.getTime() - b.getTime()) / 86_400_000);
 }
 
 // ERP work orders read MX<yy>-<sequence>, e.g. MX26-2 — the sequence is not
@@ -277,6 +299,7 @@ function ActualDueRow({
   onDescChange,
   descPlaceholder,
   deadlineLabel,
+  picker,
   children,
 }: {
   name: string;
@@ -284,6 +307,8 @@ function ActualDueRow({
   onDescChange: (v: string) => void;
   descPlaceholder: string;
   deadlineLabel: string;
+  // The candidate list from the uploaded compliance report, when there is one.
+  picker?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -305,6 +330,7 @@ function ActualDueRow({
           {children}
         </div>
       </div>
+      {picker}
     </div>
   );
 }
@@ -338,6 +364,39 @@ export default function StatementPage() {
   const [cDue, setCDue] = useState("");
 
   const [generating, setGenerating] = useState(false);
+
+  // The uploaded ERP compliance report behind the actual statement's pickers.
+  // Held in memory only — nothing about it is stored.
+  const [report, setReport] = useState<ComplianceReport | null>(null);
+  const [reportName, setReportName] = useState<string | null>(null);
+  const [parsing, setParsing] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+
+  const onReportFile = async (file: File) => {
+    setParsing(true);
+    setReportError(null);
+    try {
+      const parsed = await parseComplianceReport(file);
+      setReport(parsed);
+      setReportName(file.name);
+    } catch (err) {
+      setReport(null);
+      setReportName(null);
+      setReportError(
+        err instanceof Error
+          ? `Could not read that report — ${err.message}`
+          : "Could not read that report.",
+      );
+    } finally {
+      setParsing(false);
+    }
+  };
+
+  const clearReport = () => {
+    setReport(null);
+    setReportName(null);
+    setReportError(null);
+  };
 
   const [fleet, setFleet] = useState<Aircraft[]>([]);
   useEffect(() => subscribeAircraft(setFleet), []);
@@ -476,6 +535,80 @@ export default function StatementPage() {
     issuedBy,
     fileBase,
   ]);
+
+  // ---- Next Due pickers --------------------------------------------------
+  // Each axis turns its candidates into rows carrying the deadline exactly as
+  // it would be printed, plus whether the fields above already hold it. The
+  // selection is derived rather than stored, so typing over either field simply
+  // clears the highlight.
+  const hoursRows = (list: Candidate<number>[]): PickerRow<number>[] =>
+    list.map((candidate) => ({
+      candidate,
+      value: fmtHours(candidate.stop),
+      selected:
+        hName.trim() === candidate.record.description &&
+        Math.abs((parseNum(hDue) ?? Number.NaN) - candidate.stop) < 0.005,
+    }));
+
+  const dateRows = (list: Candidate<Date>[]): PickerRow<Date>[] =>
+    list.map((candidate) => ({
+      candidate,
+      value: dateToDmy(candidate.stop),
+      selected:
+        dName.trim() === candidate.record.description &&
+        dDue === dateToDmy(candidate.stop),
+    }));
+
+  const cyclesRows = (list: Candidate<number>[]): PickerRow<number>[] =>
+    list.map((candidate) => ({
+      candidate,
+      value: String(Math.round(candidate.stop)),
+      selected:
+        cName.trim() === candidate.record.description &&
+        (parseNum(cDue) ?? Number.NaN) === Math.round(candidate.stop),
+    }));
+
+  const hoursPicker = report && (
+    <CompliancePicker
+      rows={hoursRows(report.hours.upcoming)}
+      overdue={hoursRows(report.hours.overdue)}
+      gapFor={(row, previous) => fmtGap(row.candidate.stop - previous.candidate.stop)}
+      emptyLabel="No flight-hour deadlines in this report."
+      onPick={(candidate) => {
+        setHName(candidate.record.description);
+        setHDue(candidate.stop.toFixed(2));
+      }}
+    />
+  );
+
+  const datePicker = report && (
+    <CompliancePicker
+      rows={dateRows(report.dates.upcoming)}
+      overdue={dateRows(report.dates.overdue)}
+      gapFor={(row, previous) => {
+        const days = daysBetween(row.candidate.stop, previous.candidate.stop);
+        return days > 0 ? `+${days}d` : "";
+      }}
+      emptyLabel="No calendar deadlines in this report."
+      onPick={(candidate) => {
+        setDName(candidate.record.description);
+        setDDue(dateToDmy(candidate.stop));
+      }}
+    />
+  );
+
+  const cyclesPicker = report && (
+    <CompliancePicker
+      rows={cyclesRows(report.cycles.upcoming)}
+      overdue={cyclesRows(report.cycles.overdue)}
+      gapFor={(row, previous) => fmtGap(row.candidate.stop - previous.candidate.stop)}
+      emptyLabel="No cycle deadlines in this report — most aircraft have none."
+      onPick={(candidate) => {
+        setCName(candidate.record.description);
+        setCDue(String(Math.round(candidate.stop)));
+      }}
+    />
+  );
 
   const onGenerate = async () => {
     setGenerating(true);
@@ -640,6 +773,16 @@ export default function StatementPage() {
           {aircraftSection}
 
           <Section code="02" title="Next Due">
+            <ComplianceUpload
+              report={report}
+              fileName={reportName}
+              parsing={parsing}
+              error={reportError}
+              expectedTail={normaliseTailNumber(reg)}
+              onFile={onReportFile}
+              onClear={clearReport}
+              onUseReportTail={setReg}
+            />
             <div className="space-y-2.5">
               <ActualDueRow
                 name="Hours"
@@ -647,6 +790,7 @@ export default function StatementPage() {
                 onDescChange={setHName}
                 descPlaceholder="e.g. 100 h inspection"
                 deadlineLabel="Due at TTAF"
+                picker={hoursPicker}
               >
                 <Input
                   type="number"
@@ -665,6 +809,7 @@ export default function StatementPage() {
                 onDescChange={setDName}
                 descPlaceholder="e.g. Annual airworthiness review"
                 deadlineLabel="Due date"
+                picker={datePicker}
               >
                 <DateField value={dDue} onChange={setDDue} />
               </ActualDueRow>
@@ -674,6 +819,7 @@ export default function StatementPage() {
                 onDescChange={setCName}
                 descPlaceholder="e.g. AD 2019-12-05 landing gear"
                 deadlineLabel="Due at cycles"
+                picker={cyclesPicker}
               >
                 <Input
                   type="number"
@@ -688,7 +834,8 @@ export default function StatementPage() {
               </ActualDueRow>
             </div>
             <p className="text-xs text-muted-foreground">
-              Rows left blank print as “—”.
+              Rows left blank print as “—”. Picking from a list fills both
+              fields — edit either afterwards if the deadline needs extending.
             </p>
           </Section>
 
