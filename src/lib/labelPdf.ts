@@ -2,7 +2,7 @@ import { jsPDF } from "jspdf";
 
 export interface FolderLabel {
   tail: string; // e.g. "OY-CDL"
-  wo: string; // work order number, digits
+  wo: string; // work order reference — free text (e.g. "MX26-0001")
   task: string; // task description
 }
 
@@ -36,7 +36,8 @@ const lineH = (pt: number) => pt * PT_TO_MM * LINE;
 
 // Type scale.
 const EYEBROW_PT = 7; // all titles, identical
-const VALUE_MAX_PT = 30; // aircraft + WO share one size, capped here
+const VALUE_MAX_PT = 30; // upper cap for the aircraft + WO readouts
+const VALUE_MIN_PT = 11; // WO refs can run long under the ERP syntax
 const TASK_MAX_PT = 20; // task can be smaller, never larger than the values
 const TITLE_TO_VALUE = 2; // gap below every title (uniform)
 
@@ -71,21 +72,40 @@ function drawLabel(pdf: jsPDF, x: number, y: number, label: FolderLabel) {
 
   // --- Content ---
   const tailText = label.tail.toUpperCase() || "OY-";
-  const woText = label.wo ? "WO " + label.wo : "WO ————";
+  const woText = label.wo ? "WO " + label.wo.trim().toUpperCase() : "WO ————";
   const taskText = (label.task || "").toUpperCase();
 
-  // Aircraft + Work Order share one size: the largest (≤ cap) that fits both.
-  let valueSize = VALUE_MAX_PT;
-  while (
-    valueSize > 12 &&
-    (widthAt(tailText, valueSize) > innerW || widthAt(woText, valueSize) > innerW)
-  ) {
-    valueSize -= 1;
+  // Largest size in [min, max] at which the text fits on one line.
+  const fitOneLine = (text: string, max: number, min: number) => {
+    let s = max;
+    while (s > min && widthAt(text, s) > innerW) s -= 1;
+    return s;
+  };
+
+  // Aircraft is short by nature — it keeps the headline size.
+  const tailSize = fitOneLine(tailText, VALUE_MAX_PT, 12);
+
+  // Work Order is free text, so it sizes itself down independently rather than
+  // dragging the tail number with it. Typical refs land at the same size as the
+  // tail; a long one shrinks, and a pathological one wraps onto a second line.
+  let woSize = fitOneLine(woText, VALUE_MAX_PT, VALUE_MIN_PT);
+  let woLines = [woText];
+  if (widthAt(woText, woSize) > innerW) {
+    pdf.setFont("helvetica", "bold");
+    for (let s = VALUE_MIN_PT; s >= 8; s--) {
+      pdf.setFontSize(s);
+      const lines = pdf.splitTextToSize(woText, innerW);
+      if (lines.length <= 2 || s === 8) {
+        woSize = s;
+        woLines = lines.slice(0, 2);
+        break;
+      }
+    }
   }
 
   // Task is adaptive: largest size (≤ its own cap and the value size) that fits
   // on one line; if nothing fits on one line, the largest that fits on two.
-  const taskCap = Math.min(TASK_MAX_PT, valueSize);
+  const taskCap = Math.min(TASK_MAX_PT, tailSize, woSize);
   let taskSize = 9;
   let taskLines: string[] = [taskText];
   const chooseTask = (maxLines: number) => {
@@ -108,8 +128,8 @@ function drawLabel(pdf: jsPDF, x: number, y: number, label: FolderLabel) {
   }
 
   const blocks: Block[] = [
-    { title: "Aircraft", size: valueSize, lines: [tailText] },
-    { title: "Work Order", size: valueSize, lines: [woText] },
+    { title: "Aircraft", size: tailSize, lines: [tailText] },
+    { title: "Work Order", size: woSize, lines: woLines },
     { title: "Task", size: taskSize, lines: taskLines },
   ];
 

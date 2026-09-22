@@ -58,7 +58,7 @@ export default function LabelsPage() {
       <div className="mx-auto max-w-3xl space-y-8 border border-foreground/20 bg-card p-6 sm:p-8">
       {/* Column header */}
       <div className="space-y-2.5">
-        <div className="hidden grid-cols-[2.5rem_8rem_7rem_1fr_2.25rem] items-center gap-3 px-1 text-[10px] font-bold uppercase tracking-spec text-muted-foreground sm:grid">
+        <div className="hidden grid-cols-[2.5rem_8rem_10rem_1fr_2.25rem] items-center gap-3 px-1 text-[10px] font-bold uppercase tracking-spec text-muted-foreground sm:grid">
           <span className="text-center">#</span>
           <span>Tail</span>
           <span>WO no.</span>
@@ -69,7 +69,7 @@ export default function LabelsPage() {
         {rows.map((row, i) => (
           <div
             key={row.id}
-            className="grid grid-cols-[2.5rem_8rem_7rem_1fr_2.25rem] items-center gap-3 border border-foreground/15 bg-background p-2.5"
+            className="grid grid-cols-[2.5rem_8rem_10rem_1fr_2.25rem] items-center gap-3 border border-foreground/15 bg-background p-2.5"
           >
             <span className="text-center font-mono text-xs text-muted-foreground">
               {String(i + 1).padStart(2, "0")}
@@ -85,11 +85,10 @@ export default function LabelsPage() {
             />
             <Input
               value={row.wo}
-              onChange={(e) =>
-                update(row.id, { wo: e.target.value.replace(/\D/g, "") })
-              }
-              inputMode="numeric"
-              placeholder="0000"
+              onChange={(e) => update(row.id, { wo: e.target.value })}
+              maxLength={24}
+              spellCheck={false}
+              placeholder="MX26-0001"
               className="font-mono"
             />
             <Input
