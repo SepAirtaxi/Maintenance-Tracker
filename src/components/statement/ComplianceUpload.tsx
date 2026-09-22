@@ -1,12 +1,34 @@
 // Upload bar for the ERP compliance report that feeds the Next Due pickers.
+// Takes the file either from the file picker or from a drag straight out of
+// the mail client — the report arrives by email, so saving it to disk first
+// is a step worth skipping.
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { FileUp, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { ComplianceReport } from "@/compliance/types";
 
 function fmtDate(d: Date): string {
   return d.toLocaleDateString("en-GB");
+}
+
+// A drag can carry real files (dataTransfer.files) or, when it comes from a
+// mail client, virtual ones that only materialise through the item list.
+function fileFromDrop(dt: DataTransfer): File | null {
+  const direct = dt.files?.[0];
+  if (direct) return direct;
+  for (const item of Array.from(dt.items ?? [])) {
+    if (item.kind !== "file") continue;
+    const file = item.getAsFile();
+    if (file) return file;
+  }
+  return null;
+}
+
+function isPdf(file: File): boolean {
+  return (
+    file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")
+  );
 }
 
 export function ComplianceUpload({
@@ -31,30 +53,82 @@ export function ComplianceUpload({
   onUseReportTail: (tail: string) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
+  // dragenter/dragleave fire for every child the pointer crosses, so the depth
+  // is counted rather than toggled — otherwise the highlight flickers.
+  const dragDepth = useRef(0);
+  const [dropError, setDropError] = useState<string | null>(null);
   const mismatch =
     report && expectedTail && report.header.tailNumber !== expectedTail;
+
+  const endDrag = () => {
+    dragDepth.current = 0;
+    setDragging(false);
+  };
 
   return (
     <div className="space-y-2">
       <div
+        onDragEnter={(e) => {
+          e.preventDefault();
+          dragDepth.current += 1;
+          setDragging(true);
+        }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "copy";
+        }}
+        onDragLeave={(e) => {
+          e.preventDefault();
+          dragDepth.current -= 1;
+          if (dragDepth.current <= 0) endDrag();
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          endDrag();
+          if (parsing) return;
+          const file = fileFromDrop(e.dataTransfer);
+          if (!file) {
+            setDropError(
+              "That drag didn't carry a file the browser can read — save the attachment and use Upload report instead.",
+            );
+            return;
+          }
+          if (!isPdf(file)) {
+            setDropError(`${file.name} isn't a PDF.`);
+            return;
+          }
+          setDropError(null);
+          onFile(file);
+        }}
         className={
-          report
-            ? "flex flex-wrap items-center gap-3 border border-foreground/15 bg-background p-3"
-            : // No report yet — the bar wears the solid accent amber (the same
-              // fill the "use current" chips take on hover) so the one action
-              // the page is waiting on reads as the next step.
-              "flex flex-wrap items-center gap-3 border border-foreground/20 bg-accent p-3"
+          dragging
+            ? // Drag in progress — the whole bar is the target, marked by a
+              // heavier hairline over the accent fill.
+              "flex flex-wrap items-center gap-3 border border-foreground/60 bg-accent p-3"
+            : report
+              ? "flex flex-wrap items-center gap-3 border border-foreground/15 bg-background p-3"
+              : // No report yet — the bar wears the solid accent amber (the same
+                // fill the "use current" chips take on hover) so the one action
+                // the page is waiting on reads as the next step.
+                "flex flex-wrap items-center gap-3 border border-foreground/20 bg-accent p-3"
         }
       >
         <FileUp
           className={
-            report
+            report && !dragging
               ? "h-4 w-4 shrink-0 text-muted-foreground"
               : "h-4 w-4 shrink-0 text-accent-foreground"
           }
         />
         <div className="min-w-0 flex-1">
-          {report ? (
+          {dragging ? (
+            <span className="text-xs font-medium text-accent-foreground">
+              {report
+                ? "Drop to replace the report."
+                : "Drop the aircraft status report here."}
+            </span>
+          ) : report ? (
             <>
               <span className="block truncate font-mono text-xs text-foreground">
                 {report.header.tailNumber} · {report.records.length} events
@@ -69,7 +143,7 @@ export function ComplianceUpload({
             <span className="text-xs font-medium text-accent-foreground">
               {parsing
                 ? "Reading report…"
-                : "Upload the aircraft status report to list what's next due."}
+                : "Drop the aircraft status report here — straight from the email — or upload it."}
             </span>
           )}
         </div>
@@ -81,7 +155,10 @@ export function ComplianceUpload({
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0];
-            if (file) onFile(file);
+            if (file) {
+              setDropError(null);
+              onFile(file);
+            }
             // Cleared so re-picking the same file fires onChange again.
             e.target.value = "";
           }}
@@ -108,9 +185,9 @@ export function ComplianceUpload({
         )}
       </div>
 
-      {error && (
+      {(error || dropError) && (
         <p className="border border-sev-red-edge bg-sev-red-bg px-3 py-2 text-xs text-sev-red-fg">
-          {error}
+          {error ?? dropError}
         </p>
       )}
 
