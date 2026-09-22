@@ -12,17 +12,45 @@ function fmtDate(d: Date): string {
   return d.toLocaleDateString("en-GB");
 }
 
-// A drag can carry real files (dataTransfer.files) or, when it comes from a
-// mail client, virtual ones that only materialise through the item list.
-function fileFromDrop(dt: DataTransfer): File | null {
-  const direct = dt.files?.[0];
-  if (direct) return direct;
-  for (const item of Array.from(dt.items ?? [])) {
-    if (item.kind !== "file") continue;
-    const file = item.getAsFile();
-    if (file) return file;
-  }
-  return null;
+// Outlook hands over an attachment as a *virtual* file: nothing exists on disk
+// until the receiver asks for it. getAsFile() returns null or an empty stub for
+// those; only getAsFileSystemHandle() makes the browser fetch the bytes. It is
+// a Chromium extension to the drag API, so it is reached through a cast.
+type VirtualFileItem = DataTransferItem & {
+  getAsFileSystemHandle?: () => Promise<FileSystemHandle | null>;
+};
+
+// dataTransfer is emptied the moment the drop handler returns, so every item is
+// read synchronously here and only the resulting promises are awaited.
+function readDrop(dt: DataTransfer): Promise<File | null> {
+  const items = Array.from(dt.items ?? []).filter((i) => i.kind === "file");
+  const handles = items.map((i) => {
+    const v = i as VirtualFileItem;
+    return typeof v.getAsFileSystemHandle === "function"
+      ? v.getAsFileSystemHandle().catch(() => null)
+      : null;
+  });
+  const plain = items.map((i) => i.getAsFile());
+  const listed = Array.from(dt.files ?? []);
+
+  return (async () => {
+    // Virtual files first — a plain read of the same item would look like a
+    // real but empty file and fail further down as a corrupt PDF.
+    for (const pending of handles) {
+      const handle = await pending;
+      if (!handle || handle.kind !== "file") continue;
+      try {
+        const file = await (handle as FileSystemFileHandle).getFile();
+        if (file.size > 0) return file;
+      } catch {
+        // Permission or transfer failure — fall through to the plain reads.
+      }
+    }
+    for (const file of [...plain, ...listed]) {
+      if (file && file.size > 0) return file;
+    }
+    return null;
+  })();
 }
 
 function isPdf(file: File): boolean {
@@ -87,19 +115,20 @@ export function ComplianceUpload({
           e.preventDefault();
           endDrag();
           if (parsing) return;
-          const file = fileFromDrop(e.dataTransfer);
-          if (!file) {
-            setDropError(
-              "That drag didn't carry a file the browser can read — save the attachment and use Upload report instead.",
-            );
-            return;
-          }
-          if (!isPdf(file)) {
-            setDropError(`${file.name} isn't a PDF.`);
-            return;
-          }
-          setDropError(null);
-          onFile(file);
+          void readDrop(e.dataTransfer).then((file) => {
+            if (!file) {
+              setDropError(
+                "That drag didn't carry a readable file — drag it from a folder, or use Upload report.",
+              );
+              return;
+            }
+            if (!isPdf(file)) {
+              setDropError(`${file.name} isn't a PDF.`);
+              return;
+            }
+            setDropError(null);
+            onFile(file);
+          });
         }}
         className={
           dragging
@@ -143,7 +172,7 @@ export function ComplianceUpload({
             <span className="text-xs font-medium text-accent-foreground">
               {parsing
                 ? "Reading report…"
-                : "Drop the aircraft status report here — straight from the email — or upload it."}
+                : "Drop the aircraft status report here, or upload it."}
             </span>
           )}
         </div>
