@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CalendarDays, RefreshCw } from "lucide-react";
+import { CalendarDays, Check, ChevronDown, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Input, type InputProps } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import {
   type StatementDoc,
 } from "@/lib/statementPdf";
 import { subscribeAircraft, normaliseTailNumber } from "@/services/aircraft";
+import { attachStatement } from "@/services/statements";
 import { useAuth } from "@/context/AuthContext";
 import type { Aircraft, UserProfile } from "@/types";
 import { parseComplianceReport } from "@/compliance/parseComplianceReport";
@@ -346,6 +347,79 @@ function ActualDueRow({
   );
 }
 
+// The registration picker. Deliberately a closed list: a statement can only be
+// issued for an aircraft that is actually on the fleet, which removes the whole
+// class of typo'd tails and means the overview link always has somewhere to go.
+function TailSelect({
+  value,
+  onChange,
+  fleet,
+}: {
+  value: string;
+  onChange: (tail: string) => void;
+  fleet: Aircraft[];
+}) {
+  return (
+    <div className="relative">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={cn(
+          "flex h-9 w-full appearance-none border border-foreground/30 bg-card px-3 py-1 pr-9 text-sm font-mono transition-colors",
+          "focus-visible:border-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60",
+          value === "" && "italic text-muted-foreground/60",
+        )}
+      >
+        <option value="">Select registration…</option>
+        {fleet.map((a) => (
+          <option key={a.tailNumber} value={a.tailNumber}>
+            {a.tailNumber} — {a.model}
+          </option>
+        ))}
+      </select>
+      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+    </div>
+  );
+}
+
+// Whether the generated document also becomes the aircraft's current
+// statement on the maintenance overview. On by default: the normal case is
+// that a freshly issued statement is the valid one. Unticking is for the test
+// prints and insignificant corrections that shouldn't displace what's on file.
+function LinkToggle({
+  checked,
+  onChange,
+  disabled,
+}: {
+  checked: boolean;
+  onChange: (next: boolean) => void;
+  disabled: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={checked}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      title="Make this the statement shown on the aircraft's card in the maintenance overview, replacing any statement already linked there."
+      className="group inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-spec text-foreground/80 transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-foreground/80"
+    >
+      <span
+        className={cn(
+          "inline-flex h-4 w-4 shrink-0 items-center justify-center border transition-colors",
+          checked
+            ? "border-foreground bg-foreground text-background"
+            : "border-foreground/40 bg-card group-hover:border-foreground/70",
+        )}
+      >
+        {checked && <Check className="h-3 w-3" strokeWidth={3} />}
+      </span>
+      Link to overview
+    </button>
+  );
+}
+
 type Variant = "actual" | "temp";
 
 export default function StatementPage() {
@@ -375,6 +449,13 @@ export default function StatementPage() {
   const [cDue, setCDue] = useState("");
 
   const [generating, setGenerating] = useState(false);
+  // Tick state for "Link to overview" — see LinkToggle. Reset to on whenever
+  // the page is opened; a deliberate untick holds for the rest of the visit.
+  const [linkToCard, setLinkToCard] = useState(true);
+  // Set when the PDF generated fine but filing it against the aircraft
+  // didn't. The document is already in the user's downloads at that point, so
+  // this reports the linking failure without pretending the whole thing failed.
+  const [linkError, setLinkError] = useState<string | null>(null);
 
   // The uploaded ERP compliance report behind the actual statement's pickers.
   // Held in memory only — nothing about it is stored.
@@ -443,6 +524,14 @@ export default function StatementPage() {
       setTtaf(fmtHours(current.totalTimeMinutes / 60));
     if (current.totalLandings != null) setCycles(String(current.totalLandings));
   }, [current]);
+
+  // A report can be for an aircraft outside our fleet, in which case the
+  // "switch to this registration" shortcut has nowhere to put the value — the
+  // registration field only accepts fleet tails.
+  const reportTailInFleet = useMemo(() => {
+    const tail = report?.header.tailNumber;
+    return !!tail && fleet.some((a) => a.tailNumber === tail);
+  }, [report, fleet]);
 
   const regOut = reg.trim().toUpperCase();
   const woOut = wo.trim();
@@ -628,9 +717,35 @@ export default function StatementPage() {
   const onGenerate = async () => {
     if (!ready) return;
     setGenerating(true);
+    setLinkError(null);
     try {
-      if (variant === "temp") await buildStatementPdf(tempDoc);
-      else await buildActualStatementPdf(actualDoc);
+      // The download happens first and unconditionally — the PDF is the point
+      // of the page, and a Firestore hiccup must never cost the user their
+      // document. Linking is a second, best-effort step on the same bytes.
+      const built =
+        variant === "temp"
+          ? await buildStatementPdf(tempDoc)
+          : await buildActualStatementPdf(actualDoc);
+
+      if (!linkToCard || !current) return;
+      try {
+        await attachStatement({
+          tailNumber: current.tailNumber,
+          variant,
+          workOrder: woOut,
+          printed: new Date(),
+          issuedBy,
+          issuedByUid: profile?.uid ?? "",
+          fileName: built.fileName,
+          bytes: built.bytes,
+        });
+      } catch (err) {
+        setLinkError(
+          err instanceof Error
+            ? `The PDF was generated, but linking it to ${current.tailNumber} failed — ${err.message}`
+            : `The PDF was generated, but linking it to ${current.tailNumber} failed.`,
+        );
+      }
     } finally {
       setGenerating(false);
     }
@@ -652,22 +767,7 @@ export default function StatementPage() {
       <div className="grid grid-cols-2 gap-4">
         <label className="block">
           <FieldLabel required>Registration</FieldLabel>
-          <HintInput
-            value={reg}
-            onChange={(e) => setReg(e.target.value.toUpperCase())}
-            maxLength={10}
-            spellCheck={false}
-            placeholder="OY-CAT"
-            list="statement-fleet-tails"
-            className="font-mono"
-          />
-          <datalist id="statement-fleet-tails">
-            {fleet.map((a) => (
-              <option key={a.tailNumber} value={a.tailNumber}>
-                {a.model}
-              </option>
-            ))}
-          </datalist>
+          <TailSelect value={reg} onChange={setReg} fleet={fleet} />
         </label>
         <label className="block">
           <FieldLabel required>Work order no.</FieldLabel>
@@ -749,23 +849,42 @@ export default function StatementPage() {
     </Section>
   );
 
-  const footer = (
-    <div className="flex flex-col items-start gap-3 border-t border-foreground/15 pt-6">
-      <Button size="lg" onClick={onGenerate} disabled={generating || !ready}>
+  // Both the button and the link tick sit at the head of the page, opposite
+  // the variant tabs, rather than at the foot of the form.
+  const actionBar = (
+    <div className="ml-auto flex items-center gap-4">
+      <LinkToggle
+        checked={linkToCard}
+        onChange={setLinkToCard}
+        disabled={generating}
+      />
+      <Button
+        onClick={onGenerate}
+        disabled={generating || !ready}
+        className="uppercase tracking-spec text-xs"
+      >
         {generating ? "Generating…" : "Generate PDF"}
       </Button>
-      <span className="text-xs text-muted-foreground">
-        {ready ? (
-          <>
-            Saves <span className="font-mono">{fileName}</span>
-          </>
-        ) : (
-          <>
-            {missingLabel} required before the statement can be generated.
-          </>
-        )}
-      </span>
     </div>
+  );
+
+  const hintLine = linkError ? (
+    <span className="text-sev-red-fg">{linkError}</span>
+  ) : !ready ? (
+    <>{missingLabel} required before the statement can be generated.</>
+  ) : (
+    <>
+      Saves <span className="font-mono">{fileName}</span>
+      {linkToCard ? (
+        <>
+          {" "}
+          and makes it the current statement on{" "}
+          <span className="font-mono">{regOut}</span>
+        </>
+      ) : (
+        <> — the overview keeps whatever statement it already has</>
+      )}
+    </>
   );
 
   return (
@@ -795,10 +914,18 @@ export default function StatementPage() {
         /* 52.5rem = the old 42rem plus 25% — the next-due rows need the width. */
         className="mx-auto max-w-[52.5rem]"
       >
-        <TabsList>
-          <TabsTrigger value="actual">Actual statement</TabsTrigger>
-          <TabsTrigger value="temp">Temporary statement</TabsTrigger>
-        </TabsList>
+        {/* Head row — variant tabs left, the action that produces the
+            document right. Same on both tabs. */}
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+          <TabsList>
+            <TabsTrigger value="actual">Actual statement</TabsTrigger>
+            <TabsTrigger value="temp">Temporary statement</TabsTrigger>
+          </TabsList>
+          {actionBar}
+        </div>
+        <p className="mt-2 text-xs text-muted-foreground sm:text-right">
+          {hintLine}
+        </p>
 
         <TabsContent
           value="actual"
@@ -813,6 +940,7 @@ export default function StatementPage() {
               parsing={parsing}
               error={reportError}
               expectedTail={normaliseTailNumber(reg)}
+              reportTailInFleet={reportTailInFleet}
               onFile={onReportFile}
               onClear={clearReport}
               onUseReportTail={setReg}
@@ -874,7 +1002,6 @@ export default function StatementPage() {
           </Section>
 
           {noteSection}
-          {footer}
         </TabsContent>
 
         <TabsContent
@@ -931,7 +1058,6 @@ export default function StatementPage() {
           </Section>
 
           {noteSection}
-          {footer}
         </TabsContent>
       </Tabs>
     </div>

@@ -75,6 +75,7 @@ export async function createAircraft(input: {
     outOfProductionReason: null,
     outOfProductionAt: null,
     outOfProductionBy: null,
+    latestStatement: null,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -446,6 +447,7 @@ export async function upsertAircraftIfMissing(input: {
     outOfProductionReason: null,
     outOfProductionAt: null,
     outOfProductionBy: null,
+    latestStatement: null,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });

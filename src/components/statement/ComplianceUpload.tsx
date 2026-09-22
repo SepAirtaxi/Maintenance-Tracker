@@ -65,6 +65,7 @@ export function ComplianceUpload({
   parsing,
   error,
   expectedTail,
+  reportTailInFleet,
   onFile,
   onClear,
   onUseReportTail,
@@ -73,9 +74,13 @@ export function ComplianceUpload({
   fileName: string | null;
   parsing: boolean;
   error: string | null;
-  // The registration typed on the page, so a report for the wrong aircraft is
-  // caught before any of its deadlines reach the statement.
+  // The registration selected on the page, so a report for the wrong aircraft
+  // is caught before any of its deadlines reach the statement.
   expectedTail: string;
+  // Whether this report's own tail is one we can switch to. The registration
+  // field is a closed list of fleet aircraft, so a report for someone else's
+  // aeroplane can be read but never adopted.
+  reportTailInFleet: boolean;
   onFile: (file: File) => void;
   onClear: () => void;
   onUseReportTail: (tail: string) => void;
@@ -228,13 +233,19 @@ export function ComplianceUpload({
           </span>
           , but the statement is for{" "}
           <span className="font-mono font-semibold">{expectedTail}</span>.
-          <button
-            type="button"
-            onClick={() => onUseReportTail(report.header.tailNumber)}
-            className="underline underline-offset-2 hover:no-underline"
-          >
-            Switch to {report.header.tailNumber}
-          </button>
+          {reportTailInFleet ? (
+            <button
+              type="button"
+              onClick={() => onUseReportTail(report.header.tailNumber)}
+              className="underline underline-offset-2 hover:no-underline"
+            >
+              Switch to {report.header.tailNumber}
+            </button>
+          ) : (
+            <span className="opacity-80">
+              That aircraft is not on the fleet.
+            </span>
+          )}
         </p>
       )}
 

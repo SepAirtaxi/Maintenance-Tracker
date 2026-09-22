@@ -29,6 +29,14 @@ service cloud.firestore {
         allow create: if isMember();
         allow update, delete: if false;
       }
+
+      // The maintenance statement PDF currently linked to this aircraft
+      // (document id `latest`). Viewers read it from the overview card the
+      // same as members; only members can issue a new one.
+      match /statements/{statementId} {
+        allow read: if signedIn();
+        allow write: if isMember();
+      }
     }
 
     match /events/{eventId} {

@@ -21,7 +21,8 @@ export type AuditEntity =
   | "booking"
   | "note"
   | "event"
-  | "defect";
+  | "defect"
+  | "statement";
 
 export type AuditLogEntry = {
   id: string;

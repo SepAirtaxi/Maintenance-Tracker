@@ -1,4 +1,4 @@
-import { Timestamp } from "firebase/firestore";
+import { Bytes, Timestamp } from "firebase/firestore";
 
 export type UserProfile = {
   uid: string;
@@ -78,8 +78,41 @@ export type Aircraft = {
   groundingReason?: string | null;
   groundedAt?: Timestamp | null;
   groundedBy?: string | null;
+  // Pointer to the maintenance statement currently shown on this aircraft's
+  // overview card. Metadata only — the PDF itself lives in the `statements`
+  // subcollection so the fleet-wide subscription stays small. Absent/null =
+  // no statement on file yet, which the card shows as a quiet marker.
+  latestStatement?: LatestStatement | null;
   createdAt: Timestamp;
   updatedAt: Timestamp;
+};
+
+// Which of the two statement forms the document was generated from. Both are
+// equally valid releases — whichever was attached last is the current one.
+export type StatementVariant = "actual" | "temp";
+
+// Everything the overview card needs to render the statement pill without
+// touching the PDF bytes.
+export type LatestStatement = {
+  variant: StatementVariant;
+  workOrder: string;
+  // The date printed on the document — always the day it was generated.
+  printedAt: Timestamp;
+  // Name + initials exactly as credited at the foot of the PDF.
+  issuedBy: string;
+  issuedByUid: string;
+  fileName: string;
+  sizeBytes: number;
+};
+
+// The stored PDF, at `aircraft/{tail}/statements/latest`. One per aircraft,
+// overwritten each time a new statement is linked — no history is kept, by
+// design: only the current valid statement matters here. Lives in its own
+// document so opening a card never pulls the bytes down; they are fetched
+// only when someone clicks through to the viewer.
+export type StoredStatement = LatestStatement & {
+  tailNumber: string;
+  pdf: Bytes;
 };
 
 export type BookingItemResolutionKind = "resolved" | "deferred" | "nff";

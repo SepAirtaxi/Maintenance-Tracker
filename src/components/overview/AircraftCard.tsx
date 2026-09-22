@@ -4,6 +4,7 @@ import {
   Ban,
   CalendarDays,
   ChevronRight,
+  FileText,
   Gauge,
   History,
   Pencil,
@@ -33,6 +34,7 @@ import type {
   AircraftStatus,
   Booking,
   Defect,
+  LatestStatement,
   Location,
   MaintenanceEvent,
 } from "@/types";
@@ -79,6 +81,7 @@ type Props = {
   onViewDeferralHistory: (defect: Defect) => void;
   onEstimateDefect: (defect: Defect) => void;
   onEditNote: () => void;
+  onViewStatement: () => void;
   onOpenLinkedDefect?: (defect: Defect) => void;
   onOpenLinkedEvent?: (event: MaintenanceEvent) => void;
 };
@@ -125,6 +128,7 @@ export default function AircraftCard({
   onViewDeferralHistory,
   onEstimateDefect,
   onEditNote,
+  onViewStatement,
   onOpenLinkedDefect,
   onOpenLinkedEvent,
 }: Props) {
@@ -256,6 +260,10 @@ export default function AircraftCard({
                     )}
                   </span>
                 )}
+                <StatementPill
+                  statement={aircraft.latestStatement ?? null}
+                  onClick={onViewStatement}
+                />
               </div>
             </div>
             <div className="flex flex-col items-end gap-1.5">
@@ -472,6 +480,54 @@ function StatusChip({ status }: { status: AircraftStatus }) {
       <Icon className="h-3.5 w-3.5" />
       {config.label}
     </span>
+  );
+}
+
+// The maintenance statement currently on file for this aircraft. Reads as a
+// dated stamp rather than a button: the date is the useful part at a glance,
+// and clicking it opens the document. When nothing has been filed yet the
+// stamp stays in place as a quiet outline, so scanning the fleet shows which
+// tails are still missing one.
+function StatementPill({
+  statement,
+  onClick,
+}: {
+  statement: LatestStatement | null;
+  onClick: () => void;
+}) {
+  if (!statement) {
+    return (
+      <span
+        className="inline-flex items-center gap-1 border border-dashed border-foreground/25 px-2 py-1 text-[10px] font-bold uppercase tracking-spec text-muted-foreground"
+        title="No maintenance statement is linked to this aircraft yet. Issue one from the Statement page with 'Link to overview' ticked."
+      >
+        <FileText className="h-3 w-3" />
+        MS · none
+      </span>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={`${
+        statement.variant === "temp"
+          ? "Temporary maintenance statement"
+          : "Maintenance statement"
+      } issued ${formatDate(statement.printedAt)} on WO ${
+        statement.workOrder
+      } by ${statement.issuedBy}. Click to view, download or print.`}
+      className="inline-flex items-center gap-1 border border-foreground/25 bg-card px-2 py-1 text-[10px] font-bold uppercase tracking-spec text-foreground/85 transition-colors hover:border-foreground/60 hover:bg-foreground/[0.06] hover:text-foreground"
+    >
+      <FileText className="h-3 w-3" />
+      MS
+      {statement.variant === "temp" && (
+        <span className="text-muted-foreground">Temp</span>
+      )}
+      <span className="font-mono normal-case tracking-stamp">
+        {formatDate(statement.printedAt)}
+      </span>
+    </button>
   );
 }
 

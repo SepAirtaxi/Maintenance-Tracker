@@ -229,16 +229,29 @@ function drawIssuedBy(pdf: jsPDF, F: SetFont, issuedBy: string) {
   );
 }
 
+// What a builder hands back: the same bytes the browser was just given to
+// download. Returned so the caller can file the identical document against the
+// aircraft — the copy on the overview card is never a re-render, it is the
+// document that was issued.
+export type BuiltStatement = {
+  bytes: Uint8Array;
+  fileName: string;
+};
+
 // WO references are free text, so strip anything Windows/macOS reject in a
 // filename before handing the name to the browser.
-function saveAs(pdf: jsPDF, name: string) {
-  pdf.save(name.replace(/[\\/:*?"<>|]/g, "-"));
+function saveAs(pdf: jsPDF, name: string): BuiltStatement {
+  const fileName = name.replace(/[\\/:*?"<>|]/g, "-");
+  pdf.save(fileName);
+  return { bytes: new Uint8Array(pdf.output("arraybuffer")), fileName };
 }
 
 // Draws the Temporary Maintenance Statement onto a fresh A4 and triggers a
 // download. The document layout is a faithful port of the approved standalone
 // generator — only the surrounding app UI was redesigned, not this output.
-export async function buildStatementPdf(doc: StatementDoc): Promise<void> {
+export async function buildStatementPdf(
+  doc: StatementDoc,
+): Promise<BuiltStatement> {
   const logo = await loadLogo();
   const pdf = new jsPDF({ unit: "mm", format: "a4", compress: true });
   const F = mkF(pdf);
@@ -404,7 +417,7 @@ export async function buildStatementPdf(doc: StatementDoc): Promise<void> {
 
   drawIssuedBy(pdf, F, doc.issuedBy);
 
-  saveAs(pdf, "MS " + doc.fileBase + " Temp.pdf");
+  return saveAs(pdf, "MS " + doc.fileBase + " Temp.pdf");
 }
 
 // Draws the actual (non-temporary) Maintenance Statement. Identical chrome to
@@ -412,7 +425,7 @@ export async function buildStatementPdf(doc: StatementDoc): Promise<void> {
 // part of this document at all, so the frame simply ends after the note.
 export async function buildActualStatementPdf(
   doc: ActualStatementDoc,
-): Promise<void> {
+): Promise<BuiltStatement> {
   const logo = await loadLogo();
   const pdf = new jsPDF({ unit: "mm", format: "a4", compress: true });
   const F = mkF(pdf);
@@ -477,5 +490,5 @@ export async function buildActualStatementPdf(
 
   drawIssuedBy(pdf, F, doc.issuedBy);
 
-  saveAs(pdf, "MS " + doc.fileBase + ".pdf");
+  return saveAs(pdf, "MS " + doc.fileBase + ".pdf");
 }

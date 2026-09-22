@@ -36,6 +36,9 @@ import UpcomingEventsDialog from "@/components/overview/UpcomingEventsDialog";
 import MissingDialog from "@/components/overview/MissingDialog";
 import CloseoutDialog from "@/components/overview/CloseoutDialog";
 import HistoryDialog from "@/components/overview/HistoryDialog";
+import StatementViewerDialog, {
+  type StatementTarget,
+} from "@/components/overview/StatementViewerDialog";
 import { useAuth } from "@/context/AuthContext";
 import { subscribeAircraft } from "@/services/aircraft";
 import {
@@ -402,6 +405,8 @@ export default function OverviewPage() {
   const [deferralHistoryTarget, setDeferralHistoryTarget] =
     useState<Defect | null>(null);
   const [historyTail, setHistoryTail] = useState<string | null>(null);
+  const [statementTarget, setStatementTarget] =
+    useState<StatementTarget | null>(null);
   const [upcomingOpen, setUpcomingOpen] = useState(false);
   const [missingOpen, setMissingOpen] = useState(false);
   const [closeoutOpen, setCloseoutOpen] = useState(false);
@@ -997,6 +1002,14 @@ export default function OverviewPage() {
         setEstimateTarget({ kind: "defect", defect })
       }
       onEditNote={() => setNoteTarget(s.aircraft)}
+      onViewStatement={() => {
+        const statement = s.aircraft.latestStatement;
+        if (statement)
+          setStatementTarget({
+            tailNumber: s.aircraft.tailNumber,
+            statement,
+          });
+      }}
       // Click-throughs from the grounding-cause banner. Defects open the
       // resolve dialog (the most common next action — resolving lifts the
       // grounding automatically); events use the edit dialog since closing
@@ -1326,6 +1339,10 @@ export default function OverviewPage() {
       <DeferralHistoryDialog
         defect={liveDeferralHistoryTarget}
         onClose={() => setDeferralHistoryTarget(null)}
+      />
+      <StatementViewerDialog
+        target={statementTarget}
+        onClose={() => setStatementTarget(null)}
       />
       <HistoryDialog
         tailNumber={historyTail}
