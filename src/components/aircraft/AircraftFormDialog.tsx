@@ -10,11 +10,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  createAircraft,
-  updateAircraftModel,
-  normaliseTailNumber,
-} from "@/services/aircraft";
+import { createAircraft, updateAircraftModel } from "@/services/aircraft";
+import { normaliseTailNumber } from "@/lib/tails";
 import type { Aircraft } from "@/types";
 
 type Props = {

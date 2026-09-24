@@ -18,18 +18,8 @@ import { formatMinutesAsDuration } from "@/lib/time";
 import { normaliseTailNumber } from "@/lib/tails";
 import type { Aircraft, GroundingCauseType } from "@/types";
 
-export { normaliseTailNumber };
-
 const aircraftCol = () => collection(db, "aircraft");
 const aircraftDoc = (tailNumber: string) => doc(db, "aircraft", tailNumber);
-
-export async function getAircraft(
-  tailNumber: string,
-): Promise<Aircraft | null> {
-  const snap = await getDoc(aircraftDoc(normaliseTailNumber(tailNumber)));
-  if (!snap.exists()) return null;
-  return snap.data() as Aircraft;
-}
 
 export function subscribeAircraft(
   callback: (aircraft: Aircraft[]) => void,
@@ -418,44 +408,3 @@ export async function updateTtafManual(
     })`,
   });
 }
-
-export async function upsertAircraftIfMissing(input: {
-  tailNumber: string;
-  model: string;
-}): Promise<"created" | "exists"> {
-  const tail = normaliseTailNumber(input.tailNumber);
-  const ref = aircraftDoc(tail);
-  const existing = await getDoc(ref);
-  if (existing.exists()) return "exists";
-  await setDoc(ref, {
-    tailNumber: tail,
-    model: input.model.trim(),
-    airworthy: true,
-    totalTimeMinutes: null,
-    previousTotalTimeMinutes: null,
-    totalTimeUpdatedAt: null,
-    totalTimeUpdatedBy: null,
-    totalTimeSource: null,
-    totalLandings: null,
-    note: null,
-    groundingCauseType: null,
-    groundingCauseId: null,
-    groundingReason: null,
-    groundedAt: null,
-    groundedBy: null,
-    outOfProduction: false,
-    outOfProductionReason: null,
-    outOfProductionAt: null,
-    outOfProductionBy: null,
-    latestStatement: null,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  });
-  logAudit(tail, {
-    action: "create",
-    entity: "aircraft",
-    summary: `Aircraft ${tail} created via seed/import (model: ${input.model})`,
-  });
-  return "created";
-}
-

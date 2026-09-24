@@ -8,7 +8,6 @@ import {
   Plane,
   Plus,
   RefreshCw,
-  Sprout,
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -26,7 +25,6 @@ import {
 } from "@/services/aircraft";
 import { subscribeLocations } from "@/services/locations";
 import { subscribeEventTemplates } from "@/services/eventTemplates";
-import { seedFleet } from "@/services/seed";
 import { classifyEngineType } from "@/lib/tails";
 import { useAuth } from "@/context/AuthContext";
 import type { Aircraft, EventTemplate, Location } from "@/types";
@@ -183,29 +181,8 @@ function AircraftSection() {
   const [formOpen, setFormOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Aircraft | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Aircraft | null>(null);
-  const [seeding, setSeeding] = useState(false);
-  const [seedMessage, setSeedMessage] = useState<string | null>(null);
 
   useEffect(() => subscribeAircraft(setAircraft), []);
-
-  const onSeed = async () => {
-    setSeeding(true);
-    setSeedMessage(null);
-    try {
-      const result = await seedFleet();
-      if (result.created.length === 0) {
-        setSeedMessage("Fleet is already seeded — nothing to add.");
-      } else {
-        setSeedMessage(
-          `Added ${result.created.length} aircraft: ${result.created.join(", ")}.`,
-        );
-      }
-    } catch (err) {
-      setSeedMessage(err instanceof Error ? err.message : "Seed failed.");
-    } finally {
-      setSeeding(false);
-    }
-  };
 
   const openCreate = () => {
     setEditTarget(null);
@@ -223,28 +200,11 @@ function AircraftSection() {
         <p className="text-sm text-muted-foreground">
           Fleet master data. Tail number + model.
         </p>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={onSeed}
-            disabled={seeding}
-            title="Add any missing aircraft from the initial fleet seed"
-          >
-            <Sprout className="h-4 w-4" />
-            {seeding ? "Seeding…" : "Seed fleet"}
-          </Button>
-          <Button onClick={openCreate}>
-            <Plus className="h-4 w-4" />
-            Add aircraft
-          </Button>
-        </div>
+        <Button onClick={openCreate}>
+          <Plus className="h-4 w-4" />
+          Add aircraft
+        </Button>
       </div>
-
-      {seedMessage && (
-        <div className="border border-foreground/25 bg-foreground/[0.04] px-3 py-2 text-sm">
-          {seedMessage}
-        </div>
-      )}
 
       <div className="border border-foreground/20 overflow-hidden bg-card">
         <table className="w-full text-sm">

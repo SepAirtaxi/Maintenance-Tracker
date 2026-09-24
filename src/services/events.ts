@@ -38,10 +38,7 @@ export type EventInput = {
   templateId?: string | null;
 };
 
-export type EventPatch = Partial<EventInput> & {
-  // Only editable on the import-sourced event itself; null clears it.
-  importedWarning?: string | null;
-};
+export type EventPatch = Partial<EventInput>;
 
 function statusFromWo(wo: string | null | undefined): EventStatus {
   return wo && wo.trim() ? "planned" : "unplanned";
@@ -55,7 +52,6 @@ function docToEvent(
     id,
     tailNumber: data.tailNumber as string,
     warning: data.warning as string,
-    importedWarning: (data.importedWarning as string | undefined) ?? null,
     expiryDate: (data.expiryDate as Timestamp | null) ?? null,
     timerExpiryTimeMinutes:
       (data.timerExpiryTimeMinutes as number | null) ?? null,
@@ -93,10 +89,7 @@ export function subscribeEvents(
   });
 }
 
-export async function createEvent(
-  input: EventInput,
-  opts: { source: "import" | "manual" } = { source: "manual" },
-): Promise<string> {
+export async function createEvent(input: EventInput): Promise<string> {
   const tail = normaliseTailNumber(input.tailNumber);
   const warning = input.warning.trim();
   if (!tail) throw new Error("Tail number is required.");
@@ -109,7 +102,6 @@ export async function createEvent(
   const ref = await addDoc(eventsCol(), {
     tailNumber: tail,
     warning,
-    importedWarning: null,
     expiryDate: input.expiryDate
       ? Timestamp.fromDate(input.expiryDate)
       : null,
@@ -117,7 +109,7 @@ export async function createEvent(
     workOrderNumber: wo,
     requisitionNumber: req,
     status: statusFromWo(wo),
-    source: opts.source,
+    source: "manual",
     extensionMinutes: null,
     bookingWindowOverrideMinutes: null,
     estimated: false,
@@ -140,9 +132,7 @@ export async function createEvent(
     action: "create",
     entity: "event",
     entityId: ref.id,
-    summary: `Event created: ${warning}${dueSuffix}${
-      opts.source === "import" ? " [import]" : ""
-    }`,
+    summary: `Event created: ${warning}${dueSuffix}`,
   });
 
   return ref.id;
@@ -159,11 +149,6 @@ export async function updateEvent(
 
   const update: Record<string, unknown> = { updatedAt: serverTimestamp() };
   if (patch.warning !== undefined) update.warning = patch.warning.trim();
-  if (patch.importedWarning !== undefined) {
-    update.importedWarning = patch.importedWarning
-      ? patch.importedWarning.trim()
-      : null;
-  }
   if (patch.expiryDate !== undefined) {
     update.expiryDate = patch.expiryDate
       ? Timestamp.fromDate(patch.expiryDate)
@@ -197,16 +182,6 @@ export async function updateEvent(
     }
     if (patch.warning !== undefined && patch.warning.trim() !== prev.warning) {
       changes.push(`title "${prev.warning}" → "${patch.warning.trim()}"`);
-    }
-    if (patch.importedWarning !== undefined) {
-      const nextImported = patch.importedWarning
-        ? patch.importedWarning.trim()
-        : null;
-      if ((prev.importedWarning ?? null) !== nextImported) {
-        changes.push(
-          `imported title "${prev.importedWarning ?? "—"}" → "${nextImported ?? "—"}"`,
-        );
-      }
     }
     if (patch.expiryDate !== undefined) {
       const nextDate = patch.expiryDate
@@ -350,7 +325,6 @@ export async function resolveEvent(
 }
 
 export const MAX_EXTENSION_HOURS = 5;
-export const MAX_EXTENSION_MINUTES = MAX_EXTENSION_HOURS * 60;
 
 // Sets (or replaces) the CAMO extension on an event. `hours` is a positive
 // number ≤ 5 — the maximum the CAMO can grant per interval. Stored as

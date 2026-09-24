@@ -83,8 +83,8 @@ export default function TtafDialog({ aircraft, onClose }: Props) {
           <DialogHeader>
             <DialogTitle>Update TTAF — {aircraft.tailNumber}</DialogTitle>
             <DialogDescription>
-              Manual override. Replaces any value set via CSV import. Can be
-              used to reduce TTAF if an imported value was wrong.
+              Manual override. Replaces the value synced from Flightlogger.
+              Can be used to reduce TTAF if a synced value was wrong.
             </DialogDescription>
           </DialogHeader>
 

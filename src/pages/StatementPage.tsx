@@ -10,7 +10,8 @@ import {
   type ActualStatementDoc,
   type StatementDoc,
 } from "@/lib/statementPdf";
-import { subscribeAircraft, normaliseTailNumber } from "@/services/aircraft";
+import { subscribeAircraft } from "@/services/aircraft";
+import { normaliseTailNumber } from "@/lib/tails";
 import { attachStatement } from "@/services/statements";
 import { useAuth } from "@/context/AuthContext";
 import type { Aircraft, UserProfile } from "@/types";

@@ -87,13 +87,6 @@
     color: hsl(var(--foreground));
   }
 
-  /* Section break — hairline rule that bookends a label */
-  .section-rule {
-    flex: 1;
-    height: 1px;
-    background: hsl(var(--foreground) / 0.18);
-  }
-
   /* Heavyweight registration stamp — the aircraft tail block */
   .tail-stamp {
     font-family: "JetBrains Mono", ui-monospace, monospace;

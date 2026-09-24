@@ -190,11 +190,6 @@ export type MaintenanceEvent = {
   id: string;
   tailNumber: string;
   warning: string;
-  // Frozen on first import: the original Flightlogger warning text. Used as
-  // the dedup key on subsequent imports so that user-edits to `warning` don't
-  // cause duplicate events to be created. Null for manually-created events
-  // and for legacy import-sourced events that pre-date the field.
-  importedWarning: string | null;
   expiryDate: Timestamp | null;
   timerExpiryTimeMinutes: number | null;
   workOrderNumber: string | null;
