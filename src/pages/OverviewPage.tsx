@@ -30,9 +30,6 @@ import DeferDefectDialog from "@/components/overview/DeferDefectDialog";
 import DeferralHistoryDialog from "@/components/overview/DeferralHistoryDialog";
 import ResolveEventDialog from "@/components/overview/ResolveEventDialog";
 import ExtendEventDialog from "@/components/overview/ExtendEventDialog";
-import EstimateDialog, {
-  type EstimateTarget,
-} from "@/components/overview/EstimateDialog";
 import UpcomingEventsDialog from "@/components/overview/UpcomingEventsDialog";
 import MissingDialog from "@/components/overview/MissingDialog";
 import CloseoutDialog from "@/components/overview/CloseoutDialog";
@@ -71,16 +68,17 @@ import { subscribeUsers } from "@/services/users";
 import { subscribeEventTemplates } from "@/services/eventTemplates";
 import {
   buildBookedIdSets,
+  buildBookingPhases,
   daysSinceDeferred,
   getCloseoutCandidates,
   getDeferralStatus,
   getEventSeverity,
   getMissingEventMatches,
   getNeedsBookingMatches,
-  getWoqConversionCandidates,
+  getWoReminderCandidates,
   worstSeverity,
   type CloseoutCandidate,
-  type WoqConversionCandidate,
+  type WoReminderCandidate,
   type MissingEventMatch,
   type NeedsBookingMatch,
   type Severity,
@@ -367,7 +365,7 @@ export default function OverviewPage() {
 
   const deferralScanProcessing = useRef(false);
   const bookingReminderProcessing = useRef(false);
-  const woqReminderProcessing = useRef(false);
+  const woReminderProcessing = useRef(false);
 
   const [bookingReminders, setBookingReminders] = useState<Notification[]>([]);
   const [woqReminders, setWoqReminders] = useState<Notification[]>([]);
@@ -383,8 +381,6 @@ export default function OverviewPage() {
     useState<MaintenanceEvent | null>(null);
   const [extendEventTarget, setExtendEventTarget] =
     useState<MaintenanceEvent | null>(null);
-  const [estimateTarget, setEstimateTarget] =
-    useState<EstimateTarget | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncMeta, setSyncMeta] = useState<FlightloggerSyncMeta | null>(null);
   const [syncMetaLoaded, setSyncMetaLoaded] = useState(false);
@@ -576,6 +572,12 @@ export default function OverviewPage() {
     [allBookings, eventsById, defectsById],
   );
 
+  // Per-item In hangar / upcoming / Rolled out phase for the Status column.
+  const bookingPhases = useMemo(
+    () => buildBookingPhases(allBookings),
+    [allBookings],
+  );
+
   const airworthyTails = useMemo(() => {
     const set = new Set<string>();
     for (const a of aircraft ?? []) {
@@ -670,47 +672,47 @@ export default function OverviewPage() {
     return m;
   }, [closeoutCandidates]);
 
-  // Open events / defects that still only carry a WOQ while their hangar slot
+  // Open events / defects with no WO (WOQ or nothing) while their hangar slot
   // is ≤3 working days away (or already started). Grouped by tail for the
   // card strips; the header banner below is raised once per tail.
-  const woqCandidates: WoqConversionCandidate[] = useMemo(
-    () => getWoqConversionCandidates(allEvents, allDefects, allBookings),
+  const woCandidates: WoReminderCandidate[] = useMemo(
+    () => getWoReminderCandidates(allEvents, allDefects, allBookings),
     [allEvents, allDefects, allBookings],
   );
 
-  const woqByTail: Map<string, WoqConversionCandidate[]> = useMemo(() => {
-    const m = new Map<string, WoqConversionCandidate[]>();
-    for (const c of woqCandidates) {
+  const woByTail: Map<string, WoReminderCandidate[]> = useMemo(() => {
+    const m = new Map<string, WoReminderCandidate[]>();
+    for (const c of woCandidates) {
       const arr = m.get(c.tailNumber) ?? [];
       arr.push(c);
       m.set(c.tailNumber, arr);
     }
     return m;
-  }, [woqCandidates]);
+  }, [woCandidates]);
 
-  // Reconciliation sweep for the WOQ header banner — same rules as the
+  // Reconciliation sweep for the create-WO header banner — same rules as the
   // booking reminder below: raise once per tail, never auto-clear an unacked
   // banner, and delete an acked one once the tail has no candidates left so a
   // future slot can raise a fresh one. The card strip is what persists.
   useEffect(() => {
     if (isViewer || !user) return;
-    if (woqReminderProcessing.current) return;
+    if (woReminderProcessing.current) return;
 
     const existingByTail = new Map<string, Notification>();
     for (const n of woqReminders) existingByTail.set(n.tailNumber, n);
 
-    const toRaise: { tail: string; items: WoqConversionCandidate[] }[] = [];
+    const toRaise: { tail: string; items: WoReminderCandidate[] }[] = [];
     const toClear: string[] = [];
-    for (const [tail, items] of woqByTail) {
+    for (const [tail, items] of woByTail) {
       if (!existingByTail.has(tail)) toRaise.push({ tail, items });
     }
     for (const [tail, n] of existingByTail) {
       if (n.acknowledgedAt == null) continue;
-      if (!woqByTail.has(tail)) toClear.push(tail);
+      if (!woByTail.has(tail)) toClear.push(tail);
     }
     if (toRaise.length === 0 && toClear.length === 0) return;
 
-    woqReminderProcessing.current = true;
+    woReminderProcessing.current = true;
     (async () => {
       try {
         await Promise.all([
@@ -718,13 +720,13 @@ export default function OverviewPage() {
             raiseNotification({
               type: "woq-reminder",
               tailNumber: tail,
-              message: `${tail}: ${formatEventList(
+              message: `${tail}: no WO yet for ${formatEventList(
                 items.map((c) => c.title),
-              )} still only ${items.length === 1 ? "has a WOQ" : "have WOQs"} — hangar slot ${
+              )} — hangar slot ${
                 items[0].bookingFrom.getTime() <= Date.now()
                   ? "has started"
                   : `starts ${format(items[0].bookingFrom, "dd.MM")}`
-              }. Convert to WO.`,
+              }. Create the WO (or convert the WOQ).`,
             }),
           ),
           ...toClear.map((tail) => clearWoqReminder(tail)),
@@ -732,10 +734,10 @@ export default function OverviewPage() {
       } catch (err) {
         console.error("woq-reminder sweep failed", err);
       } finally {
-        woqReminderProcessing.current = false;
+        woReminderProcessing.current = false;
       }
     })();
-  }, [isViewer, user, woqByTail, woqReminders]);
+  }, [isViewer, user, woByTail, woqReminders]);
 
   // Reconciliation sweep: raises one booking-reminder banner per tail that has
   // qualifying events, and cleans up *acknowledged* banners for any tail that
@@ -1052,10 +1054,9 @@ export default function OverviewPage() {
       bookings={s.bookings}
       worstSeverity={s.worst}
       status={s.status}
-      bookedEventIds={bookedIds.eventIds}
-      bookedDefectIds={bookedIds.defectIds}
+      bookingPhases={bookingPhases}
       closeouts={closeoutByTail.get(s.aircraft.tailNumber) ?? []}
-      woqReminders={woqByTail.get(s.aircraft.tailNumber) ?? []}
+      woReminders={woByTail.get(s.aircraft.tailNumber) ?? []}
       locationsById={locationsById}
       readOnly={isViewer}
       onOpenEditLog={() => setHistoryTail(s.aircraft.tailNumber)}
@@ -1068,18 +1069,12 @@ export default function OverviewPage() {
       onDeleteEvent={setDeleteTarget}
       onResolveEvent={setResolveEventTarget}
       onExtendEvent={setExtendEventTarget}
-      onEstimateEvent={(event) =>
-        setEstimateTarget({ kind: "event", event })
-      }
       onAddDefect={() => openAddDefect(s.aircraft.tailNumber)}
       onEditDefect={openEditDefect}
       onDeleteDefect={setDefectDeleteTarget}
       onResolveDefect={setDefectResolveTarget}
       onDeferDefect={setDefectDeferTarget}
       onViewDeferralHistory={setDeferralHistoryTarget}
-      onEstimateDefect={(defect) =>
-        setEstimateTarget({ kind: "defect", defect })
-      }
       onEditNote={() => setNoteTarget(s.aircraft)}
       onViewStatement={() => {
         const statement = s.aircraft.latestStatement;
@@ -1341,10 +1336,6 @@ export default function OverviewPage() {
       <ExtendEventDialog
         event={extendEventTarget}
         onClose={() => setExtendEventTarget(null)}
-      />
-      <EstimateDialog
-        target={estimateTarget}
-        onClose={() => setEstimateTarget(null)}
       />
       <TtafDialog
         aircraft={ttafTarget}

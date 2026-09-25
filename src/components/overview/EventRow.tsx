@@ -10,25 +10,25 @@ import {
   getEventSeverity,
   severityFromDays,
   severityFromMinutes,
-  type PlanStatus,
+  type BookingPhase,
   type Severity,
 } from "@/lib/eventStatus";
 import WorkOrderCell from "@/components/overview/WorkOrderCell";
-import EstimatePill from "@/components/overview/EstimatePill";
+import PlanStatusPill from "@/components/overview/PlanStatusPill";
 import { updateEvent } from "@/services/events";
 import type { MaintenanceEvent } from "@/types";
 import FullTextTitle from "./FullTextTitle";
 
 // Shared grid template — header row in AircraftCard and the defects list must
-// use the same one so the Status / Estimate columns line up across event /
-// defect rows.
-// Columns: WOQ | WO | Event(square+name) | Status | Estimate | Due-date | Due-TTAF | Days-left | Hours-left | Actions
+// use the same one so the Status column lines up across event / defect rows.
+// Columns: WOQ | WO | Event(square+name) | Status | Due-date | Due-TTAF | Days-left | Hours-left | Actions
 // The compartments that used to be nested mini-grids are now flat cells with
 // hairline dividers — the table reads like a ledger instead of a UI.
-// Estimate column is 160px — wide enough for the "Not estimated" pill with
-// its icon + tracking-spec letter-spacing; Status is 130px for "WO + booked".
+// WOQ / WO are 100px — fits the ERP's 11-char ids (e.g. "WOQ26-00024") in
+// 11px mono without truncating. Status is 210px for the longest small-caps
+// pill, "WOQ + booking created".
 export const EVENTS_GRID_COLS =
-  "grid-cols-[72px_72px_minmax(0,1fr)_130px_160px_100px_104px_70px_70px_112px]";
+  "grid-cols-[100px_100px_minmax(0,1fr)_210px_100px_104px_70px_70px_112px]";
 
 const sevSquare: Record<Severity, string> = {
   green: "bg-sev-green-edge",
@@ -49,57 +49,27 @@ type Props = {
   event: MaintenanceEvent;
   currentTtafMinutes: number | null;
   // True when a booking links this event — drives the third "Booked" status.
-  booked: boolean;
+  // Where this event stands against its linked hangar bookings, if any.
+  bookingPhase: BookingPhase | undefined;
   readOnly?: boolean;
   onEdit: () => void;
   onDelete: () => void;
   onResolve: () => void;
   onExtend: () => void;
-  onEstimate: () => void;
-};
-
-const PLAN_STATUS_LABEL: Record<PlanStatus, string> = {
-  unplanned: "No action",
-  quoted: "WOQ",
-  quoted_booked: "WOQ + booked",
-  planned: "WO created",
-  booked: "WO + booked",
-};
-
-const PLAN_STATUS_TITLE: Record<PlanStatus, string> = {
-  unplanned: "No work order or quote yet",
-  quoted: "Work order quote (WOQ) only — no WO yet, no hangar slot booked",
-  quoted_booked:
-    "WOQ only and a calendar block is linked — remember to create the WO before the slot",
-  planned: "Work order assigned — no hangar slot booked yet",
-  booked: "WO assigned and a calendar block is linked to this event",
-};
-
-const PLAN_STATUS_CLASS: Record<PlanStatus, string> = {
-  unplanned: "border-sev-red-edge/40 bg-sev-red-bg/70 text-sev-red-fg",
-  quoted: "border-sev-yellow-edge/50 bg-sev-yellow-bg/60 text-sev-yellow-fg",
-  quoted_booked:
-    "border-sev-green-edge/50 bg-sev-green-bg/70 text-sev-green-fg",
-  planned: "border-sev-yellow-edge/50 bg-sev-yellow-bg/60 text-sev-yellow-fg",
-  booked: "border-sev-green-edge/50 bg-sev-green-bg/70 text-sev-green-fg",
 };
 
 export default function EventRow({
   event,
   currentTtafMinutes,
-  booked,
+  bookingPhase,
   readOnly = false,
   onEdit,
   onDelete,
   onResolve,
   onExtend,
-  onEstimate,
 }: Props) {
   const severity = getEventSeverity(event, currentTtafMinutes);
-  const planStatus = getEventPlanStatus(
-    event,
-    booked ? new Set([event.id]) : new Set(),
-  );
+  const planStatus = getEventPlanStatus(event, bookingPhase);
   const daysLeft = computeDaysLeft(event);
   const minutesLeft = computeMinutesLeft(event, currentTtafMinutes);
   const daysSev = severityFromDays(daysLeft);
@@ -139,23 +109,7 @@ export default function EventRow({
         <FullTextTitle text={event.warning} />
       </span>
       <div className="pr-2">
-        <span
-          className={cn(
-            "inline-flex items-center border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-spec",
-            PLAN_STATUS_CLASS[planStatus],
-          )}
-          title={PLAN_STATUS_TITLE[planStatus]}
-        >
-          {PLAN_STATUS_LABEL[planStatus]}
-        </span>
-      </div>
-      <div className="pr-2">
-        <EstimatePill
-          estimated={event.estimated}
-          estimatedManHours={event.estimatedManHours}
-          readOnly={readOnly}
-          onClick={onEstimate}
-        />
+        <PlanStatusPill status={planStatus} />
       </div>
       {/* Due-date cell — when an extension is in effect we surface it in the
           TTAF cell next door, not here. */}

@@ -102,7 +102,7 @@ function EditableWorkOrderCell({
                 }, 100);
               }}
               disabled={saving}
-              className="h-6 w-24 px-1.5 text-xs font-mono"
+              className="h-6 w-28 px-1.5 text-xs font-mono"
               placeholder={placeholder}
             />
             <button

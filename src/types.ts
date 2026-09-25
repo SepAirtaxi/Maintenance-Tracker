@@ -210,13 +210,6 @@ export type MaintenanceEvent = {
   // Null = use the fleet default (NEEDS_BOOKING_MINUTES_THRESHOLD). Only applies
   // to hours-based events; date-only warnings are certain and aren't overridden.
   bookingWindowOverrideMinutes: number | null;
-  // Planner estimate. `estimated` = the planner has reviewed this item;
-  // `estimatedManHours` = work-time guess (man-hours, NOT flight hours).
-  // The two are independent so an item can be reviewed without committing to
-  // a number yet. Phase 1 lives on the event itself; phase 2 may lift these
-  // onto a WorkOrder collection (names port directly).
-  estimated: boolean;
-  estimatedManHours: number | null;
   // Link to the scheduled-event template this event was created from. Null
   // for free-text events and for events that pre-date templates. Stored as an
   // ID (not title text) so renaming a template doesn't silently break the
@@ -273,9 +266,6 @@ export type Defect = {
   deferredAt: Timestamp | null;
   deferralReason: string | null;
   deferredBy: string | null;
-  // Planner estimate — see `MaintenanceEvent.estimated` for semantics.
-  estimated: boolean;
-  estimatedManHours: number | null;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 };

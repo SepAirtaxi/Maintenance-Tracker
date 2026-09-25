@@ -8,10 +8,10 @@ import {
   getDefectPlanStatus,
   getDeferralStatus,
   type DeferralStatus,
-  type PlanStatus,
+  type BookingPhase,
 } from "@/lib/eventStatus";
 import WorkOrderCell from "@/components/overview/WorkOrderCell";
-import EstimatePill from "@/components/overview/EstimatePill";
+import PlanStatusPill from "@/components/overview/PlanStatusPill";
 import { EVENTS_GRID_COLS } from "@/components/overview/EventRow";
 import { updateDefect } from "@/services/defects";
 import type { Defect } from "@/types";
@@ -21,42 +21,16 @@ import FullTextTitle from "./FullTextTitle";
 // across event and defect rows on the same aircraft card.
 const DEFECTS_GRID_COLS = EVENTS_GRID_COLS;
 
-const PLAN_STATUS_LABEL: Record<PlanStatus, string> = {
-  unplanned: "No action",
-  quoted: "WOQ",
-  quoted_booked: "WOQ + booked",
-  planned: "WO created",
-  booked: "WO + booked",
-};
-
-const PLAN_STATUS_TITLE: Record<PlanStatus, string> = {
-  unplanned: "No work order or quote yet",
-  quoted: "Work order quote (WOQ) only — no WO yet, no hangar slot booked",
-  quoted_booked:
-    "WOQ only and a calendar block is linked — remember to create the WO before the slot",
-  planned: "Work order assigned — no hangar slot booked yet",
-  booked: "WO assigned and a calendar block is linked to this defect",
-};
-
-const PLAN_STATUS_CLASS: Record<PlanStatus, string> = {
-  unplanned: "border-sev-red-edge/40 bg-sev-red-bg/70 text-sev-red-fg",
-  quoted: "border-sev-yellow-edge/50 bg-sev-yellow-bg/60 text-sev-yellow-fg",
-  quoted_booked:
-    "border-sev-green-edge/50 bg-sev-green-bg/70 text-sev-green-fg",
-  planned: "border-sev-yellow-edge/50 bg-sev-yellow-bg/60 text-sev-yellow-fg",
-  booked: "border-sev-green-edge/50 bg-sev-green-bg/70 text-sev-green-fg",
-};
-
 type Props = {
   defects: Defect[];
-  bookedDefectIds: ReadonlySet<string>;
+  // defectId → where it stands against its linked hangar bookings.
+  bookingPhases: ReadonlyMap<string, BookingPhase>;
   readOnly?: boolean;
   onEdit: (defect: Defect) => void;
   onDelete: (defect: Defect) => void;
   onResolve: (defect: Defect) => void;
   onDefer: (defect: Defect) => void;
   onViewDeferralHistory: (defect: Defect) => void;
-  onEstimate: (defect: Defect) => void;
 };
 
 function DeferralPill({
@@ -106,14 +80,13 @@ function DeferralPill({
 
 export default function DefectsList({
   defects,
-  bookedDefectIds,
+  bookingPhases,
   readOnly = false,
   onEdit,
   onDelete,
   onResolve,
   onDefer,
   onViewDeferralHistory,
-  onEstimate,
 }: Props) {
   if (defects.length === 0) return null;
 
@@ -137,7 +110,6 @@ export default function DefectsList({
         <span className="px-1">WO</span>
         <span className="pl-3.5">Defect</span>
         <span>Status</span>
-        <span>Estimate</span>
         <span className="border-l border-foreground/15 px-2 text-center">
           Reported
         </span>
@@ -149,7 +121,7 @@ export default function DefectsList({
         <span className="text-right pl-2">{readOnly ? "" : "Actions"}</span>
       </div>
       {defects.map((d) => {
-        const planStatus = getDefectPlanStatus(d, bookedDefectIds);
+        const planStatus = getDefectPlanStatus(d, bookingPhases.get(d.id));
         const deferralStatus = getDeferralStatus(d);
         return (
           <div
@@ -188,23 +160,7 @@ export default function DefectsList({
               <FullTextTitle text={d.title} />
             </div>
             <div className="pr-2">
-              <span
-                className={cn(
-                  "inline-flex items-center border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-spec",
-                  PLAN_STATUS_CLASS[planStatus],
-                )}
-                title={PLAN_STATUS_TITLE[planStatus]}
-              >
-                {PLAN_STATUS_LABEL[planStatus]}
-              </span>
-            </div>
-            <div className="pr-2">
-              <EstimatePill
-                estimated={d.estimated}
-                estimatedManHours={d.estimatedManHours}
-                readOnly={readOnly}
-                onClick={() => onEstimate(d)}
-              />
+              <PlanStatusPill status={planStatus} />
             </div>
             <div className="border-l border-foreground/15 px-2 py-0.5 text-center font-mono text-[11px] tabular-nums">
               {formatDate(d.reportedDate)}

@@ -23,9 +23,10 @@ import { cn } from "@/lib/utils";
 import { formatBookingRange, formatDate } from "@/lib/format";
 import { formatMinutesAsDuration } from "@/lib/time";
 import {
+  type BookingPhases,
   type CloseoutCandidate,
   type Severity,
-  type WoqConversionCandidate,
+  type WoReminderCandidate,
 } from "@/lib/eventStatus";
 import { liftGrounding } from "@/services/aircraft";
 import { isBookingActive } from "@/services/bookings";
@@ -61,14 +62,14 @@ type Props = {
   bookings: BookingWithLinks[];
   worstSeverity: Severity;
   status: AircraftStatus;
-  bookedEventIds: ReadonlySet<string>;
-  bookedDefectIds: ReadonlySet<string>;
+  // Fleet-wide id → booking phase maps (events / defects kept separate).
+  bookingPhases: BookingPhases;
   // Open, work-ordered events on this tail whose hangar booking has already
   // ended — the plane has rolled out but the WO hasn't been closed here yet.
   closeouts: CloseoutCandidate[];
-  // Open events / defects on this tail that still only have a WOQ while their
-  // hangar slot is ≤3 working days away (or already started).
-  woqReminders: WoqConversionCandidate[];
+  // Open events / defects on this tail with no WO while their hangar slot is
+  // ≤3 working days away (or already started) — WOQ or no paperwork at all.
+  woReminders: WoReminderCandidate[];
   locationsById: ReadonlyMap<string, Location>;
   readOnly?: boolean;
   onOpenEditLog: () => void;
@@ -81,14 +82,12 @@ type Props = {
   onDeleteEvent: (event: MaintenanceEvent) => void;
   onResolveEvent: (event: MaintenanceEvent) => void;
   onExtendEvent: (event: MaintenanceEvent) => void;
-  onEstimateEvent: (event: MaintenanceEvent) => void;
   onAddDefect: () => void;
   onEditDefect: (defect: Defect) => void;
   onDeleteDefect: (defect: Defect) => void;
   onResolveDefect: (defect: Defect) => void;
   onDeferDefect: (defect: Defect) => void;
   onViewDeferralHistory: (defect: Defect) => void;
-  onEstimateDefect: (defect: Defect) => void;
   onEditNote: () => void;
   onViewStatement: () => void;
   onOpenLinkedDefect?: (defect: Defect) => void;
@@ -113,10 +112,9 @@ export default function AircraftCard({
   bookings,
   worstSeverity,
   status,
-  bookedEventIds,
-  bookedDefectIds,
+  bookingPhases,
   closeouts,
-  woqReminders,
+  woReminders,
   locationsById,
   readOnly = false,
   onOpenEditLog,
@@ -129,14 +127,12 @@ export default function AircraftCard({
   onDeleteEvent,
   onResolveEvent,
   onExtendEvent,
-  onEstimateEvent,
   onAddDefect,
   onEditDefect,
   onDeleteDefect,
   onResolveDefect,
   onDeferDefect,
   onViewDeferralHistory,
-  onEstimateDefect,
   onEditNote,
   onViewStatement,
   onOpenLinkedDefect,
@@ -417,9 +413,9 @@ export default function AircraftCard({
           onResolve={onResolveEvent}
         />
       )}
-      {woqReminders.length > 0 && (
-        <WoqReminderBanner
-          candidates={woqReminders}
+      {woReminders.length > 0 && (
+        <WoReminderBanner
+          candidates={woReminders}
           readOnly={readOnly}
           onEditEvent={onEditEvent}
           onEditDefect={onEditDefect}
@@ -442,13 +438,12 @@ export default function AircraftCard({
                 key={event.id}
                 event={event}
                 currentTtafMinutes={aircraft.totalTimeMinutes}
-                booked={bookedEventIds.has(event.id)}
+                bookingPhase={bookingPhases.events.get(event.id)}
                 readOnly={readOnly}
                 onEdit={() => onEditEvent(event)}
                 onDelete={() => onDeleteEvent(event)}
                 onResolve={() => onResolveEvent(event)}
                 onExtend={() => onExtendEvent(event)}
-                onEstimate={() => onEstimateEvent(event)}
               />
             ))}
           </>
@@ -457,14 +452,13 @@ export default function AircraftCard({
         {/* Defects section — DefectsList renders its own section break */}
         <DefectsList
           defects={defects}
-          bookedDefectIds={bookedDefectIds}
+          bookingPhases={bookingPhases.defects}
           readOnly={readOnly}
           onEdit={onEditDefect}
           onDelete={onDeleteDefect}
           onResolve={onResolveDefect}
           onDefer={onDeferDefect}
           onViewDeferralHistory={onViewDeferralHistory}
-          onEstimate={onEstimateDefect}
         />
       </div>
     </section>
@@ -746,7 +740,6 @@ function EventsColumnHeader({ readOnly }: { readOnly: boolean }) {
         <span />
         <span />
         <span />
-        <span />
         <span className="border-l border-foreground/15 col-span-2 text-center py-0.5 font-semibold text-foreground/60">
           Due at
         </span>
@@ -766,7 +759,6 @@ function EventsColumnHeader({ readOnly }: { readOnly: boolean }) {
         <span className="px-1">WO</span>
         <span className="pl-3.5">Event</span>
         <span>Status</span>
-        <span>Estimate</span>
         <span className="border-l border-foreground/15 px-2 text-center">
           Date
         </span>
@@ -1032,18 +1024,18 @@ function CloseoutBanner({
   );
 }
 
-// "WOQ not converted to WO" strip. Raised 3 working days before a linked
-// hangar slot starts and kept until a WO number is entered — derived, never
+// "No WO yet" strip. Raised 3 working days before a linked hangar slot starts
+// and kept until a WO number is entered — derived, never
 // dismissed. Yellow like the header reminder: a to-do, not an airworthiness
 // problem. Each row opens the edit dialog for that event / defect so the WO
 // can be filled in straight away.
-function WoqReminderBanner({
+function WoReminderBanner({
   candidates,
   readOnly,
   onEditEvent,
   onEditDefect,
 }: {
-  candidates: WoqConversionCandidate[];
+  candidates: WoReminderCandidate[];
   readOnly: boolean;
   onEditEvent: (event: MaintenanceEvent) => void;
   onEditDefect: (defect: Defect) => void;
@@ -1064,11 +1056,13 @@ function WoqReminderBanner({
           const body = (
             <>
               <span className="text-[10px] font-bold uppercase tracking-spec shrink-0">
-                Convert WOQ to WO:
+                {c.quoteNumber ? "Convert WOQ to WO:" : "Create WO:"}
               </span>
-              <span className="font-mono text-[11px] opacity-80 shrink-0">
-                WOQ {c.quoteNumber}
-              </span>
+              {c.quoteNumber && (
+                <span className="font-mono text-[11px] opacity-80 shrink-0">
+                  WOQ {c.quoteNumber}
+                </span>
+              )}
               <span className="text-xs font-medium min-w-0 truncate" title={c.title}>
                 {c.title}
               </span>
