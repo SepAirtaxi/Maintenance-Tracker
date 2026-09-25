@@ -659,12 +659,12 @@ function BookingChip({
       onClick={onClick}
       title={titleAttr || "View booking"}
       className={cn(
-        // Amber accent so a booked tail is spotted at a glance: a soft wash
-        // for upcoming, solid (matching the IN HANGAR badge) while in hangar.
-        "shrink-0 inline-flex items-stretch border text-[10px] text-accent-foreground transition-colors",
+        // Green so a booked tail is spotted at a glance: a mint wash for
+        // upcoming, solid deep green while the aircraft is in the hangar.
+        "shrink-0 inline-flex items-stretch border text-[10px] transition-colors",
         active
-          ? "border-foreground/60 bg-accent hover:bg-accent/85"
-          : "border-accent bg-accent/15 hover:bg-accent/30",
+          ? "border-sev-green-fg bg-sev-green-fg text-card hover:bg-sev-green-fg/85"
+          : "border-sev-green-edge bg-sev-green-bg text-sev-green-fg hover:bg-sev-green-edge/25",
       )}
     >
       {/* Short "Sep 25 → Sep 29" like the statements; the year lives in the
@@ -683,8 +683,8 @@ function BookingChip({
           className={cn(
             "border-l px-1 py-0.5 text-[9px] font-bold uppercase tracking-spec flex items-center",
             active
-              ? "border-foreground/30 bg-foreground/[0.08]"
-              : "border-accent/60 bg-accent/10",
+              ? "border-card/30 bg-card/15"
+              : "border-sev-green-edge/50 bg-sev-green-edge/15",
           )}
         >
           {typeLabel}
@@ -695,8 +695,8 @@ function BookingChip({
           className={cn(
             "border-l px-1 py-0.5 font-mono font-bold flex items-center",
             active
-              ? "border-foreground/30 bg-foreground/[0.08]"
-              : "border-accent/60 bg-accent/10",
+              ? "border-card/30 bg-card/15"
+              : "border-sev-green-edge/50 bg-sev-green-edge/15",
           )}
         >
           WO {primaryWo}
