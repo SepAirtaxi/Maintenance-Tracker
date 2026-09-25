@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DateInput } from "@/components/ui/date-input";
 import { Label } from "@/components/ui/label";
 import { resolveDefect } from "@/services/defects";
 import { formatDate } from "@/lib/format";
@@ -118,11 +119,10 @@ export default function ResolveDefectDialog({ defect, onClose }: Props) {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="resolveDate">Resolution date</Label>
-                <Input
+                <DateInput
                   id="resolveDate"
-                  type="date"
                   value={resolvedDate}
-                  onChange={(e) => setResolvedDate(e.target.value)}
+                  onChange={setResolvedDate}
                   required
                 />
               </div>

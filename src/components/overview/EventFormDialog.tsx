@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DateInput } from "@/components/ui/date-input";
 import { Label } from "@/components/ui/label";
 import { createEvent, updateEvent } from "@/services/events";
 import { subscribeEventTemplates } from "@/services/eventTemplates";
@@ -228,11 +229,10 @@ export default function EventFormDialog({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="expiryDate">Due date</Label>
-                <Input
+                <DateInput
                   id="expiryDate"
-                  type="date"
                   value={expiryDate}
-                  onChange={(e) => setExpiryDate(e.target.value)}
+                  onChange={setExpiryDate}
                 />
               </div>
               <div className="space-y-2">

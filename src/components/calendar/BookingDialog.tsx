@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DateInput } from "@/components/ui/date-input";
 import { Label } from "@/components/ui/label";
 import { createBooking, deleteBooking, updateBooking } from "@/services/bookings";
 import { subscribeLocations } from "@/services/locations";
@@ -300,11 +301,10 @@ export default function BookingDialog({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2 min-w-0">
                 <Label htmlFor="bookingFrom">From</Label>
-                <Input
+                <DateInput
                   id="bookingFrom"
-                  type="date"
                   value={from}
-                  onChange={(e) => setFrom(e.target.value)}
+                  onChange={setFrom}
                   required
                 />
               </div>
@@ -315,12 +315,11 @@ export default function BookingDialog({
                 >
                   To
                 </Label>
-                <Input
+                <DateInput
                   id="bookingTo"
-                  type="date"
                   value={openEnded ? "" : to}
                   min={from || undefined}
-                  onChange={(e) => setTo(e.target.value)}
+                  onChange={setTo}
                   disabled={openEnded}
                   placeholder={openEnded ? "open-ended" : undefined}
                 />

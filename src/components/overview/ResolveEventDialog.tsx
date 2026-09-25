@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DateInput } from "@/components/ui/date-input";
 import { Label } from "@/components/ui/label";
 import { resolveEvent } from "@/services/events";
 import { formatDate } from "@/lib/format";
@@ -148,11 +149,10 @@ export default function ResolveEventDialog({
           <div className="py-4 space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="closeDate">Completion date</Label>
-              <Input
+              <DateInput
                 id="closeDate"
-                type="date"
                 value={resolvedDate}
-                onChange={(e) => setResolvedDate(e.target.value)}
+                onChange={setResolvedDate}
                 required
               />
             </div>

@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DateInput } from "@/components/ui/date-input";
 import { Label } from "@/components/ui/label";
 import { createDefect, updateDefect } from "@/services/defects";
 import {
@@ -203,11 +204,10 @@ export default function DefectFormDialog({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="defectDate">Reported date</Label>
-                <Input
+                <DateInput
                   id="defectDate"
-                  type="date"
                   value={reportedDate}
-                  onChange={(e) => setReportedDate(e.target.value)}
+                  onChange={setReportedDate}
                   required
                 />
               </div>

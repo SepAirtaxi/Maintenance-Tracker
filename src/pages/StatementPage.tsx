@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, Check, ChevronDown, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { isoToDmy, maskDmy, parseDmy, toIso } from "@/lib/dmy";
 import { cn } from "@/lib/utils";
 import { Input, type InputProps } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -23,6 +24,8 @@ import {
   type PickerRow,
 } from "@/components/statement/CompliancePicker";
 
+// Both statements print deadlines long-form, "Sep 17, 2026". Entry on the
+// page is DD-MM-YYYY (see lib/dmy).
 function fmtDate(d: Date): string {
   return d.toLocaleDateString("en-US", {
     month: "short",
@@ -63,35 +66,6 @@ function daysBetween(a: Date, b: Date): number {
 // doesn't age; it never touches the output.
 function woHint(today: Date): string {
   return `MX${String(today.getFullYear() % 100).padStart(2, "0")}-2`;
-}
-
-// ---- DD-MM-YYYY handling for every calendar deadline on the page ----------
-// Typed as digits; dashes are inserted for you. Both statements print the
-// long-form "Sep 17, 2026".
-function maskDmy(v: string): string {
-  const d = v.replace(/\D/g, "").slice(0, 8);
-  return [d.slice(0, 2), d.slice(2, 4), d.slice(4, 8)].filter(Boolean).join("-");
-}
-function parseDmy(v: string): Date | null {
-  const m = v.match(/^(\d{2})-(\d{2})-(\d{4})$/);
-  if (!m) return null;
-  const day = +m[1],
-    month = +m[2],
-    year = +m[3];
-  const d = new Date(year, month - 1, day);
-  // Rejects 31-02-2026 and friends — the Date constructor would roll them over.
-  if (d.getFullYear() !== year || d.getMonth() !== month - 1 || d.getDate() !== day)
-    return null;
-  return d;
-}
-function toIso(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-    d.getDate(),
-  ).padStart(2, "0")}`;
-}
-function isoToDmy(iso: string): string {
-  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  return m ? `${m[3]}-${m[2]}-${m[1]}` : "";
 }
 
 // Who the PDF credits as the issuer. Members are held at the profile setup
