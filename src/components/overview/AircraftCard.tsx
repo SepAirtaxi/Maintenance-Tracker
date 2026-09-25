@@ -294,13 +294,20 @@ export default function AircraftCard({
               <span className="readout text-xl font-bold leading-none text-foreground">
                 {formatMinutesAsDuration(aircraft.totalTimeMinutes)}
               </span>
-              {aircraft.totalLandings != null && (
+              {(aircraft.totalLandings != null ||
+                aircraft.syncTtafFromFlightlogger === false) && (
                 <span
                   className="flex items-baseline gap-1.5 border-l border-foreground/15 pl-3 leading-none"
-                  title="All-time landings (Flightlogger)"
+                  title={
+                    aircraft.syncTtafFromFlightlogger === false
+                      ? "All-time landings (entered manually)"
+                      : "All-time landings (Flightlogger)"
+                  }
                 >
                   <span className="readout text-lg font-bold leading-none text-foreground">
-                    {aircraft.totalLandings.toLocaleString("en-US")}
+                    {aircraft.totalLandings != null
+                      ? aircraft.totalLandings.toLocaleString("en-US")
+                      : "—"}
                   </span>
                   <span className="text-[10px] font-bold uppercase tracking-spec text-muted-foreground">
                     Ldg
@@ -323,7 +330,11 @@ export default function AircraftCard({
               <button
                 type="button"
                 onClick={onUpdateTtaf}
-                title="Update TTAF"
+                title={
+                  aircraft.syncTtafFromFlightlogger === false
+                    ? "Update TTAF / landings"
+                    : "Update TTAF"
+                }
                 className="inline-flex items-center gap-1.5 border-l border-foreground/15 px-3 text-[10px] font-bold uppercase tracking-spec text-foreground/80 hover:bg-foreground/[0.06] hover:text-foreground transition-colors"
               >
                 <Pencil className="h-3 w-3" />

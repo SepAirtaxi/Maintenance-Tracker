@@ -60,10 +60,10 @@ export type Aircraft = {
   syncTtafFromFlightlogger?: boolean;
   // All-time accumulated landings, pulled from Flightlogger alongside TTAF.
   // Integer count. Same monotonic-increase rule as TTAF (never decreases on
-  // sync). Null until the first successful sync, or for aircraft excluded
-  // from the sync that have no manual landings flow. Audit history for
+  // sync). Null until the first successful sync. Aircraft excluded from the
+  // sync get it entered by hand in the TTAF dialog instead. Audit history for
   // landings rides on the TTAF audit entry — a single "sync occurred" line
-  // covers both deltas.
+  // covers both deltas; manual edits log their own "Landings: a → b" line.
   totalLandings?: number | null;
   // Free-text remark shown in the aircraft header. Used for context that
   // doesn't belong on a specific event/defect (e.g. "grounded — waiting on

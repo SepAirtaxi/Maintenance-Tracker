@@ -408,3 +408,31 @@ export async function updateTtafManual(
     })`,
   });
 }
+
+// Manual landings entry for aircraft excluded from the Flightlogger sync
+// (turboprops), which have no other way to get a count onto the card.
+export async function updateLandingsManual(
+  tailNumber: string,
+  totalLandings: number,
+): Promise<void> {
+  const tail = normaliseTailNumber(tailNumber);
+  if (!Number.isInteger(totalLandings) || totalLandings < 0) {
+    throw new Error("Landings must be a whole number, 0 or more.");
+  }
+  const existing = await getDoc(aircraftDoc(tail));
+  const prev = existing.data() as Aircraft | undefined;
+  const before = prev?.totalLandings ?? null;
+
+  await updateDoc(aircraftDoc(tail), {
+    totalLandings,
+    updatedAt: serverTimestamp(),
+  });
+
+  logAudit(tail, {
+    action: "update",
+    entity: "ttaf",
+    summary: `Landings: ${before ?? "—"} → ${totalLandings} (source: manual${
+      before != null && totalLandings < before ? ", decreased" : ""
+    })`,
+  });
+}
