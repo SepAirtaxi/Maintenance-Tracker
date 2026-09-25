@@ -33,7 +33,7 @@ export type DefectInput = {
   reportedDate: Date;
   reportedTtafMinutes: number;
   workOrderNumber: string | null;
-  requisitionNumber: string | null;
+  quoteNumber: string | null;
   relatedDefectIds?: string[];
 };
 
@@ -89,7 +89,7 @@ function docToDefect(id: string, data: Record<string, unknown>): Defect {
     reportedDate: data.reportedDate as Timestamp,
     reportedTtafMinutes: data.reportedTtafMinutes as number,
     workOrderNumber: (data.workOrderNumber as string | undefined) ?? null,
-    requisitionNumber: (data.requisitionNumber as string | undefined) ?? null,
+    quoteNumber: (data.quoteNumber as string | undefined) ?? null,
     resolvedDate: (data.resolvedDate as Timestamp | undefined) ?? null,
     resolutionWorkOrder:
       (data.resolutionWorkOrder as string | undefined) ?? null,
@@ -122,7 +122,7 @@ export async function createDefect(input: DefectInput): Promise<string> {
   validate(input);
   const tail = normaliseTailNumber(input.tailNumber);
   const wo = input.workOrderNumber?.trim() || null;
-  const req = input.requisitionNumber?.trim() || null;
+  const woq = input.quoteNumber?.trim() || null;
   const relatedIds = await filterValidRelatedIds(tail, input.relatedDefectIds);
   const ref = await addDoc(defectsCol(), {
     tailNumber: tail,
@@ -130,7 +130,7 @@ export async function createDefect(input: DefectInput): Promise<string> {
     reportedDate: Timestamp.fromDate(input.reportedDate),
     reportedTtafMinutes: input.reportedTtafMinutes,
     workOrderNumber: wo,
-    requisitionNumber: req,
+    quoteNumber: woq,
     resolvedDate: null,
     resolutionWorkOrder: null,
     resolvedAt: null,
@@ -178,8 +178,8 @@ export async function updateDefect(
   if (patch.workOrderNumber !== undefined) {
     update.workOrderNumber = patch.workOrderNumber?.trim() || null;
   }
-  if (patch.requisitionNumber !== undefined) {
-    update.requisitionNumber = patch.requisitionNumber?.trim() || null;
+  if (patch.quoteNumber !== undefined) {
+    update.quoteNumber = patch.quoteNumber?.trim() || null;
   }
   let nextRelatedIds: string[] | null = null;
   if (patch.relatedDefectIds !== undefined && prev) {
@@ -215,10 +215,10 @@ export async function updateDefect(
         changes.push(`WO ${prev.workOrderNumber ?? "—"} → ${nextWo ?? "—"}`);
       }
     }
-    if (patch.requisitionNumber !== undefined) {
-      const nextReq = patch.requisitionNumber?.trim() || null;
-      if ((prev.requisitionNumber ?? null) !== nextReq) {
-        changes.push(`REQ ${prev.requisitionNumber ?? "—"} → ${nextReq ?? "—"}`);
+    if (patch.quoteNumber !== undefined) {
+      const nextWoq = patch.quoteNumber?.trim() || null;
+      if ((prev.quoteNumber ?? null) !== nextWoq) {
+        changes.push(`WOQ ${prev.quoteNumber ?? "—"} → ${nextWoq ?? "—"}`);
       }
     }
     if (changes.length > 0) {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ShieldOff, Info, CalendarClock } from "lucide-react";
+import { ShieldOff, Info, CalendarClock, FileClock } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import {
   subscribeActiveNotifications,
@@ -66,7 +66,8 @@ function NotificationBanner({
   const tone =
     notification.type === "auto-grounded"
       ? "red"
-      : notification.type === "booking-reminder"
+      : notification.type === "booking-reminder" ||
+          notification.type === "woq-reminder"
         ? "amber"
         : "neutral";
   const Icon =
@@ -74,7 +75,9 @@ function NotificationBanner({
       ? ShieldOff
       : notification.type === "booking-reminder"
         ? CalendarClock
-        : Info;
+        : notification.type === "woq-reminder"
+          ? FileClock
+          : Info;
   const wrap =
     tone === "red"
       ? "border-sev-red-edge bg-sev-red-bg text-sev-red-fg"

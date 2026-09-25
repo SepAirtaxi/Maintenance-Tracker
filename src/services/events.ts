@@ -34,7 +34,7 @@ export type EventInput = {
   expiryDate: Date | null;
   timerExpiryTimeMinutes: number | null;
   workOrderNumber: string | null;
-  requisitionNumber: string | null;
+  quoteNumber: string | null;
   templateId?: string | null;
 };
 
@@ -56,7 +56,7 @@ function docToEvent(
     timerExpiryTimeMinutes:
       (data.timerExpiryTimeMinutes as number | null) ?? null,
     workOrderNumber: (data.workOrderNumber as string | null) ?? null,
-    requisitionNumber: (data.requisitionNumber as string | null) ?? null,
+    quoteNumber: (data.quoteNumber as string | null) ?? null,
     status: data.status as EventStatus,
     source: (data.source as "import" | "manual") ?? "manual",
     extensionMinutes:
@@ -98,7 +98,7 @@ export async function createEvent(input: EventInput): Promise<string> {
     throw new Error("Provide a due date, a TTAF expiry value, or both.");
   }
   const wo = input.workOrderNumber?.trim() || null;
-  const req = input.requisitionNumber?.trim() || null;
+  const woq = input.quoteNumber?.trim() || null;
   const ref = await addDoc(eventsCol(), {
     tailNumber: tail,
     warning,
@@ -107,7 +107,7 @@ export async function createEvent(input: EventInput): Promise<string> {
       : null,
     timerExpiryTimeMinutes: input.timerExpiryTimeMinutes,
     workOrderNumber: wo,
-    requisitionNumber: req,
+    quoteNumber: woq,
     status: statusFromWo(wo),
     source: "manual",
     extensionMinutes: null,
@@ -162,8 +162,8 @@ export async function updateEvent(
     update.workOrderNumber = wo;
     update.status = statusFromWo(wo);
   }
-  if (patch.requisitionNumber !== undefined) {
-    update.requisitionNumber = patch.requisitionNumber?.trim() || null;
+  if (patch.quoteNumber !== undefined) {
+    update.quoteNumber = patch.quoteNumber?.trim() || null;
   }
   if (patch.templateId !== undefined) {
     update.templateId = patch.templateId ?? null;
@@ -201,10 +201,10 @@ export async function updateEvent(
         );
       }
     }
-    if (patch.requisitionNumber !== undefined) {
-      const nextReq = patch.requisitionNumber?.trim() || null;
-      if ((prev.requisitionNumber ?? null) !== nextReq) {
-        changes.push(`REQ ${prev.requisitionNumber ?? "—"} → ${nextReq ?? "—"}`);
+    if (patch.quoteNumber !== undefined) {
+      const nextWoq = patch.quoteNumber?.trim() || null;
+      if ((prev.quoteNumber ?? null) !== nextWoq) {
+        changes.push(`WOQ ${prev.quoteNumber ?? "—"} → ${nextWoq ?? "—"}`);
       }
     }
     if (patch.templateId !== undefined) {

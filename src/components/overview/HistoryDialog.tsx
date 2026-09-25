@@ -390,10 +390,10 @@ function EventRow({
             · WO <span className="font-mono">{event.workOrderNumber}</span>
           </span>
         )}
-        {event.requisitionNumber && (
+        {event.quoteNumber && (
           <span>
-            · REQ{" "}
-            <span className="font-mono">{event.requisitionNumber}</span>
+            · WOQ{" "}
+            <span className="font-mono">{event.quoteNumber}</span>
           </span>
         )}
       </div>

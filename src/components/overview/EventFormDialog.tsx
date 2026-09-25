@@ -60,7 +60,7 @@ export default function EventFormDialog({
   const [expiryDate, setExpiryDate] = useState(""); // yyyy-mm-dd
   const [timerExpiry, setTimerExpiry] = useState(""); // HH:MM or decimal hours (auto-detected)
   const [workOrderNumber, setWorkOrderNumber] = useState("");
-  const [requisitionNumber, setRequisitionNumber] = useState("");
+  const [quoteNumber, setQuoteNumber] = useState("");
   const [templateId, setTemplateId] = useState<string | null>(null);
   const [templates, setTemplates] = useState<EventTemplate[] | null>(null);
   const [saving, setSaving] = useState(false);
@@ -93,7 +93,7 @@ export default function EventFormDialog({
         : "",
     );
     setWorkOrderNumber(event?.workOrderNumber ?? "");
-    setRequisitionNumber(event?.requisitionNumber ?? "");
+    setQuoteNumber(event?.quoteNumber ?? "");
     setError(null);
     setSaving(false);
     // Pre-select the event's existing template (edit) or null (create).
@@ -154,7 +154,7 @@ export default function EventFormDialog({
           expiryDate: due,
           timerExpiryTimeMinutes: timerMinutes,
           workOrderNumber,
-          requisitionNumber: requisitionNumber || null,
+          quoteNumber: quoteNumber || null,
           templateId,
         });
       } else {
@@ -164,7 +164,7 @@ export default function EventFormDialog({
           expiryDate: due,
           timerExpiryTimeMinutes: timerMinutes,
           workOrderNumber: workOrderNumber || null,
-          requisitionNumber: requisitionNumber || null,
+          quoteNumber: quoteNumber || null,
           templateId,
         });
       }
@@ -275,6 +275,18 @@ export default function EventFormDialog({
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
+                <Label htmlFor="woq">Work order quote (optional)</Label>
+                <Input
+                  id="woq"
+                  value={quoteNumber}
+                  onChange={(e) => setQuoteNumber(e.target.value)}
+                  placeholder="e.g. WOQ-9876"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Informational only. Doesn't affect status or bookings.
+                </p>
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="wo">Work order number (optional)</Label>
                 <Input
                   id="wo"
@@ -285,18 +297,6 @@ export default function EventFormDialog({
                 <p className="text-xs text-muted-foreground">
                   Filling this sets the event status to{" "}
                   <span className="font-medium">WO created</span>.
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="req">Requisition number (optional)</Label>
-                <Input
-                  id="req"
-                  value={requisitionNumber}
-                  onChange={(e) => setRequisitionNumber(e.target.value)}
-                  placeholder="e.g. REQ-9876"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Logistics-only. Doesn't affect status or bookings.
                 </p>
               </div>
             </div>

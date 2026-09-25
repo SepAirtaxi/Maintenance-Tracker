@@ -83,28 +83,51 @@ export function getEventSeverity(
 }
 
 // Planned/action status surfaced in the overview.
-//   • unplanned → no work order assigned yet ("no action taken")
-//   • planned   → a work order has been created
-//   • booked    → WO exists AND a calendar block links it (booking → eventId
-//                 for events, booking → defectIds for defects)
-export type PlanStatus = "unplanned" | "planned" | "booked";
+//   • unplanned     → neither a WO nor a WOQ yet ("no action taken")
+//   • quoted        → a work order quote (WOQ) exists, no WO yet
+//   • quoted_booked → WOQ only, AND a calendar block links it
+//   • planned       → a work order has been created
+//   • booked        → WO exists AND a calendar block links it (booking →
+//                     eventIds for events, booking → defectIds for defects)
+// The WOQ is the editable staging phase before the final (locked) WO, so a
+// WO always outranks a WOQ when both are filled in.
+export type PlanStatus =
+  | "unplanned"
+  | "quoted"
+  | "quoted_booked"
+  | "planned"
+  | "booked";
+
+function planStatusFor(
+  wo: string | null,
+  woq: string | null,
+  booked: boolean,
+): PlanStatus {
+  if (wo?.trim()) return booked ? "booked" : "planned";
+  if (woq?.trim()) return booked ? "quoted_booked" : "quoted";
+  return "unplanned";
+}
 
 export function getEventPlanStatus(
   event: MaintenanceEvent,
   bookedEventIds: ReadonlySet<string>,
 ): PlanStatus {
-  const wo = event.workOrderNumber?.trim();
-  if (!wo) return "unplanned";
-  return bookedEventIds.has(event.id) ? "booked" : "planned";
+  return planStatusFor(
+    event.workOrderNumber,
+    event.quoteNumber,
+    bookedEventIds.has(event.id),
+  );
 }
 
 export function getDefectPlanStatus(
   defect: Defect,
   bookedDefectIds: ReadonlySet<string>,
 ): PlanStatus {
-  const wo = defect.workOrderNumber?.trim();
-  if (!wo) return "unplanned";
-  return bookedDefectIds.has(defect.id) ? "booked" : "planned";
+  return planStatusFor(
+    defect.workOrderNumber,
+    defect.quoteNumber,
+    bookedDefectIds.has(defect.id),
+  );
 }
 
 // Deferral state for a defect. CAMO policy is a 30-day review cycle from the
@@ -364,12 +387,19 @@ export function getMissingEventMatches(
 }
 
 // Builds two id-sets describing which events / defects appear on a booking.
-// Only bookings whose linked entity has a WO# count — without one, the entity
-// can't be in the "WO + booked" state. Past bookings (entirely before today)
+// Only linked entities with a WO# or a WOQ# count — without either, the entity
+// can't be in the "WO + booked" / "WOQ + booked" state. Past bookings (entirely before today)
 // are skipped: the work is assumed resolved or rescheduled, so they shouldn't
 // keep the linked event/defect reading as "booked" once the calendar window
 // has elapsed. They remain in Firestore so they're still editable from the
 // timeline.
+function hasWoOrWoq(x: {
+  workOrderNumber: string | null;
+  quoteNumber: string | null;
+}): boolean {
+  return !!(x.workOrderNumber?.trim() || x.quoteNumber?.trim());
+}
+
 export function buildBookedIdSets(
   bookings: Booking[],
   events: ReadonlyMap<string, MaintenanceEvent>,
@@ -388,11 +418,11 @@ export function buildBookedIdSets(
     if (toMs < startOfToday) continue;
     for (const eid of b.eventIds ?? []) {
       const e = events.get(eid);
-      if (e && e.workOrderNumber?.trim()) eventIds.add(e.id);
+      if (e && hasWoOrWoq(e)) eventIds.add(e.id);
     }
     for (const did of b.defectIds ?? []) {
       const d = defects.get(did);
-      if (d && d.workOrderNumber?.trim()) defectIds.add(d.id);
+      if (d && hasWoOrWoq(d)) defectIds.add(d.id);
     }
   }
   return { eventIds, defectIds };
@@ -458,5 +488,103 @@ export function getCloseoutCandidates(
     if (endedMs == null) continue;
     out.push({ event: e, bookingEndedAt: new Date(endedMs) });
   }
+  return out;
+}
+
+// ─── WOQ → WO conversion reminder ────────────────────────────────────────
+// The WOQ is the editable staging phase; the WO is created at the last moment
+// because it can't be edited afterwards. This nudge catches the case where the
+// aircraft is about to go into the hangar and the WO was never created.
+// Purely derived from live state (like the closeout nudge): it clears the
+// instant a WO number is entered or the item is resolved.
+//
+// Qualifying conditions (all required):
+//   • the event / defect is open (not resolved)
+//   • it has a WOQ number but no WO number
+//   • it is linked to a booking that starts within WOQ_REMINDER_WORKING_DAYS
+//     working days (Mon–Fri) from today — or has already started. Once the
+//     window is reached the reminder stays until the WO is entered, even if
+//     the slot has started or ended in the meantime.
+export const WOQ_REMINDER_WORKING_DAYS = 3;
+
+export type WoqConversionCandidate = {
+  tailNumber: string;
+  item:
+    | { kind: "event"; event: MaintenanceEvent }
+    | { kind: "defect"; defect: Defect };
+  title: string;
+  quoteNumber: string;
+  // Start of the earliest qualifying booking linked to this item.
+  bookingFrom: Date;
+};
+
+// Adds `n` working days (Mon–Fri) to the start of `date`'s day. Danish public
+// holidays aren't accounted for.
+function addWorkingDays(date: Date, n: number): Date {
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  let added = 0;
+  while (added < n) {
+    d.setDate(d.getDate() + 1);
+    const dow = d.getDay();
+    if (dow !== 0 && dow !== 6) added++;
+  }
+  return d;
+}
+
+export function getWoqConversionCandidates(
+  events: ReadonlyArray<MaintenanceEvent>,
+  defects: ReadonlyArray<Defect>,
+  bookings: ReadonlyArray<Booking>,
+  now: Date = new Date(),
+): WoqConversionCandidate[] {
+  // A booking qualifies when its first day is on or before the cutoff day.
+  const cutoff = addWorkingDays(now, WOQ_REMINDER_WORKING_DAYS);
+  const cutoffEndMs = new Date(
+    cutoff.getFullYear(),
+    cutoff.getMonth(),
+    cutoff.getDate() + 1,
+  ).getTime();
+
+  // item id → earliest qualifying booking start (millis).
+  const fromById = new Map<string, number>();
+  for (const b of bookings) {
+    const fromMs = b.from.toMillis();
+    if (fromMs >= cutoffEndMs) continue;
+    for (const id of [...(b.eventIds ?? []), ...(b.defectIds ?? [])]) {
+      const prev = fromById.get(id);
+      if (prev == null || fromMs < prev) fromById.set(id, fromMs);
+    }
+  }
+
+  const out: WoqConversionCandidate[] = [];
+  for (const e of events) {
+    if (e.resolvedAt) continue;
+    const woq = e.quoteNumber?.trim();
+    if (!woq || e.workOrderNumber?.trim()) continue;
+    const fromMs = fromById.get(e.id);
+    if (fromMs == null) continue;
+    out.push({
+      tailNumber: e.tailNumber,
+      item: { kind: "event", event: e },
+      title: e.warning,
+      quoteNumber: woq,
+      bookingFrom: new Date(fromMs),
+    });
+  }
+  for (const d of defects) {
+    if (d.resolvedAt) continue;
+    const woq = d.quoteNumber?.trim();
+    if (!woq || d.workOrderNumber?.trim()) continue;
+    const fromMs = fromById.get(d.id);
+    if (fromMs == null) continue;
+    out.push({
+      tailNumber: d.tailNumber,
+      item: { kind: "defect", defect: d },
+      title: d.title,
+      quoteNumber: woq,
+      bookingFrom: new Date(fromMs),
+    });
+  }
+  out.sort((a, b) => a.bookingFrom.getTime() - b.bookingFrom.getTime());
   return out;
 }

@@ -193,9 +193,9 @@ export type MaintenanceEvent = {
   expiryDate: Timestamp | null;
   timerExpiryTimeMinutes: number | null;
   workOrderNumber: string | null;
-  // Logistics-only requisition number. Purely informational — does not affect
+  // Work order quote (WOQ) number from the ERP. Purely informational — does not affect
   // status, calendar bookings, or any computed state.
-  requisitionNumber: string | null;
+  quoteNumber: string | null;
   status: EventStatus;
   source: EventSource;
   // CAMO-granted extension on top of `timerExpiryTimeMinutes`. Stored in
@@ -251,9 +251,9 @@ export type Defect = {
   reportedDate: Timestamp;
   reportedTtafMinutes: number;
   workOrderNumber: string | null;
-  // Logistics-only requisition number. Purely informational — does not affect
+  // Work order quote (WOQ) number from the ERP. Purely informational — does not affect
   // status, calendar bookings, or any computed state.
-  requisitionNumber: string | null;
+  quoteNumber: string | null;
   // Resolution metadata. Resolved defects stay in Firestore as legacy; the
   // overview filters them out. All resolution fields are set together.
   // `resolutionKind` distinguishes a true fix from a "no fault found" closure;
@@ -300,7 +300,8 @@ export type EventTemplate = {
 export type NotificationType =
   | "auto-grounded"
   | "deferral-overdue"
-  | "booking-reminder";
+  | "booking-reminder"
+  | "woq-reminder";
 
 // Persistent banner notification. Global ack — once anyone dismisses it, the
 // banner disappears for everyone. View-only users never see banners and never
@@ -311,7 +312,8 @@ export type Notification = {
   type: NotificationType;
   tailNumber: string;
   // For `auto-grounded` this is the eventId; for `deferral-overdue` it's the
-  // defectId; both are null for `booking-reminder` (the tail is the cause).
+  // defectId; both are null for `booking-reminder` / `woq-reminder` (the tail
+  // is the cause).
   eventId: string | null;
   defectId: string | null;
   // Frozen message text captured when the notification was raised, so the

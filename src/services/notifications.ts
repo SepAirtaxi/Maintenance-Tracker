@@ -76,6 +76,14 @@ type RaiseInput =
       type: "booking-reminder";
       tailNumber: string;
       message: string;
+    }
+  | {
+      // Per-tail aggregate banner reminding to convert WOQs into WOs before a
+      // hangar slot starts. One per tail (causeId fixed). Shown once — the
+      // aircraft card keeps its own derived strip until the WO is entered.
+      type: "woq-reminder";
+      tailNumber: string;
+      message: string;
     };
 
 // Fixed causeId for per-tail notifications — the tail itself is the cause, so
@@ -89,6 +97,7 @@ function causeIdFor(input: RaiseInput): string {
     case "deferral-overdue":
       return input.defectId;
     case "booking-reminder":
+    case "woq-reminder":
       return PER_TAIL_CAUSE_ID;
   }
 }
@@ -130,6 +139,21 @@ export function subscribeBookingReminders(
 
 export async function clearBookingReminder(tailNumber: string): Promise<void> {
   await clearNotification("booking-reminder", tailNumber, PER_TAIL_CAUSE_ID);
+}
+
+// Same pattern as the booking reminder — covers acked + unacked so the
+// reconciliation scan can decide whether to raise or clear.
+export function subscribeWoqReminders(
+  callback: (notifications: Notification[]) => void,
+): () => void {
+  const q = query(notificationsCol(), where("type", "==", "woq-reminder"));
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map((d) => docToNotification(d.id, d.data())));
+  });
+}
+
+export async function clearWoqReminder(tailNumber: string): Promise<void> {
+  await clearNotification("woq-reminder", tailNumber, PER_TAIL_CAUSE_ID);
 }
 
 export async function acknowledgeNotification(

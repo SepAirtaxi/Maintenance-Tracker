@@ -352,6 +352,7 @@ export default function BookingDialog({
                   {eventOptions.map((e) => {
                     const checked = eventIds.includes(e.id);
                     const wo = e.workOrderNumber?.trim();
+                    const woq = e.quoteNumber?.trim();
                     const resolved = !!e.resolvedAt;
                     return (
                       <label
@@ -370,6 +371,14 @@ export default function BookingDialog({
                         {wo && (
                           <span className="shrink-0 rounded bg-muted px-1 py-0.5 font-mono text-[10px] font-semibold">
                             WO: {wo}
+                          </span>
+                        )}
+                        {!wo && woq && (
+                          <span
+                            className="shrink-0 border border-dashed border-foreground/30 px-1 py-0.5 font-mono text-[10px] font-semibold text-muted-foreground"
+                            title="Work order quote only — create the WO before the slot starts"
+                          >
+                            WOQ: {woq}
                           </span>
                         )}
                         <span
@@ -410,6 +419,7 @@ export default function BookingDialog({
                   {defectOptions.map((d) => {
                     const checked = defectIds.includes(d.id);
                     const wo = d.workOrderNumber?.trim();
+                    const woq = d.quoteNumber?.trim();
                     const resolved = !!d.resolvedAt;
                     return (
                       <label
@@ -428,6 +438,14 @@ export default function BookingDialog({
                         {wo && (
                           <span className="shrink-0 rounded bg-muted px-1 py-0.5 font-mono text-[10px] font-semibold">
                             WO: {wo}
+                          </span>
+                        )}
+                        {!wo && woq && (
+                          <span
+                            className="shrink-0 border border-dashed border-foreground/30 px-1 py-0.5 font-mono text-[10px] font-semibold text-muted-foreground"
+                            title="Work order quote only — create the WO before the slot starts"
+                          >
+                            WOQ: {woq}
                           </span>
                         )}
                         <span

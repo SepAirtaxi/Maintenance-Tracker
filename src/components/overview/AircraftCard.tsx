@@ -4,6 +4,7 @@ import {
   Ban,
   CalendarDays,
   ChevronRight,
+  FileClock,
   FileText,
   Gauge,
   History,
@@ -21,7 +22,11 @@ import {
 import { cn } from "@/lib/utils";
 import { formatBookingRange, formatDate } from "@/lib/format";
 import { formatMinutesAsDuration } from "@/lib/time";
-import { type CloseoutCandidate, type Severity } from "@/lib/eventStatus";
+import {
+  type CloseoutCandidate,
+  type Severity,
+  type WoqConversionCandidate,
+} from "@/lib/eventStatus";
 import { liftGrounding } from "@/services/aircraft";
 import { isBookingActive } from "@/services/bookings";
 import {
@@ -61,6 +66,9 @@ type Props = {
   // Open, work-ordered events on this tail whose hangar booking has already
   // ended — the plane has rolled out but the WO hasn't been closed here yet.
   closeouts: CloseoutCandidate[];
+  // Open events / defects on this tail that still only have a WOQ while their
+  // hangar slot is ≤3 working days away (or already started).
+  woqReminders: WoqConversionCandidate[];
   locationsById: ReadonlyMap<string, Location>;
   readOnly?: boolean;
   onOpenEditLog: () => void;
@@ -108,6 +116,7 @@ export default function AircraftCard({
   bookedEventIds,
   bookedDefectIds,
   closeouts,
+  woqReminders,
   locationsById,
   readOnly = false,
   onOpenEditLog,
@@ -406,6 +415,14 @@ export default function AircraftCard({
           candidates={closeouts}
           readOnly={readOnly}
           onResolve={onResolveEvent}
+        />
+      )}
+      {woqReminders.length > 0 && (
+        <WoqReminderBanner
+          candidates={woqReminders}
+          readOnly={readOnly}
+          onEditEvent={onEditEvent}
+          onEditDefect={onEditDefect}
         />
       )}
 
@@ -745,8 +762,8 @@ function EventsColumnHeader({ readOnly }: { readOnly: boolean }) {
           EVENTS_GRID_COLS,
         )}
       >
+        <span className="px-1">WOQ</span>
         <span className="px-1">WO</span>
-        <span className="px-1">REQ</span>
         <span className="pl-3.5">Event</span>
         <span>Status</span>
         <span>Estimate</span>
@@ -1007,6 +1024,85 @@ function CloseoutBanner({
             >
               {body}
               <ChevronRight className="h-3.5 w-3.5 shrink-0 text-foreground/50" />
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// "WOQ not converted to WO" strip. Raised 3 working days before a linked
+// hangar slot starts and kept until a WO number is entered — derived, never
+// dismissed. Yellow like the header reminder: a to-do, not an airworthiness
+// problem. Each row opens the edit dialog for that event / defect so the WO
+// can be filled in straight away.
+function WoqReminderBanner({
+  candidates,
+  readOnly,
+  onEditEvent,
+  onEditDefect,
+}: {
+  candidates: WoqConversionCandidate[];
+  readOnly: boolean;
+  onEditEvent: (event: MaintenanceEvent) => void;
+  onEditDefect: (defect: Defect) => void;
+}) {
+  return (
+    <div className="flex items-stretch border-t border-foreground/10 bg-sev-yellow-bg text-sev-yellow-fg">
+      <div className="flex flex-col items-center justify-center border-r border-sev-yellow-edge/30 px-2.5 py-1.5">
+        <FileClock className="h-3.5 w-3.5 mb-0.5" />
+        <span className="text-[8px] font-bold uppercase tracking-spec">
+          No WO
+        </span>
+      </div>
+      <div className="flex flex-1 flex-col min-w-0 divide-y divide-sev-yellow-edge/20">
+        {candidates.map((c) => {
+          const id =
+            c.item.kind === "event" ? c.item.event.id : c.item.defect.id;
+          const started = c.bookingFrom.getTime() <= Date.now();
+          const body = (
+            <>
+              <span className="text-[10px] font-bold uppercase tracking-spec shrink-0">
+                Convert WOQ to WO:
+              </span>
+              <span className="font-mono text-[11px] opacity-80 shrink-0">
+                WOQ {c.quoteNumber}
+              </span>
+              <span className="text-xs font-medium min-w-0 truncate" title={c.title}>
+                {c.title}
+              </span>
+              <span className="ml-auto shrink-0 font-mono text-[10px] tabular-nums opacity-80 whitespace-nowrap">
+                {started ? "Slot started" : "Slot starts"}{" "}
+                {format(c.bookingFrom, "dd.MM")}
+              </span>
+            </>
+          );
+          if (readOnly) {
+            return (
+              <div
+                key={id}
+                className="flex flex-1 items-center gap-2 px-3 py-1.5 min-w-0"
+              >
+                {body}
+              </div>
+            );
+          }
+          const item = c.item;
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() =>
+                item.kind === "event"
+                  ? onEditEvent(item.event)
+                  : onEditDefect(item.defect)
+              }
+              title="Open to enter the work order number"
+              className="flex flex-1 items-center gap-2 px-3 py-1.5 min-w-0 text-left transition-colors hover:bg-sev-yellow-edge/10"
+            >
+              {body}
+              <ChevronRight className="h-3.5 w-3.5 shrink-0 opacity-60" />
             </button>
           );
         })}

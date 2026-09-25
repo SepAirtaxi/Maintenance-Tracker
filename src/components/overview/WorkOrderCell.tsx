@@ -8,7 +8,7 @@ type Props = {
   readOnly?: boolean;
   onSave: (next: string | null) => Promise<void>;
   // Defaults to work-order copy. Pass custom strings to reuse for other
-  // numbers (e.g. requisition).
+  // numbers (e.g. work order quote).
   placeholder?: string;
   editTitle?: string;
   emptyAffordance?: string;

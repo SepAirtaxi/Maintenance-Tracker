@@ -23,12 +23,26 @@ const DEFECTS_GRID_COLS = EVENTS_GRID_COLS;
 
 const PLAN_STATUS_LABEL: Record<PlanStatus, string> = {
   unplanned: "No action",
+  quoted: "WOQ",
+  quoted_booked: "WOQ + booked",
   planned: "WO created",
   booked: "WO + booked",
 };
 
+const PLAN_STATUS_TITLE: Record<PlanStatus, string> = {
+  unplanned: "No work order or quote yet",
+  quoted: "Work order quote (WOQ) only — no WO yet, no hangar slot booked",
+  quoted_booked:
+    "WOQ only and a calendar block is linked — remember to create the WO before the slot",
+  planned: "Work order assigned — no hangar slot booked yet",
+  booked: "WO assigned and a calendar block is linked to this defect",
+};
+
 const PLAN_STATUS_CLASS: Record<PlanStatus, string> = {
   unplanned: "border-sev-red-edge/40 bg-sev-red-bg/70 text-sev-red-fg",
+  quoted: "border-sev-yellow-edge/50 bg-sev-yellow-bg/60 text-sev-yellow-fg",
+  quoted_booked:
+    "border-sev-green-edge/50 bg-sev-green-bg/70 text-sev-green-fg",
   planned: "border-sev-yellow-edge/50 bg-sev-yellow-bg/60 text-sev-yellow-fg",
   booked: "border-sev-green-edge/50 bg-sev-green-bg/70 text-sev-green-fg",
 };
@@ -119,8 +133,8 @@ export default function DefectsList({
           DEFECTS_GRID_COLS,
         )}
       >
+        <span className="px-1">WOQ</span>
         <span className="px-1">WO</span>
-        <span className="px-1">REQ</span>
         <span className="pl-3.5">Defect</span>
         <span>Status</span>
         <span>Estimate</span>
@@ -149,20 +163,20 @@ export default function DefectsList({
           >
             <div className="pr-2">
               <WorkOrderCell
-                value={d.workOrderNumber}
+                value={d.quoteNumber}
                 readOnly={readOnly}
-                onSave={(wo) => updateDefect(d.id, { workOrderNumber: wo })}
+                onSave={(woq) =>
+                  updateDefect(d.id, { quoteNumber: woq })
+                }
+                placeholder="WOQ number"
+                editTitle="Click to edit work order quote number"
               />
             </div>
             <div className="pr-2">
               <WorkOrderCell
-                value={d.requisitionNumber}
+                value={d.workOrderNumber}
                 readOnly={readOnly}
-                onSave={(req) =>
-                  updateDefect(d.id, { requisitionNumber: req })
-                }
-                placeholder="REQ number"
-                editTitle="Click to edit requisition number"
+                onSave={(wo) => updateDefect(d.id, { workOrderNumber: wo })}
               />
             </div>
             <div className="flex items-center gap-2 min-w-0 pl-3.5 pr-2">
@@ -179,13 +193,7 @@ export default function DefectsList({
                   "inline-flex items-center border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-spec",
                   PLAN_STATUS_CLASS[planStatus],
                 )}
-                title={
-                  planStatus === "booked"
-                    ? "WO assigned and a calendar block is linked to this defect"
-                    : planStatus === "planned"
-                      ? "Work order assigned — no hangar slot booked yet"
-                      : "No work order assigned yet"
-                }
+                title={PLAN_STATUS_TITLE[planStatus]}
               >
                 {PLAN_STATUS_LABEL[planStatus]}
               </span>

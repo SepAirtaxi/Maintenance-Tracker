@@ -61,7 +61,7 @@ export default function DefectFormDialog({
   const [reportedDate, setReportedDate] = useState(tsToInput(new Date()));
   const [reportedTtaf, setReportedTtaf] = useState("");
   const [workOrderNumber, setWorkOrderNumber] = useState("");
-  const [requisitionNumber, setRequisitionNumber] = useState("");
+  const [quoteNumber, setQuoteNumber] = useState("");
   const [linkedIds, setLinkedIds] = useState<Set<string>>(() => new Set());
   const [recurrenceOpen, setRecurrenceOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -90,7 +90,7 @@ export default function DefectFormDialog({
       setReportedDate(tsToInput(defect.reportedDate.toDate()));
       setReportedTtaf(formatMinutesAsDuration(defect.reportedTtafMinutes));
       setWorkOrderNumber(defect.workOrderNumber ?? "");
-      setRequisitionNumber(defect.requisitionNumber ?? "");
+      setQuoteNumber(defect.quoteNumber ?? "");
       const initialLinks = new Set(defect.relatedDefectIds);
       setLinkedIds(initialLinks);
       setRecurrenceOpen(initialLinks.size > 0);
@@ -99,7 +99,7 @@ export default function DefectFormDialog({
       setReportedDate(tsToInput(new Date()));
       setReportedTtaf("");
       setWorkOrderNumber("");
-      setRequisitionNumber("");
+      setQuoteNumber("");
       setLinkedIds(new Set());
       setRecurrenceOpen(false);
     }
@@ -135,7 +135,7 @@ export default function DefectFormDialog({
           reportedDate: date,
           reportedTtafMinutes: minutes,
           workOrderNumber: workOrderNumber.trim() || null,
-          requisitionNumber: requisitionNumber.trim() || null,
+          quoteNumber: quoteNumber.trim() || null,
           relatedDefectIds,
         });
       } else {
@@ -145,7 +145,7 @@ export default function DefectFormDialog({
           reportedDate: date,
           reportedTtafMinutes: minutes,
           workOrderNumber: workOrderNumber.trim() || null,
-          requisitionNumber: requisitionNumber.trim() || null,
+          quoteNumber: quoteNumber.trim() || null,
           relatedDefectIds,
         });
       }
@@ -356,6 +356,18 @@ export default function DefectFormDialog({
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
+                <Label htmlFor="defectWoq">Work order quote (optional)</Label>
+                <Input
+                  id="defectWoq"
+                  value={quoteNumber}
+                  onChange={(e) => setQuoteNumber(e.target.value)}
+                  placeholder="e.g. WOQ-9876"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Informational only. Doesn't affect status or bookings.
+                </p>
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="defectWo">Work order number (optional)</Label>
                 <Input
                   id="defectWo"
@@ -363,18 +375,6 @@ export default function DefectFormDialog({
                   onChange={(e) => setWorkOrderNumber(e.target.value)}
                   placeholder="e.g. WO-1234"
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="defectReq">Requisition number (optional)</Label>
-                <Input
-                  id="defectReq"
-                  value={requisitionNumber}
-                  onChange={(e) => setRequisitionNumber(e.target.value)}
-                  placeholder="e.g. REQ-9876"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Logistics-only. Doesn't affect status or bookings.
-                </p>
               </div>
             </div>
 
