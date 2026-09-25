@@ -15,6 +15,7 @@ import EstimatePill from "@/components/overview/EstimatePill";
 import { EVENTS_GRID_COLS } from "@/components/overview/EventRow";
 import { updateDefect } from "@/services/defects";
 import type { Defect } from "@/types";
+import FullTextTitle from "./FullTextTitle";
 
 // Share the events grid template so the Status column lines up vertically
 // across event and defect rows on the same aircraft card.
@@ -170,9 +171,7 @@ export default function DefectsList({
                 defect={d}
                 onClick={() => onViewDeferralHistory(d)}
               />
-              <span className="truncate" title={d.title}>
-                {d.title}
-              </span>
+              <FullTextTitle text={d.title} />
             </div>
             <div className="pr-2">
               <span

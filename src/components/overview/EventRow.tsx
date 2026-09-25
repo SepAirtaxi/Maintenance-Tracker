@@ -17,6 +17,7 @@ import WorkOrderCell from "@/components/overview/WorkOrderCell";
 import EstimatePill from "@/components/overview/EstimatePill";
 import { updateEvent } from "@/services/events";
 import type { MaintenanceEvent } from "@/types";
+import FullTextTitle from "./FullTextTitle";
 
 // Shared grid template — header row in AircraftCard and the defects list must
 // use the same one so the Status / Estimate columns line up across event /
@@ -121,9 +122,7 @@ export default function EventRow({
           className={cn("h-2 w-2 shrink-0", sevSquare[severity])}
           title={severity}
         />
-        <span className="truncate" title={event.warning}>
-          {event.warning}
-        </span>
+        <FullTextTitle text={event.warning} />
       </span>
       <div className="pr-2">
         <span
