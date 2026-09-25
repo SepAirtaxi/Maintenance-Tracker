@@ -16,6 +16,7 @@ import {
   ShieldOff,
   StickyNote,
   Wrench,
+  MoveRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatBookingRange, formatDate } from "@/lib/format";
@@ -658,22 +659,32 @@ function BookingChip({
       onClick={onClick}
       title={titleAttr || "View booking"}
       className={cn(
-        "shrink-0 inline-flex items-stretch border text-[10px] transition-colors",
+        // Amber accent so a booked tail is spotted at a glance: a soft wash
+        // for upcoming, solid (matching the IN HANGAR badge) while in hangar.
+        "shrink-0 inline-flex items-stretch border text-[10px] text-accent-foreground transition-colors",
         active
-          ? "border-foreground bg-foreground text-background hover:bg-foreground/85"
-          : "border-foreground/40 bg-card text-foreground hover:bg-foreground/[0.06]",
+          ? "border-foreground/60 bg-accent hover:bg-accent/85"
+          : "border-accent bg-accent/15 hover:bg-accent/30",
       )}
     >
-      <span className="px-1.5 py-0.5 font-mono tabular-nums">
-        {formatDate(b.from)}
+      {/* Short "Sep 25 → Sep 29" like the statements; the year lives in the
+          hover title. Open-ended bookings read "Sep 25 → open". */}
+      <span className="flex items-center gap-1 px-1.5 py-0.5 font-mono tabular-nums">
+        {b.from ? format(b.from.toDate(), "MMM d") : "—"}
+        <MoveRight className="h-3 w-3 opacity-60" aria-label="to" />
+        {b.to ? (
+          format(b.to.toDate(), "MMM d")
+        ) : (
+          <span className="italic opacity-70">open</span>
+        )}
       </span>
       {typeLabel && (
         <span
           className={cn(
             "border-l px-1 py-0.5 text-[9px] font-bold uppercase tracking-spec flex items-center",
             active
-              ? "border-background/30 bg-background/15"
-              : "border-foreground/20 bg-foreground/[0.06]",
+              ? "border-foreground/30 bg-foreground/[0.08]"
+              : "border-accent/60 bg-accent/10",
           )}
         >
           {typeLabel}
@@ -684,8 +695,8 @@ function BookingChip({
           className={cn(
             "border-l px-1 py-0.5 font-mono font-bold flex items-center",
             active
-              ? "border-background/30 bg-background/15"
-              : "border-foreground/20 bg-foreground/[0.06]",
+              ? "border-foreground/30 bg-foreground/[0.08]"
+              : "border-accent/60 bg-accent/10",
           )}
         >
           WO {primaryWo}
