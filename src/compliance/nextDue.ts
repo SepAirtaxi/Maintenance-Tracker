@@ -43,6 +43,18 @@ export type NextDueItem = {
   count: number;
 };
 
+// The scheduled inspections the rest of the programme is planned around —
+// "50 hour inspection.", "100 hour inspection.", "Annual inspection.",
+// "2000 hour major inspection." and so on. Matched on the whole description so
+// component tasks that merely mention an interval ("Alternator 100 hour
+// inspection.", "Annual inspection of ELT.") are not mistaken for one.
+const ANCHOR =
+  /^(?:\d[\d.,]*\s*(?:hours?|hrs?|h|fh)\s+(?:major\s+)?inspection|annual\s+inspection|major\s+inspection)\.?$/i;
+
+export function isAnchorInspection(description: string): boolean {
+  return ANCHOR.test(description.trim().replace(/\s+/g, " "));
+}
+
 export type NextDueColumns = Record<NextDueAxis, NextDueItem[]>;
 
 const DUE_DATE = /(\d{2}-\d{2}-\d{4})/;

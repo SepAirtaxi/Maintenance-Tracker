@@ -27,6 +27,17 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   tailNumber: string;
   event: MaintenanceEvent | null; // null = create
+  // Starting values for a new event — used when the event is raised from
+  // somewhere that already knows the deadline (the Next Due page). Ignored on
+  // edit. `hint` is shown under the dialog description.
+  prefill?: EventPrefill | null;
+};
+
+export type EventPrefill = {
+  warning: string;
+  expiryDate: Date | null;
+  timerExpiryTimeMinutes: number | null;
+  hint?: string;
 };
 
 function timestampToInputDate(ts: Timestamp | null): string {
@@ -54,6 +65,7 @@ export default function EventFormDialog({
   onOpenChange,
   tailNumber,
   event,
+  prefill,
 }: Props) {
   const isEdit = event !== null;
   const [warning, setWarning] = useState("");
@@ -84,21 +96,43 @@ export default function EventFormDialog({
 
   useEffect(() => {
     if (!open) return;
-    setWarning(event?.warning ?? "");
-    // On edit, mirror the existing event; on create everything starts blank.
-    setExpiryDate(isEdit ? timestampToInputDate(event?.expiryDate ?? null) : "");
+    // On edit, mirror the existing event; on create start from the prefill,
+    // or blank.
+    const seed = isEdit ? null : (prefill ?? null);
+    setWarning(event?.warning ?? seed?.warning ?? "");
+    setExpiryDate(
+      isEdit
+        ? timestampToInputDate(event?.expiryDate ?? null)
+        : dateToInputValue(seed?.expiryDate),
+    );
+    const timerSeed = isEdit
+      ? (event?.timerExpiryTimeMinutes ?? null)
+      : (seed?.timerExpiryTimeMinutes ?? null);
     setTimerExpiry(
-      isEdit && event?.timerExpiryTimeMinutes != null
-        ? formatMinutesAsDuration(event.timerExpiryTimeMinutes)
-        : "",
+      timerSeed != null ? formatMinutesAsDuration(timerSeed) : "",
     );
     setWorkOrderNumber(event?.workOrderNumber ?? "");
     setQuoteNumber(event?.quoteNumber ?? "");
     setError(null);
     setSaving(false);
-    // Pre-select the event's existing template (edit) or null (create).
-    setTemplateId(isEdit ? (event?.templateId ?? null) : null);
-  }, [open, event, isEdit]);
+    // Pre-select the event's existing template (edit), or on create a template
+    // whose title matches the prefilled one — so a "50 hour inspection" raised
+    // from the Next Due page is linked just as if it had been picked here, and
+    // the Missing check counts it. Templates are read as they stand when the
+    // dialog opens; the subscription is already live by then.
+    if (isEdit) {
+      setTemplateId(event?.templateId ?? null);
+    } else {
+      const key = (t: string) => t.trim().replace(/\.$/, "").toLowerCase();
+      const match = seed
+        ? availableTemplates.find(
+            (t) => t.active && key(t.title) === key(seed.warning),
+          )
+        : undefined;
+      setTemplateId(match?.id ?? null);
+      if (match) setWarning(match.title);
+    }
+  }, [open, event, isEdit, prefill]);
 
   // Picking (or switching) a template pre-fills the title with the template's
   // title. We only replace the title when it's still auto-filled — empty, or
@@ -187,6 +221,9 @@ export default function EventFormDialog({
             <DialogDescription>
               At least one of due date / TTAF expiry is required.
             </DialogDescription>
+            {!isEdit && prefill?.hint && (
+              <p className="text-xs text-muted-foreground">{prefill.hint}</p>
+            )}
           </DialogHeader>
 
           <div className="py-4 space-y-4">
