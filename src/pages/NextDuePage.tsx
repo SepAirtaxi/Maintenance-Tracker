@@ -312,22 +312,34 @@ export default function NextDuePage() {
   const aircraft = fleet.find((a) => a.tailNumber === reportTail);
   const tailInFleet = reportTail !== "" && aircraft !== undefined;
 
-  // The report's own TTAF is unreliable, so hours left are measured from the
-  // aircraft's current TTAF (kept up to date by the Flightlogger sync). Only
-  // when the aircraft isn't in the fleet, or has no TTAF yet, do we fall back
-  // to the report.
+  // The report's own TTAF and cycles are unreliable, so what's left is
+  // measured from the aircraft's current TTAF and landings (kept up to date by
+  // the Flightlogger sync). Only when the aircraft isn't in the fleet, or has
+  // no figure yet, do we fall back to the report.
   const currentHours =
     aircraft?.totalTimeMinutes != null
       ? aircraft.totalTimeMinutes / 60
       : undefined;
+  const currentCycles = aircraft?.totalLandings ?? undefined;
 
   const columns = useMemo(
     () =>
       report
-        ? buildNextDue(report.header, report.records, currentHours)
+        ? buildNextDue(report.header, report.records, {
+            hours: currentHours,
+            cycles: currentCycles,
+          })
         : null,
-    [report, currentHours],
+    [report, currentHours, currentCycles],
   );
+
+  // Where the live figures came from, for the caption above the columns.
+  const liveSource =
+    aircraft?.totalTimeSource === "flightlogger" ? "Flightlogger" : "fleet record";
+  const fromReport = [
+    currentHours === undefined && "hours",
+    currentCycles === undefined && "cycles",
+  ].filter(Boolean);
 
   const openTitles = useMemo(
     () =>
@@ -378,19 +390,18 @@ export default function NextDuePage() {
       {report && columns && (
         <>
           <p className="font-mono text-[10px] uppercase tracking-spec text-muted-foreground">
-            {currentHours !== undefined ? (
-              <>
-                Hours left from current TTAF {fmtHours(currentHours)}
-                {aircraft?.totalTimeSource === "flightlogger"
-                  ? " (Flightlogger)"
-                  : " (fleet record)"}
-                {" · "}cycles left as of the report
-              </>
-            ) : (
-              "Hours and cycles left as of the report"
-            )}
-            {report.header.printedOn && ` (printed ${fmtDate(report.header.printedOn)})`}
-            {" · "}days left counted from today
+            {currentHours !== undefined && `TTAF ${fmtHours(currentHours)}`}
+            {currentHours !== undefined && currentCycles !== undefined && " · "}
+            {currentCycles !== undefined && `landings ${currentCycles}`}
+            {(currentHours !== undefined || currentCycles !== undefined) &&
+              ` (${liveSource}) · `}
+            {fromReport.length > 0 &&
+              `${fromReport.join(" and ")} left as of the report${
+                report.header.printedOn
+                  ? ` (printed ${fmtDate(report.header.printedOn)})`
+                  : ""
+              } · `}
+            days left counted from today
             {reportTail &&
               !tailInFleet &&
               ` · ${reportTail} is not in the fleet, so events can't be created from this report`}

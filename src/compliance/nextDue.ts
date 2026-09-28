@@ -14,11 +14,11 @@
 // 2 months past its calendar limit with 40 hours still to go is a calendar
 // problem, not an hours one.
 //
-// Where the hours stand today comes from Flightlogger, not the report. The
-// ERP's own Total Hours can't be trusted, so it is used only to turn each
-// Remaining back into the due figure (see toStopBlock) — the hours left are
-// then measured from the live TTAF. Due figures, dates and cycles are the
-// report's.
+// Where the aircraft stands today — hours and landings — comes from
+// Flightlogger, not the report. The ERP's own Total Hours and Total Cycles
+// can't be trusted, so they are used only to turn each Remaining back into the
+// due figure (see toStopBlock); what's left is then measured from the live
+// TTAF and landings count. Due figures and dates are the report's.
 
 import type {
   ComplianceHeader,
@@ -74,33 +74,35 @@ function limitsFor(
   header: ComplianceHeader,
   record: ComplianceRecord,
   rem: RemainingParts,
-  currentHours: number | undefined,
+  current: CurrentUsage,
   today: Date,
 ): NextDueLimits {
   const limits: NextDueLimits = {};
 
-  // The due figure is the report's. Hours left are measured from the live
-  // TTAF when we have one; otherwise they fall back to the Remaining cell —
+  // The due figure is the report's. What's left is measured from the live
+  // figure when we have one; otherwise it falls back to the Remaining cell —
   // the distance as of the day the report was printed.
   if (rem.hours !== undefined && header.totalHours !== undefined) {
     const stop = toStopBlock(header.totalHours, rem.hours, rem.hoursOverdue);
     const left =
-      currentHours !== undefined
-        ? stop - currentHours
+      current.hours !== undefined
+        ? stop - current.hours
         : rem.hoursOverdue
           ? -rem.hours
           : rem.hours;
     limits.hours = { stop, left, overdue: left < 0 };
   }
 
-  // Cycles left still come straight off the Remaining cell.
-
-  if (rem.cycles !== undefined && header.totalCycles !== undefined)
-    limits.cycles = {
-      stop: toStopBlock(header.totalCycles, rem.cycles, rem.cyclesOverdue),
-      left: rem.cyclesOverdue ? -rem.cycles : rem.cycles,
-      overdue: rem.cyclesOverdue,
-    };
+  if (rem.cycles !== undefined && header.totalCycles !== undefined) {
+    const stop = toStopBlock(header.totalCycles, rem.cycles, rem.cyclesOverdue);
+    const left =
+      current.cycles !== undefined
+        ? stop - current.cycles
+        : rem.cyclesOverdue
+          ? -rem.cycles
+          : rem.cycles;
+    limits.cycles = { stop, left, overdue: left < 0 };
+  }
 
   // Calendar is counted from today, not from the print date — a date doesn't
   // move, so the days left are always live.
@@ -134,12 +136,15 @@ function leftOn(item: NextDueItem): number {
   return item.limits[item.axis]!.left;
 }
 
-// `currentHours` is the aircraft's TTAF right now, in hours (from
-// Flightlogger). Leave it out to measure hours left as of the report instead.
+// Where the aircraft stands right now (from Flightlogger): TTAF in hours and
+// total landings as cycles. Either one left out is measured as of the report
+// instead.
+export type CurrentUsage = { hours?: number; cycles?: number };
+
 export function buildNextDue(
   header: ComplianceHeader,
   records: ComplianceRecord[],
-  currentHours?: number,
+  current: CurrentUsage = {},
   today: Date = new Date(),
 ): NextDueColumns {
   const columns: NextDueColumns = { hours: [], cycles: [], calendar: [] };
@@ -149,7 +154,7 @@ export function buildNextDue(
       header,
       record,
       parseRemaining(record.remainingRaw),
-      currentHours,
+      current,
       today,
     );
     const axis = placeOf(limits);
