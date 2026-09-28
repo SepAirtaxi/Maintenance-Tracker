@@ -13,6 +13,12 @@
 // us whatever the utilisation, so it decides the column on its own — an event
 // 2 months past its calendar limit with 40 hours still to go is a calendar
 // problem, not an hours one.
+//
+// Where the hours stand today comes from Flightlogger, not the report. The
+// ERP's own Total Hours can't be trusted, so it is used only to turn each
+// Remaining back into the due figure (see toStopBlock) — the hours left are
+// then measured from the live TTAF. Due figures, dates and cycles are the
+// report's.
 
 import type {
   ComplianceHeader,
@@ -68,18 +74,26 @@ function limitsFor(
   header: ComplianceHeader,
   record: ComplianceRecord,
   rem: RemainingParts,
+  currentHours: number | undefined,
   today: Date,
 ): NextDueLimits {
   const limits: NextDueLimits = {};
 
-  // Hours and cycles left are read straight off the Remaining cell — the
-  // distance as of the day the report was printed.
-  if (rem.hours !== undefined && header.totalHours !== undefined)
-    limits.hours = {
-      stop: toStopBlock(header.totalHours, rem.hours, rem.hoursOverdue),
-      left: rem.hoursOverdue ? -rem.hours : rem.hours,
-      overdue: rem.hoursOverdue,
-    };
+  // The due figure is the report's. Hours left are measured from the live
+  // TTAF when we have one; otherwise they fall back to the Remaining cell —
+  // the distance as of the day the report was printed.
+  if (rem.hours !== undefined && header.totalHours !== undefined) {
+    const stop = toStopBlock(header.totalHours, rem.hours, rem.hoursOverdue);
+    const left =
+      currentHours !== undefined
+        ? stop - currentHours
+        : rem.hoursOverdue
+          ? -rem.hours
+          : rem.hours;
+    limits.hours = { stop, left, overdue: left < 0 };
+  }
+
+  // Cycles left still come straight off the Remaining cell.
 
   if (rem.cycles !== undefined && header.totalCycles !== undefined)
     limits.cycles = {
@@ -120,9 +134,12 @@ function leftOn(item: NextDueItem): number {
   return item.limits[item.axis]!.left;
 }
 
+// `currentHours` is the aircraft's TTAF right now, in hours (from
+// Flightlogger). Leave it out to measure hours left as of the report instead.
 export function buildNextDue(
   header: ComplianceHeader,
   records: ComplianceRecord[],
+  currentHours?: number,
   today: Date = new Date(),
 ): NextDueColumns {
   const columns: NextDueColumns = { hours: [], cycles: [], calendar: [] };
@@ -132,6 +149,7 @@ export function buildNextDue(
       header,
       record,
       parseRemaining(record.remainingRaw),
+      currentHours,
       today,
     );
     const axis = placeOf(limits);

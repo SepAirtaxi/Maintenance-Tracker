@@ -307,15 +307,27 @@ export default function NextDuePage() {
     setReportError(null);
   };
 
-  const columns = useMemo(
-    () => (report ? buildNextDue(report.header, report.records) : null),
-    [report],
-  );
-
   // Events can only be raised when the report is for one of our aircraft.
   const reportTail = report ? normaliseTailNumber(report.header.tailNumber) : "";
-  const tailInFleet =
-    reportTail !== "" && fleet.some((a) => a.tailNumber === reportTail);
+  const aircraft = fleet.find((a) => a.tailNumber === reportTail);
+  const tailInFleet = reportTail !== "" && aircraft !== undefined;
+
+  // The report's own TTAF is unreliable, so hours left are measured from the
+  // aircraft's current TTAF (kept up to date by the Flightlogger sync). Only
+  // when the aircraft isn't in the fleet, or has no TTAF yet, do we fall back
+  // to the report.
+  const currentHours =
+    aircraft?.totalTimeMinutes != null
+      ? aircraft.totalTimeMinutes / 60
+      : undefined;
+
+  const columns = useMemo(
+    () =>
+      report
+        ? buildNextDue(report.header, report.records, currentHours)
+        : null,
+    [report, currentHours],
+  );
 
   const openTitles = useMemo(
     () =>
@@ -366,7 +378,17 @@ export default function NextDuePage() {
       {report && columns && (
         <>
           <p className="font-mono text-[10px] uppercase tracking-spec text-muted-foreground">
-            Hours and cycles left as of the report
+            {currentHours !== undefined ? (
+              <>
+                Hours left from current TTAF {fmtHours(currentHours)}
+                {aircraft?.totalTimeSource === "flightlogger"
+                  ? " (Flightlogger)"
+                  : " (fleet record)"}
+                {" · "}cycles left as of the report
+              </>
+            ) : (
+              "Hours and cycles left as of the report"
+            )}
             {report.header.printedOn && ` (printed ${fmtDate(report.header.printedOn)})`}
             {" · "}days left counted from today
             {reportTail &&
