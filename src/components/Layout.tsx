@@ -3,6 +3,7 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import ProfileSetupGate from "@/components/ProfileSetupGate";
 import { cn } from "@/lib/utils";
 import {
+  CalendarClock,
   CalendarDays,
   Eye,
   FileText,
@@ -107,9 +108,17 @@ const navItems = [
     viewerVisible: false,
   },
   {
+    to: "/next-due",
+    label: "Next Due",
+    code: "05",
+    icon: CalendarClock,
+    end: false,
+    viewerVisible: false,
+  },
+  {
     to: "/settings",
     label: "Settings",
-    code: "05",
+    code: "06",
     icon: Settings,
     end: false,
     viewerVisible: false,

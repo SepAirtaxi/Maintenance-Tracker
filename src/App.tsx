@@ -7,6 +7,7 @@ import CalendarPage from "@/pages/CalendarPage";
 import SettingsPage from "@/pages/SettingsPage";
 import StatementPage from "@/pages/StatementPage";
 import LabelsPage from "@/pages/LabelsPage";
+import NextDuePage from "@/pages/NextDuePage";
 import LoginPage from "@/pages/LoginPage";
 import ProfilePage from "@/pages/ProfilePage";
 
@@ -45,6 +46,14 @@ export default function App() {
             element={
               <ProtectedRoute membersOnly>
                 <LabelsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/next-due"
+            element={
+              <ProtectedRoute membersOnly>
+                <NextDuePage />
               </ProtectedRoute>
             }
           />

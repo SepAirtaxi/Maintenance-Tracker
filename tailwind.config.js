@@ -62,6 +62,17 @@ export default {
           "green-bg": "hsl(var(--sev-green-bg))",
           "green-edge": "hsl(var(--sev-green-edge))",
         },
+        axis: {
+          "hours-fg": "hsl(var(--axis-hours-fg))",
+          "hours-bg": "hsl(var(--axis-hours-bg))",
+          "hours-edge": "hsl(var(--axis-hours-edge))",
+          "date-fg": "hsl(var(--axis-date-fg))",
+          "date-bg": "hsl(var(--axis-date-bg))",
+          "date-edge": "hsl(var(--axis-date-edge))",
+          "cycles-fg": "hsl(var(--axis-cycles-fg))",
+          "cycles-bg": "hsl(var(--axis-cycles-bg))",
+          "cycles-edge": "hsl(var(--axis-cycles-edge))",
+        },
       },
       borderRadius: {
         none: "0",

@@ -36,6 +36,19 @@
     --sev-green-fg: 145 50% 26%;    /* modern forest */
     --sev-green-bg: 140 52% 92%;    /* soft mint */
     --sev-green-edge: 145 50% 42%;
+
+    /* Deadline-axis tints (Next Due module). Identify WHICH limit a figure
+       is — flight hours, calendar, cycles — not how urgent it is, so they are
+       kept apart from the sev-* scale even where the hue is similar. */
+    --axis-hours-fg: 150 48% 26%;   /* green */
+    --axis-hours-bg: 145 48% 92%;
+    --axis-hours-edge: 148 40% 70%;
+    --axis-date-fg: 214 60% 34%;    /* blue */
+    --axis-date-bg: 212 80% 94%;
+    --axis-date-edge: 212 55% 74%;
+    --axis-cycles-fg: 22 80% 34%;   /* orange */
+    --axis-cycles-bg: 26 92% 92%;
+    --axis-cycles-edge: 24 75% 70%;
   }
 }
 

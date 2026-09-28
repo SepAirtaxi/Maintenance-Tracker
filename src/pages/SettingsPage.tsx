@@ -44,7 +44,7 @@ export default function SettingsPage() {
       <div className="space-y-1">
         <div className="flex items-center gap-3">
           <span className="font-mono text-[10px] uppercase tracking-spec text-muted-foreground">
-            05 / Settings
+            06 / Settings
           </span>
           <span className="h-px flex-1 bg-foreground/15 w-12" />
         </div>
