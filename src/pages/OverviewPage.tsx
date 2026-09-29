@@ -72,6 +72,7 @@ import {
   daysSinceDeferred,
   getCloseoutCandidates,
   getDeferralStatus,
+  getEventAttention,
   getEventSeverity,
   getMissingEventMatches,
   getNeedsBookingMatches,
@@ -327,7 +328,7 @@ type AircraftSummary = {
   events: MaintenanceEvent[];
   defects: Defect[];
   bookings: BookingWithLinks[];
-  worst: Severity;
+  worst: Severity; // attention level — staged items count as green
   earliestDueMillis: number | null;
   status: AircraftStatus;
 };
@@ -828,7 +829,11 @@ export default function OverviewPage() {
       let worst: Severity = "unknown";
       let earliestDueMillis: number | null = null;
       for (const e of events) {
-        const s = getEventSeverity(e, a.totalTimeMinutes);
+        const s = getEventAttention(
+          e,
+          a.totalTimeMinutes,
+          bookingPhases.events.get(e.id),
+        );
         worst = worstSeverity(worst, s);
         const due = e.expiryDate?.toMillis() ?? null;
         if (
@@ -858,7 +863,15 @@ export default function OverviewPage() {
         status: getAircraftStatus(a),
       };
     });
-  }, [aircraft, allEvents, allDefects, allBookings, eventsById, defectsById]);
+  }, [
+    aircraft,
+    allEvents,
+    allDefects,
+    allBookings,
+    eventsById,
+    defectsById,
+    bookingPhases,
+  ]);
 
   const sortFn = useMemo(() => {
     const dir: 1 | -1 = sortDir === "asc" ? 1 : -1;

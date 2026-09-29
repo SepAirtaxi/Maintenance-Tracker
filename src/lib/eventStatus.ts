@@ -82,6 +82,31 @@ export function getEventSeverity(
   return worstSeverity(daysSeverity, minutesSeverity);
 }
 
+// Attention level for the aircraft card's side stripe (and the Jump pills /
+// Severity sort). The stripe answers "does the staging need me?", not "is this
+// aircraft airworthy?" — the planner owns that call. So an item that is fully
+// staged (a WO plus a linked booking that is upcoming or running today) reads
+// green however close — or past — its limit is. Unstaged items keep their
+// raw due severity: yellow inside the warning window, red once overdue. The
+// per-row cell tints still show the raw proximity.
+export function isEventStaged(
+  event: MaintenanceEvent,
+  phase: BookingPhase | undefined,
+): boolean {
+  if (!event.workOrderNumber?.trim()) return false;
+  return phase === "upcoming" || phase === "in_hangar";
+}
+
+export function getEventAttention(
+  event: MaintenanceEvent,
+  currentTtafMinutes: number | null,
+  phase: BookingPhase | undefined,
+): Severity {
+  const severity = getEventSeverity(event, currentTtafMinutes);
+  if (severity === "unknown") return severity;
+  return isEventStaged(event, phase) ? "green" : severity;
+}
+
 // Status surfaced in the overview's Status column. First match wins:
 //   • in_hangar     → a linked booking is running today
 //   • rolled_out    → a linked booking has ended, none is running or upcoming,

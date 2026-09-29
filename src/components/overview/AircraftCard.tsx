@@ -94,7 +94,8 @@ type Props = {
   onOpenLinkedEvent?: (event: MaintenanceEvent) => void;
 };
 
-// Left stripe color — communicates the aircraft's worst severity at a glance.
+// Left stripe color — the aircraft's worst *attention* level (see
+// getEventAttention): staged items read green however close their limit is.
 // Severity wash on the whole card is intentionally dropped so the surface
 // stays paper-white — severity is data (stripe + dot + cell tint), not
 // atmosphere.
