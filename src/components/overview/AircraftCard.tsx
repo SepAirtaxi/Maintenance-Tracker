@@ -28,7 +28,7 @@ import {
   type Severity,
   type WoReminderCandidate,
 } from "@/lib/eventStatus";
-import { liftGrounding } from "@/services/aircraft";
+import ReturnToServiceDialog from "@/components/overview/ReturnToServiceDialog";
 import { isBookingActive } from "@/services/bookings";
 import {
   buildBookingGroups,
@@ -138,7 +138,7 @@ export default function AircraftCard({
   onOpenLinkedDefect,
   onOpenLinkedEvent,
 }: Props) {
-  const [togglingAirworthy, setTogglingAirworthy] = useState(false);
+  const [confirmReturn, setConfirmReturn] = useState(false);
   const cardRef = useRef<HTMLElement | null>(null);
 
   const airworthy = status === "airworthy";
@@ -168,17 +168,12 @@ export default function AircraftCard({
       )[0]?.wo ?? null
     : null;
 
-  const onToggleAirworthy = async () => {
+  const onToggleAirworthy = () => {
     if (airworthy) {
       onGround();
       return;
     }
-    setTogglingAirworthy(true);
-    try {
-      await liftGrounding(aircraft.tailNumber, { kind: "manual" });
-    } finally {
-      setTogglingAirworthy(false);
-    }
+    setConfirmReturn(true);
   };
 
   const linkedDefect =
@@ -241,13 +236,11 @@ export default function AircraftCard({
                   <button
                     type="button"
                     onClick={onToggleAirworthy}
-                    disabled={togglingAirworthy}
                     title={
                       airworthy
                         ? "Click to ground or mark out of production"
                         : "Click to return to service"
                     }
-                    className="disabled:opacity-50"
                   >
                     <StatusChip status={status} />
                   </button>
@@ -461,6 +454,15 @@ export default function AircraftCard({
           onViewDeferralHistory={onViewDeferralHistory}
         />
       </div>
+
+      <ReturnToServiceDialog
+        aircraft={confirmReturn && !airworthy ? aircraft : null}
+        linkedDefect={linkedDefect}
+        linkedEvent={linkedEvent}
+        onResolveLinkedDefect={onResolveDefect}
+        onResolveLinkedEvent={onResolveEvent}
+        onClose={() => setConfirmReturn(false)}
+      />
     </section>
   );
 }

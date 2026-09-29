@@ -25,7 +25,7 @@ const MAX_REASON_LENGTH = 300;
 type Props = {
   // Non-null means "open the grounding dialog for this aircraft". The dialog
   // is suppressed entirely while the aircraft is already grounded — the
-  // overview goes straight to liftGrounding for the toggle-back path.
+  // toggle-back path goes through ReturnToServiceDialog instead.
   aircraft: Aircraft | null;
   // Open defects/events on this tail. Resolved items are filtered out
   // upstream so the dropdowns never offer something that won't auto-lift.
