@@ -10,7 +10,6 @@ import {
   History,
   Pencil,
   PlaneTakeoff,
-  Plus,
   Printer,
   ShieldAlert,
   ShieldCheck,
@@ -280,6 +279,7 @@ export default function AircraftCard({
                 noteExists={!!aircraft.note}
                 onAddEvent={onAddEvent}
                 onAddDefect={onAddDefect}
+                onAddBooking={onAddBooking}
                 onEditNote={onEditNote}
                 onOpenEditLog={onOpenEditLog}
                 onPrint={onPrint}
@@ -362,17 +362,6 @@ export default function AircraftCard({
                 ))
               )}
             </div>
-            {!readOnly && (
-              <button
-                type="button"
-                onClick={onAddBooking}
-                title="Add booking for this tail"
-                className="inline-flex items-center gap-1.5 border-l border-foreground/15 px-3 text-[10px] font-bold uppercase tracking-spec text-foreground/80 hover:bg-foreground/[0.06] hover:text-foreground transition-colors"
-              >
-                <Plus className="h-3 w-3" />
-                Add
-              </button>
-            )}
           </div>
         </div>
       </div>
@@ -577,6 +566,7 @@ function ActionToolbar({
   noteExists,
   onAddEvent,
   onAddDefect,
+  onAddBooking,
   onEditNote,
   onOpenEditLog,
   onPrint,
@@ -585,23 +575,45 @@ function ActionToolbar({
   noteExists: boolean;
   onAddEvent: () => void;
   onAddDefect: () => void;
+  onAddBooking: () => void;
   onEditNote: () => void;
   onOpenEditLog: () => void;
   onPrint: () => void;
 }) {
+  // Two groups: "create something" (tinted, headed by a CREATE: label so the
+  // buttons need no plus icons) and "look at / output" (quiet outline). Note
+  // is always shown — it edits the existing note if there is one — so the
+  // toolbar keeps the same width on every card.
   return (
-    <div className="inline-flex items-stretch border border-foreground/25 divide-x divide-foreground/15 bg-card">
+    <div className="inline-flex items-stretch gap-1.5">
       {!readOnly && (
-        <>
-          <ActionBtn icon={Plus} label="Event" onClick={onAddEvent} />
-          <ActionBtn icon={Plus} label="Defect" onClick={onAddDefect} />
-          {!noteExists && (
-            <ActionBtn icon={StickyNote} label="Note" onClick={onEditNote} />
-          )}
-        </>
+        <div className="inline-flex items-stretch border border-primary/30 divide-x divide-primary/20 bg-primary/10">
+          <span className="inline-flex items-center bg-primary/80 px-1.5 text-[9px] font-bold uppercase tracking-spec text-primary-foreground">
+            Create:
+          </span>
+          <ActionBtn label="Event" title="New event" onClick={onAddEvent} />
+          <ActionBtn label="Defect" title="New defect" onClick={onAddDefect} />
+          <ActionBtn
+            label="Booking"
+            title="New booking for this tail"
+            onClick={onAddBooking}
+          />
+          <ActionBtn
+            label="Note"
+            title={noteExists ? "Edit note" : "New note"}
+            onClick={onEditNote}
+          />
+        </div>
       )}
-      <ActionBtn icon={History} label="History" onClick={onOpenEditLog} />
-      <ActionBtn icon={Printer} label="Print" onClick={onPrint} />
+      <div className="inline-flex items-stretch border border-foreground/20 divide-x divide-foreground/15 bg-card">
+        <ActionBtn
+          icon={History}
+          label="History"
+          quiet
+          onClick={onOpenEditLog}
+        />
+        <ActionBtn icon={Printer} label="Print" quiet onClick={onPrint} />
+      </div>
     </div>
   );
 }
@@ -609,20 +621,27 @@ function ActionToolbar({
 function ActionBtn({
   icon: Icon,
   label,
+  title,
+  quiet = false,
   onClick,
 }: {
-  icon: React.ComponentType<{ className?: string }>;
+  icon?: React.ComponentType<{ className?: string }>;
   label: string;
+  title?: string;
+  quiet?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      title={label}
-      className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-spec text-foreground/70 transition-colors hover:bg-foreground hover:text-background"
+      title={title ?? label}
+      className={cn(
+        "inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-spec transition-colors hover:bg-accent hover:text-accent-foreground",
+        quiet ? "text-foreground/70" : "text-primary",
+      )}
     >
-      <Icon className="h-3 w-3" />
+      {Icon && <Icon className="h-3 w-3" />}
       {label}
     </button>
   );
