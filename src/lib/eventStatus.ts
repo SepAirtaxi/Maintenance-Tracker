@@ -229,6 +229,27 @@ export function daysSinceDeferred(defect: Defect): number | null {
   return differenceInCalendarDays(new Date(), defect.deferredAt.toDate());
 }
 
+// Age of an open defect — how long it has been carried since it was reported.
+// Calendar days, same counting as the deferral window. Null when the value
+// would be negative (a reported date in the future is a data-entry slip, not
+// an age worth showing).
+export function daysSinceReported(defect: Defect): number | null {
+  const days = differenceInCalendarDays(new Date(), defect.reportedDate.toDate());
+  return days < 0 ? null : days;
+}
+
+// Flight time accumulated since the defect was reported, against the
+// aircraft's current TTAF. Null when TTAF is unknown or sits below the
+// reported TTAF (mistyped entry).
+export function minutesSinceReported(
+  defect: Defect,
+  currentTtafMinutes: number | null,
+): number | null {
+  if (currentTtafMinutes == null) return null;
+  const flown = currentTtafMinutes - defect.reportedTtafMinutes;
+  return flown < 0 ? null : flown;
+}
+
 export function getDeferralStatus(defect: Defect): DeferralStatus {
   const elapsed = daysSinceDeferred(defect);
   if (elapsed == null) return "none";

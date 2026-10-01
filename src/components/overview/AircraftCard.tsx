@@ -435,6 +435,7 @@ export default function AircraftCard({
         {/* Defects section — DefectsList renders its own section break */}
         <DefectsList
           defects={defects}
+          currentTtafMinutes={aircraft.totalTimeMinutes}
           bookingPhases={bookingPhases.defects}
           readOnly={readOnly}
           onEdit={onEditDefect}
@@ -793,7 +794,7 @@ function EventsColumnHeader({ readOnly }: { readOnly: boolean }) {
         <span className="border-l border-r border-foreground/15 px-1 text-center">
           Hours
         </span>
-        <span className="text-right pl-2">{readOnly ? "" : "Actions"}</span>
+        <span className="text-center pl-2">{readOnly ? "" : "Actions"}</span>
       </div>
     </div>
   );

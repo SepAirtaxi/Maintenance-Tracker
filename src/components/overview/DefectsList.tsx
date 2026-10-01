@@ -1,10 +1,12 @@
 import { AlertTriangle, Check, Clock, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
-import { formatMinutesAsDuration } from "@/lib/time";
+import { formatHoursLeft, formatMinutesAsDuration } from "@/lib/time";
 import {
   DEFERRAL_REVIEW_DAYS,
   daysSinceDeferred,
+  daysSinceReported,
+  minutesSinceReported,
   getDefectPlanStatus,
   getDeferralStatus,
   type DeferralStatus,
@@ -23,6 +25,8 @@ const DEFECTS_GRID_COLS = EVENTS_GRID_COLS;
 
 type Props = {
   defects: Defect[];
+  // Aircraft's current TTAF — drives the "hours since reported" column.
+  currentTtafMinutes: number | null;
   // defectId → where it stands against its linked hangar bookings.
   bookingPhases: ReadonlyMap<string, BookingPhase>;
   readOnly?: boolean;
@@ -80,6 +84,7 @@ function DeferralPill({
 
 export default function DefectsList({
   defects,
+  currentTtafMinutes,
   bookingPhases,
   readOnly = false,
   onEdit,
@@ -98,31 +103,58 @@ export default function DefectsList({
           Defects · {defects.length} open
         </span>
       </div>
-      {/* Column header — sub-titles for the swapped final columns
-          (Reported / TTAF replace Due-date / TTAF / Days / Hours) */}
-      <div
-        className={cn(
-          "grid items-end gap-0 px-3 py-1 text-[9px] font-semibold uppercase tracking-spec text-muted-foreground border-b border-foreground/10",
-          DEFECTS_GRID_COLS,
-        )}
-      >
-        <span className="px-1">WOQ</span>
-        <span className="px-1">WO</span>
-        <span className="pl-3.5">Defect</span>
-        <span>Status</span>
-        <span className="border-l border-foreground/15 px-2 text-center">
-          Reported
-        </span>
-        <span className="border-l border-foreground/15 px-2 text-center">
-          TTAF
-        </span>
-        <span className="border-l border-foreground/15 px-1 text-center"></span>
-        <span className="border-l border-r border-foreground/15 px-1 text-center"></span>
-        <span className="text-right pl-2">{readOnly ? "" : "Actions"}</span>
+      {/* Column header — mirrors the events header: the Due-at / Time-left
+          compartments become Reported / Since reported for defects, which
+          have no limit to count down to, only an age to count up. */}
+      <div className="border-b border-foreground/10">
+        <div
+          className={cn(
+            "grid items-end px-3 pt-1 text-[9px] uppercase tracking-spec text-muted-foreground/70",
+            DEFECTS_GRID_COLS,
+          )}
+        >
+          <span />
+          <span />
+          <span />
+          <span />
+          <span className="border-l border-foreground/15 col-span-2 text-center py-0.5 font-semibold text-foreground/60">
+            Reported
+          </span>
+          <span className="border-l border-foreground/15 col-span-2 text-center py-0.5 font-semibold text-foreground/60">
+            Since reported
+          </span>
+          <span />
+        </div>
+        <div
+          className={cn(
+            "grid items-end px-3 pb-1 text-[9px] font-semibold uppercase tracking-spec text-muted-foreground",
+            DEFECTS_GRID_COLS,
+          )}
+        >
+          <span className="px-1">WOQ</span>
+          <span className="px-1">WO</span>
+          <span className="pl-3.5">Defect</span>
+          <span>Status</span>
+          <span className="border-l border-foreground/15 px-2 text-center">
+            Date
+          </span>
+          <span className="border-l border-foreground/15 px-2 text-center">
+            TTAF
+          </span>
+          <span className="border-l border-foreground/15 px-1 text-center">
+            Days
+          </span>
+          <span className="border-l border-r border-foreground/15 px-1 text-center">
+            Hours
+          </span>
+          <span className="text-center pl-2">{readOnly ? "" : "Actions"}</span>
+        </div>
       </div>
       {defects.map((d) => {
         const planStatus = getDefectPlanStatus(d, bookingPhases.get(d.id));
         const deferralStatus = getDeferralStatus(d);
+        const ageDays = daysSinceReported(d);
+        const flownMinutes = minutesSinceReported(d, currentTtafMinutes);
         return (
           <div
             key={d.id}
@@ -168,14 +200,30 @@ export default function DefectsList({
             <div className="border-l border-foreground/15 px-2 py-0.5 text-center font-mono text-[11px] tabular-nums">
               {formatMinutesAsDuration(d.reportedTtafMinutes)}
             </div>
-            {/* Two unused cells to align with the events grid (Days/Hours
-                cells don't apply to defects). Render hairline dividers
-                so the column rhythm is preserved. */}
-            <div className="border-l border-foreground/15 px-1 py-0.5 text-center text-muted-foreground/60">
-              —
+            {/* Since-reported cells — the defect's age, counting up. Kept
+                neutral (no severity tint): age alone isn't a limit, the
+                deferral pill carries the 30-day review clock. */}
+            <div
+              className="border-l border-foreground/15 px-1 py-0.5 text-center font-mono text-[11px] tabular-nums text-foreground/75"
+              title={
+                ageDays == null
+                  ? "Days since reported — unavailable (reported date is in the future)"
+                  : `${ageDays} day${ageDays === 1 ? "" : "s"} since reported (${formatDate(d.reportedDate)})`
+              }
+            >
+              {ageDays == null ? "—" : ageDays}
             </div>
-            <div className="border-l border-r border-foreground/15 px-1 py-0.5 text-center text-muted-foreground/60">
-              —
+            <div
+              className="border-l border-r border-foreground/15 px-1 py-0.5 text-center font-mono text-[11px] tabular-nums text-foreground/75"
+              title={
+                flownMinutes == null
+                  ? currentTtafMinutes == null
+                    ? "Hours flown since reported — aircraft TTAF unknown"
+                    : "Hours flown since reported — current TTAF is below the reported TTAF"
+                  : `${formatHoursLeft(flownMinutes)} flown since reported at TTAF ${formatMinutesAsDuration(d.reportedTtafMinutes)}`
+              }
+            >
+              {formatHoursLeft(flownMinutes)}
             </div>
             <div className="flex items-center justify-end gap-px pl-2">
               {!readOnly && (
