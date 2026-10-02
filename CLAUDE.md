@@ -20,7 +20,7 @@ All design tokens live in `src/index.css` as CSS variables under `:root`, and ar
 
 The card on this branch is three deliberate zones — masthead, conditional alerts, ledger. **Don't bolt on new top-level horizontal strips**; extend an existing zone.
 
-1. **Masthead** — 160px tail-stamp left rail (full masthead height) + right region with identity row (model/badges/actions/last-updated), TTAF instrument strip, BOOKINGS instrument strip. Strip-label cells and tail-stamp must stay the same width (160px) for vertical alignment.
+1. **Masthead** — 160px tail-stamp left rail (full masthead height) + right region as one CSS grid `[1fr | 136px | 284px | 76px]`. Column 1: single-line identity row (model · status · in-maintenance · last-upd), COUNTERS strip (TTAF + LDG, each with a small-caps unit), BOOKINGS strip. Columns 2-4: action toolbar on row 1, and the **maintenance-statement block** (`StatementBlock`, a `grid-rows-subgrid`) spanning the COUNTERS + BOOKINGS rows so its inner rule continues theirs. Strip labels are 108px (just fits "BOOKINGS"); the statement columns are fixed so the block lines up across cards. Booking chips are neutral (grey wash upcoming, navy in-hangar) so they don't clash with the status chip.
 2. **Alerts** (conditional) — grounding banner, note banner. Same shape: severity left-rail + small-caps kicker + content + optional click-through arrow.
 3. **Ledger** — events + defects in one block, separated by `EVENTS · N ACTIVE` / `DEFECTS · N OPEN` small-caps zone labels. Columns share `EVENTS_GRID_COLS`. Due-at and Time-left are flat hairline-divided cells, not nested mini-grids.
 

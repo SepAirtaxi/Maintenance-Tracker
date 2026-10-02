@@ -5,7 +5,6 @@ import {
   CalendarDays,
   ChevronRight,
   FileClock,
-  FileText,
   Gauge,
   History,
   Pencil,
@@ -221,78 +220,82 @@ export default function AircraftCard({
           )}
         </div>
 
-        {/* Right region — identity, status, actions, TTAF, bookings */}
-        <div className="flex flex-col">
-          {/* Identity row */}
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 px-4 pt-2 pb-2 border-b border-foreground/10">
-            <div className="min-w-0 space-y-1">
-              <h3 className="font-display text-lg font-semibold leading-tight tracking-tight text-foreground truncate">
-                {aircraft.model}
-              </h3>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {readOnly ? (
-                  <StatusChip status={status} />
-                ) : (
-                  <button
-                    type="button"
-                    onClick={onToggleAirworthy}
-                    title={
-                      airworthy
-                        ? "Click to ground or mark out of production"
-                        : "Click to return to service"
-                    }
-                  >
-                    <StatusChip status={status} />
-                  </button>
-                )}
-                {inHangar && (
-                  <span
-                    className="inline-flex items-center gap-1 bg-accent text-accent-foreground px-2 py-1 text-[10px] font-bold uppercase tracking-spec"
-                    title="Aircraft is currently in the maintenance hangar"
-                  >
-                    <Wrench className="h-3 w-3" />
-                    In maintenance
-                    {activeWo && (
-                      <span className="ml-0.5 bg-foreground/15 px-1 py-0.5 font-mono text-[9px] normal-case tracking-stamp">
-                        WO {activeWo}
-                      </span>
-                    )}
+        {/* Right region — one grid so every divider lines up. Column 1 holds
+            identity / TTAF / bookings; columns 2-4 hold the toolbar on top and
+            the maintenance-statement block underneath, spanning the TTAF and
+            bookings rows so its inner rule continues theirs. The statement
+            columns are fixed widths (sized to the toolbar) so the block sits
+            in the same place on every card down the fleet. */}
+        <div className="grid grid-cols-[minmax(0,1fr)_136px_284px_76px]">
+          {/* Identity row — one line: model, status, then last-updated */}
+          <div className="col-start-1 row-start-1 flex items-center gap-1.5 min-w-0 px-4 py-2 border-b border-foreground/10">
+            <h3 className="mr-1.5 min-w-0 truncate font-display text-lg font-semibold leading-tight tracking-tight text-foreground">
+              {aircraft.model}
+            </h3>
+            {readOnly ? (
+              <StatusChip status={status} />
+            ) : (
+              <button
+                type="button"
+                onClick={onToggleAirworthy}
+                title={
+                  airworthy
+                    ? "Click to ground or mark out of production"
+                    : "Click to return to service"
+                }
+              >
+                <StatusChip status={status} />
+              </button>
+            )}
+            {inHangar && (
+              <span
+                className="inline-flex shrink-0 items-center gap-1 bg-accent text-accent-foreground px-2 py-1 text-[10px] font-bold uppercase tracking-spec"
+                title="Aircraft is currently in the maintenance hangar"
+              >
+                <Wrench className="h-3 w-3" />
+                In maintenance
+                {activeWo && (
+                  <span className="ml-0.5 bg-foreground/15 px-1 py-0.5 font-mono text-[9px] normal-case tracking-stamp">
+                    WO {activeWo}
                   </span>
                 )}
-                <StatementPill
-                  statement={aircraft.latestStatement ?? null}
-                  onClick={onViewStatement}
-                />
-              </div>
-            </div>
-            <div className="flex flex-col items-end gap-1.5">
-              {aircraft.updatedAt && (
-                <span
-                  className="font-mono text-[9px] uppercase tracking-spec text-muted-foreground tabular-nums whitespace-nowrap"
-                  title="Last update to any data on this aircraft"
-                >
-                  Last upd · {formatDate(aircraft.updatedAt)}
-                </span>
-              )}
-              <ActionToolbar
-                readOnly={readOnly}
-                noteExists={!!aircraft.note}
-                onAddEvent={onAddEvent}
-                onAddDefect={onAddDefect}
-                onAddBooking={onAddBooking}
-                onEditNote={onEditNote}
-                onOpenEditLog={onOpenEditLog}
-                onPrint={onPrint}
-              />
-            </div>
+              </span>
+            )}
+            {aircraft.updatedAt && (
+              <span
+                className="ml-auto pl-3 font-mono text-[9px] uppercase tracking-spec text-muted-foreground tabular-nums whitespace-nowrap"
+                title="Last update to any data on this aircraft"
+              >
+                Last upd · {formatDate(aircraft.updatedAt)}
+              </span>
+            )}
+          </div>
+
+          {/* Toolbar — sits directly above the statement block */}
+          <div className="col-start-2 col-span-3 row-start-1 flex items-center justify-center border-b border-l border-foreground/10 px-3 py-2">
+            <ActionToolbar
+              readOnly={readOnly}
+              noteExists={!!aircraft.note}
+              onAddEvent={onAddEvent}
+              onAddDefect={onAddDefect}
+              onAddBooking={onAddBooking}
+              onEditNote={onEditNote}
+              onOpenEditLog={onOpenEditLog}
+              onPrint={onPrint}
+            />
           </div>
 
           {/* TTAF + Landings instrument strip */}
-          <div className="flex items-stretch border-b border-foreground/10">
-            <StripLabel icon={Gauge}>TTAF</StripLabel>
+          <div className="col-start-1 row-start-2 flex items-stretch border-b border-foreground/10">
+            <StripLabel icon={Gauge}>Counters</StripLabel>
             <div className="flex flex-1 items-baseline gap-3 px-3 py-1.5 min-w-0">
-              <span className="readout text-xl font-bold leading-none text-foreground">
-                {formatMinutesAsDuration(aircraft.totalTimeMinutes)}
+              <span className="flex items-baseline gap-1.5 leading-none">
+                <span className="readout text-xl font-bold leading-none text-foreground">
+                  {formatMinutesAsDuration(aircraft.totalTimeMinutes)}
+                </span>
+                <span className="text-[10px] font-bold uppercase tracking-spec text-muted-foreground">
+                  TTAF
+                </span>
               </span>
               {(aircraft.totalLandings != null ||
                 aircraft.syncTtafFromFlightlogger === false) && (
@@ -344,7 +347,7 @@ export default function AircraftCard({
           </div>
 
           {/* Bookings instrument strip */}
-          <div className="flex items-stretch">
+          <div className="col-start-1 row-start-3 flex items-stretch">
             <StripLabel icon={CalendarDays}>Bookings</StripLabel>
             <div className="flex flex-1 items-center gap-1.5 px-3 py-1.5 min-w-0 overflow-x-auto">
               {bookings.length === 0 ? (
@@ -363,6 +366,12 @@ export default function AircraftCard({
               )}
             </div>
           </div>
+
+          {/* Maintenance statement block — columns 2-4, rows 2-3 */}
+          <StatementBlock
+            statement={aircraft.latestStatement ?? null}
+            onClick={onViewStatement}
+          />
         </div>
       </div>
 
@@ -499,49 +508,117 @@ function StatusChip({ status }: { status: AircraftStatus }) {
   );
 }
 
-// The maintenance statement currently on file for this aircraft. Reads as a
-// dated stamp rather than a button: the date is the useful part at a glance,
-// and clicking it opens the document. When nothing has been filed yet the
-// stamp stays in place as a quiet outline, so scanning the fleet shows which
-// tails are still missing one.
-function StatementPill({
+// The maintenance statement currently on file, as its own labelled block in
+// the masthead: a label cell styled like the COUNTERS / BOOKINGS labels, the
+// WO under the label, issue date beside COUNTERS, issuer beside BOOKINGS, and a
+// full-height Open cell — the same shape as the TTAF strip's Update button.
+// The whole block is one click target. When nothing has been linked yet the
+// block stays in place, quiet and dashed, so scanning the fleet still shows
+// which tails are missing one.
+function StatementBlock({
   statement,
   onClick,
 }: {
   statement: LatestStatement | null;
   onClick: () => void;
 }) {
+  // Subgrid: the block occupies the card's statement columns over the TTAF
+  // and bookings rows, and borrows those exact tracks — so its inner rule and
+  // row heights are the TTAF / bookings ones, not a lookalike.
+  const block =
+    "col-start-2 col-span-3 row-start-2 row-span-2 grid grid-cols-subgrid grid-rows-subgrid";
+  const label = (
+    <div
+      className={cn(
+        "col-start-1 row-start-1 row-span-2 flex items-center justify-center border-l border-r border-foreground/15 bg-foreground/[0.05] px-3 py-1.5 text-[10px] font-bold uppercase leading-tight tracking-spec",
+        statement ? "text-foreground/85" : "text-muted-foreground",
+      )}
+    >
+      <span className="flex flex-col items-center gap-0.5 text-center">
+        <span>Maintenance statement</span>
+        {statement && (
+          <span className="font-mono text-[9px] font-semibold normal-case tracking-stamp text-muted-foreground">
+            WO {statement.workOrder}
+          </span>
+        )}
+      </span>
+    </div>
+  );
+
   if (!statement) {
     return (
-      <span
-        className="inline-flex items-center gap-1 border border-dashed border-foreground/25 px-2 py-1 text-[10px] font-bold uppercase tracking-spec text-muted-foreground"
+      <div
+        className={block}
         title="No maintenance statement is linked to this aircraft yet. Issue one from the Statement page with 'Link to overview' ticked."
       >
-        <FileText className="h-3 w-3" />
-        MS · none
-      </span>
+        {label}
+        <div className="col-start-2 row-start-1 row-span-2 col-span-2 flex items-center border-l border-dashed border-foreground/20 px-3 py-1.5">
+          <span className="text-[11px] italic text-muted-foreground">
+            none linked
+          </span>
+        </div>
+      </div>
     );
   }
+
+  const temp = statement.variant === "temp";
+  const cell = "transition-colors group-hover:bg-foreground/[0.04]";
   return (
     <button
       type="button"
       onClick={onClick}
       title={`${
-        statement.variant === "temp"
-          ? "Temporary maintenance statement"
-          : "Maintenance statement"
+        temp ? "Temporary maintenance statement" : "Maintenance statement"
       } issued ${formatDate(statement.printedAt)} on WO ${
         statement.workOrder
       } by ${statement.issuedBy}. Click to view, download or print.`}
-      className="inline-flex items-center gap-1 border border-foreground/25 bg-card px-2 py-1 text-[10px] font-bold uppercase tracking-spec text-foreground/85 transition-colors hover:border-foreground/60 hover:bg-foreground/[0.06] hover:text-foreground"
+      className={cn(block, "group text-left")}
     >
-      <FileText className="h-3 w-3" />
-      MS
-      {statement.variant === "temp" && (
-        <span className="text-muted-foreground">Temp</span>
-      )}
-      <span className="font-mono normal-case tracking-stamp">
-        {formatDate(statement.printedAt)}
+      {label}
+      <span
+        className={cn(
+          "col-start-2 row-start-1 flex items-baseline gap-2 border-b border-foreground/10 px-3 py-1.5 min-w-0",
+          cell,
+        )}
+      >
+        <span className="text-[10px] font-bold uppercase tracking-spec text-muted-foreground">
+          Issued on:
+        </span>
+        <span className="font-mono text-[13px] font-bold tabular-nums text-foreground">
+          {formatDate(statement.printedAt)}
+        </span>
+        <span
+          className={cn(
+            "border px-1 py-0.5 text-[9px] font-bold uppercase leading-none tracking-spec",
+            temp
+              ? "border-sev-yellow-edge bg-sev-yellow-bg text-sev-yellow-fg"
+              : "border-foreground/25 text-foreground/70",
+          )}
+        >
+          {temp ? "Temp" : "Actual"}
+        </span>
+      </span>
+      <span
+        className={cn(
+          "col-start-2 row-start-2 flex items-center gap-2 px-3 py-1.5 min-w-0 text-[11px] text-muted-foreground",
+          cell,
+        )}
+      >
+        <span className="shrink-0 text-[10px] font-bold uppercase tracking-spec">
+          Issued by:
+        </span>
+        <span className="truncate font-semibold text-foreground/85">
+          {statement.issuedBy}
+        </span>
+      </span>
+      <span
+        className={cn(
+          "col-start-3 row-start-1 row-span-2 inline-flex items-center justify-center gap-1 border-l border-foreground/15 text-[10px] font-bold uppercase tracking-spec text-primary",
+          "transition-colors group-hover:bg-accent group-hover:text-accent-foreground",
+        )}
+      >
+        Open
+        <ChevronRight className="h-3 w-3" />
       </span>
     </button>
   );
@@ -555,7 +632,7 @@ function StripLabel({
   children: React.ReactNode;
 }) {
   return (
-    <div className="inline-flex w-[160px] items-center gap-1.5 border-r border-foreground/15 bg-foreground/[0.05] px-4 py-1.5 text-[10px] font-bold uppercase tracking-spec text-foreground/85 shrink-0 whitespace-nowrap">
+    <div className="inline-flex w-[108px] items-center gap-1.5 border-r border-foreground/15 bg-foreground/[0.05] px-3 py-1.5 text-[10px] font-bold uppercase tracking-spec text-foreground/85 shrink-0 whitespace-nowrap">
       <Icon className="h-3 w-3 shrink-0" />
       <span className="truncate">{children}</span>
     </div>
@@ -693,12 +770,12 @@ function BookingChip({
       onClick={onClick}
       title={titleAttr || "View booking"}
       className={cn(
-        // Green so a booked tail is spotted at a glance: a mint wash for
-        // upcoming, solid deep green while the aircraft is in the hangar.
+        // Neutral so it doesn't fight the status chip: a light grey wash for
+        // upcoming, solid navy while the aircraft is in the hangar.
         "shrink-0 inline-flex items-stretch border text-[10px] transition-colors",
         active
-          ? "border-sev-green-fg bg-sev-green-fg text-card hover:bg-sev-green-fg/85"
-          : "border-sev-green-edge bg-sev-green-bg text-sev-green-fg hover:bg-sev-green-edge/25",
+          ? "border-primary bg-primary text-primary-foreground hover:bg-primary/85"
+          : "border-foreground/25 bg-foreground/[0.04] text-foreground/85 hover:bg-foreground/[0.09]",
       )}
     >
       {/* Short "Sep 25 → Sep 29" like the statements; the year lives in the
@@ -718,7 +795,7 @@ function BookingChip({
             "border-l px-1 py-0.5 text-[9px] font-bold uppercase tracking-spec flex items-center",
             active
               ? "border-card/30 bg-card/15"
-              : "border-sev-green-edge/50 bg-sev-green-edge/15",
+              : "border-foreground/15 bg-foreground/[0.05]",
           )}
         >
           {typeLabel}
@@ -730,7 +807,7 @@ function BookingChip({
             "border-l px-1 py-0.5 font-mono font-bold flex items-center",
             active
               ? "border-card/30 bg-card/15"
-              : "border-sev-green-edge/50 bg-sev-green-edge/15",
+              : "border-foreground/15 bg-foreground/[0.05]",
           )}
         >
           WO {primaryWo}
