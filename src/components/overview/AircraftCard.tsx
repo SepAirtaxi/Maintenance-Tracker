@@ -4,6 +4,7 @@ import {
   Ban,
   CalendarDays,
   ChevronRight,
+  CloudOff,
   FileClock,
   Gauge,
   History,
@@ -315,6 +316,15 @@ export default function AircraftCard({
                   <span className="text-[10px] font-bold uppercase tracking-spec text-muted-foreground">
                     Ldg
                   </span>
+                </span>
+              )}
+              {aircraft.syncTtafFromFlightlogger === false && (
+                <span
+                  className="inline-flex items-center gap-1 self-center border border-sev-yellow-edge/60 bg-sev-yellow-bg px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-spec text-sev-yellow-fg whitespace-nowrap"
+                  title="Flightlogger sync is switched off for this aircraft. TTAF and landings are only changed when entered manually. Re-enable in Settings → Flightlogger sync."
+                >
+                  <CloudOff className="h-3 w-3" />
+                  Sync off
                 </span>
               )}
               {aircraft.totalTimeUpdatedAt && (
