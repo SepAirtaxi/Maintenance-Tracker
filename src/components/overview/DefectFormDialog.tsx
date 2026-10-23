@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, History } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DateInput } from "@/components/ui/date-input";
 import { Label } from "@/components/ui/label";
+import TtafHistoryPanel from "@/components/overview/TtafHistoryPanel";
 import { createDefect, updateDefect } from "@/services/defects";
 import {
   formatMinutesAsDuration,
@@ -64,6 +65,7 @@ export default function DefectFormDialog({
   const [quoteNumber, setQuoteNumber] = useState("");
   const [linkedIds, setLinkedIds] = useState<Set<string>>(() => new Set());
   const [recurrenceOpen, setRecurrenceOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -103,6 +105,7 @@ export default function DefectFormDialog({
       setLinkedIds(new Set());
       setRecurrenceOpen(false);
     }
+    setHistoryOpen(false);
     setError(null);
     setSaving(false);
   }, [open, defect]);
@@ -248,39 +251,67 @@ export default function DefectFormDialog({
                   placeholder="e.g. 6466:36 or 6466.6"
                   className="font-mono"
                 />
-                {!isEdit && (
+                <div className="flex flex-wrap gap-1.5">
+                  {!isEdit && (
+                    <button
+                      type="button"
+                      disabled={currentTtafMinutes == null}
+                      onClick={() => {
+                        if (currentTtafMinutes != null) {
+                          setReportedTtaf(
+                            formatMinutesAsDuration(currentTtafMinutes),
+                          );
+                        }
+                      }}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 self-start border border-foreground/25 bg-card px-2 py-1 text-[10px] font-bold uppercase tracking-spec transition-colors",
+                        currentTtafMinutes == null
+                          ? "text-muted-foreground/60 cursor-not-allowed"
+                          : "hover:bg-foreground/[0.04]",
+                      )}
+                      title={
+                        currentTtafMinutes == null
+                          ? "No TTAF recorded for this aircraft yet"
+                          : "Fill with the aircraft's currently stored TTAF"
+                      }
+                    >
+                      Use current TTAF
+                      {currentTtafMinutes != null && (
+                        <span className="font-mono tracking-normal text-foreground/80">
+                          {formatMinutesAsDuration(currentTtafMinutes)}
+                        </span>
+                      )}
+                    </button>
+                  )}
                   <button
                     type="button"
-                    disabled={currentTtafMinutes == null}
-                    onClick={() => {
-                      if (currentTtafMinutes != null) {
-                        setReportedTtaf(
-                          formatMinutesAsDuration(currentTtafMinutes),
-                        );
-                      }
-                    }}
+                    onClick={() => setHistoryOpen((v) => !v)}
+                    aria-expanded={historyOpen}
+                    title="Pick from TTAF history (last 30 days)"
                     className={cn(
-                      "inline-flex items-center gap-1.5 self-start border border-foreground/25 bg-card px-2 py-1 text-[10px] font-bold uppercase tracking-spec transition-colors",
-                      currentTtafMinutes == null
-                        ? "text-muted-foreground/60 cursor-not-allowed"
-                        : "hover:bg-foreground/[0.04]",
+                      "inline-flex items-center gap-1.5 border border-foreground/25 px-2 py-1 text-[10px] font-bold uppercase tracking-spec transition-colors",
+                      historyOpen
+                        ? "bg-foreground/[0.06]"
+                        : "bg-card hover:bg-foreground/[0.04]",
                     )}
-                    title={
-                      currentTtafMinutes == null
-                        ? "No TTAF recorded for this aircraft yet"
-                        : "Fill with the aircraft's currently stored TTAF"
-                    }
                   >
-                    Use current TTAF
-                    {currentTtafMinutes != null && (
-                      <span className="font-mono tracking-normal text-foreground/80">
-                        {formatMinutesAsDuration(currentTtafMinutes)}
-                      </span>
-                    )}
+                    <History className="h-3 w-3" />
+                    History
                   </button>
-                )}
+                </div>
               </div>
             </div>
+            {historyOpen && (
+              <TtafHistoryPanel
+                tailNumber={tailNumber}
+                anchorDate={inputToDate(reportedDate)}
+                anchorLabel="Reported"
+                onPick={(minutes) => {
+                  setReportedTtaf(formatMinutesAsDuration(minutes));
+                  setHistoryOpen(false);
+                }}
+              />
+            )}
 
             {priorNffDefects.length > 0 && (
               <div className="rounded-md border border-sev-yellow-edge/60 bg-sev-yellow-bg/40/60">

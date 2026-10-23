@@ -549,6 +549,26 @@ export default function OverviewPage() {
   const resolveEventCurrentTtaf = resolveEventTarget
     ? ttafByTail.get(resolveEventTarget.tailNumber) ?? null
     : null;
+  // Last day of the event's most recent hangar visit, when that visit is over
+  // — anchors the suggested reading in the close dialog's TTAF history. Null
+  // while any linked booking is still live (no rollout yet) or none exists.
+  const resolveEventRolloutDate = useMemo(() => {
+    if (!resolveEventTarget) return null;
+    const now = new Date();
+    const startOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    ).getTime();
+    let latest: number | null = null;
+    for (const b of allBookings) {
+      if (!(b.eventIds ?? []).includes(resolveEventTarget.id)) continue;
+      if (b.to == null || b.to.toMillis() >= startOfToday) return null;
+      const toMs = b.to.toMillis();
+      if (latest == null || toMs > latest) latest = toMs;
+    }
+    return latest == null ? null : new Date(latest);
+  }, [resolveEventTarget, allBookings]);
 
   const eventsById = useMemo(() => {
     const m = new Map<string, MaintenanceEvent>();
@@ -1345,6 +1365,7 @@ export default function OverviewPage() {
         event={resolveEventTarget}
         onClose={() => setResolveEventTarget(null)}
         currentTtafMinutes={resolveEventCurrentTtaf}
+        rolloutDate={resolveEventRolloutDate}
       />
       <ExtendEventDialog
         event={extendEventTarget}

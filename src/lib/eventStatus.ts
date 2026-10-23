@@ -109,12 +109,12 @@ export function getEventAttention(
 
 // Status surfaced in the overview's Status column. First match wins:
 //   • in_hangar     → a linked booking is running today
-//   • rolled_out    → a linked booking has ended, none is running or upcoming,
-//                     and the item is still open
-//   • deferred      → defect is deferred (defects only)
 //   • booked        → WO + an upcoming booking
 //   • quoted_booked → WOQ (no WO) + an upcoming booking
 //   • booking_only  → an upcoming booking, but neither WO nor WOQ
+//   • deferred      → defect is deferred (defects only)
+//   • rolled_out    → a linked booking has ended, none is running or upcoming,
+//                     and the item is still open
 //   • planned       → WO, no booking
 //   • quoted        → WOQ (no WO), no booking
 //   • unplanned     → nothing yet ("no action taken")
@@ -184,13 +184,16 @@ function planStatusFor(
   deferred: boolean,
 ): PlanStatus {
   if (phase === "in_hangar") return "in_hangar";
-  if (phase === "rolled_out") return "rolled_out";
-  if (deferred) return "deferred";
   const hasWo = !!wo?.trim();
   const hasWoq = !!woq?.trim();
   if (phase === "upcoming") {
     return hasWo ? "booked" : hasWoq ? "quoted_booked" : "booking_only";
   }
+  // Deferred outranks rolled out: a defect deferred during (or after) a visit
+  // is still open by design, and once the booking has ended there's no way
+  // to unlink it, so "Rolled out" would stick forever.
+  if (deferred) return "deferred";
+  if (phase === "rolled_out") return "rolled_out";
   return hasWo ? "planned" : hasWoq ? "quoted" : "unplanned";
 }
 

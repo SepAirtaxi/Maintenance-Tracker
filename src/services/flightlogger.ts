@@ -273,6 +273,13 @@ export async function runFlightloggerSync(byUid: string): Promise<SyncResult> {
         action: "update",
         entity: "ttaf",
         summary: `${ttafPart}${landingsPart} (source: flightlogger)`,
+        // The TTAF on file after this sync — still a valid dated reading
+        // when only landings changed.
+        ...(ttafChangedForAudit
+          ? { ttafMinutes: candidate, ttafSource: "flightlogger" as const }
+          : stored != null
+            ? { ttafMinutes: stored, ttafSource: "flightlogger" as const }
+            : {}),
       },
       batch,
     );

@@ -406,6 +406,8 @@ export async function updateTtafManual(
     )} (source: manual${
       before != null && totalTimeMinutes < before ? ", decreased" : ""
     })`,
+    ttafMinutes: totalTimeMinutes,
+    ttafSource: "manual",
   });
 }
 

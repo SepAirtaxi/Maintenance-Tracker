@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
-import { Wand2 } from "lucide-react";
+import { History, Wand2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DateInput } from "@/components/ui/date-input";
 import { Label } from "@/components/ui/label";
+import TtafHistoryPanel from "@/components/overview/TtafHistoryPanel";
 import { resolveEvent } from "@/services/events";
 import { formatDate } from "@/lib/format";
 import {
@@ -29,6 +30,10 @@ type Props = {
   // The aircraft's currently stored TTAF — fills the "TTAF at close" field
   // via the import button. Null when the aircraft has no recorded TTAF yet.
   currentTtafMinutes: number | null;
+  // Last day of the most recent ended hangar booking linked to this event —
+  // anchors the "suggested" reading in the TTAF history picker. Null when the
+  // event never went through a booking; the completion date is used instead.
+  rolloutDate: Date | null;
 };
 
 function tsToInput(d: Date): string {
@@ -49,12 +54,14 @@ export default function ResolveEventDialog({
   event,
   onClose,
   currentTtafMinutes,
+  rolloutDate,
 }: Props) {
   const { user } = useAuth();
   const [resolvedDate, setResolvedDate] = useState(tsToInput(new Date()));
   const [workOrder, setWorkOrder] = useState("");
   const [resolvedTtaf, setResolvedTtaf] = useState("");
   const [administrative, setAdministrative] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,6 +71,7 @@ export default function ResolveEventDialog({
       setWorkOrder(event.workOrderNumber ?? "");
       setResolvedTtaf("");
       setAdministrative(false);
+      setHistoryOpen(false);
       setError(null);
       setSaving(false);
     }
@@ -240,7 +248,40 @@ export default function ResolveEventDialog({
                 >
                   <Wand2 className="h-4 w-4" />
                 </button>
+                <button
+                  type="button"
+                  disabled={administrative}
+                  onClick={() => setHistoryOpen((v) => !v)}
+                  title={
+                    administrative
+                      ? "Disabled — TTAF is skipped on administrative close"
+                      : "Pick from TTAF history (last 30 days)"
+                  }
+                  aria-label="Pick from TTAF history"
+                  aria-expanded={historyOpen}
+                  className={cn(
+                    "inline-flex h-9 shrink-0 items-center justify-center border border-foreground/30 px-3 transition-colors",
+                    administrative
+                      ? "text-muted-foreground/40 cursor-not-allowed bg-muted"
+                      : historyOpen
+                        ? "bg-foreground/[0.06] text-foreground"
+                        : "bg-card text-foreground/80 hover:bg-foreground/[0.04] hover:text-foreground",
+                  )}
+                >
+                  <History className="h-4 w-4" />
+                </button>
               </div>
+              {historyOpen && !administrative && (
+                <TtafHistoryPanel
+                  tailNumber={event.tailNumber}
+                  anchorDate={rolloutDate ?? inputToDate(resolvedDate)}
+                  anchorLabel={rolloutDate ? "Rolled out" : "Completed"}
+                  onPick={(minutes) => {
+                    setResolvedTtaf(formatMinutesAsDuration(minutes));
+                    setHistoryOpen(false);
+                  }}
+                />
+              )}
               {!administrative && (
                 <p className="text-[11px] text-muted-foreground">
                   {currentTtafMinutes != null ? (
@@ -249,7 +290,7 @@ export default function ResolveEventDialog({
                       <span className="font-mono text-foreground/80">
                         {formatMinutesAsDuration(currentTtafMinutes)}
                       </span>
-                      .
+                      , or the clock to pick a past reading.
                     </>
                   ) : (
                     "No current TTAF on file for this aircraft yet."
