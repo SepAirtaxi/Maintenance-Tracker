@@ -314,3 +314,60 @@ export type Notification = {
   acknowledgedAt: Timestamp | null;
   acknowledgedBy: string | null;
 };
+
+// ─── Projects (06 Projects) ──────────────────────────────────────────────
+// Commercial/engineering projects for external customers — typically avionics
+// installs. Deliberately not tied to the fleet: the tail number is free text
+// because the aircraft usually isn't ours. Stage definitions, order and
+// deadline maths live in `lib/projectStages.ts`.
+export type ProjectStage =
+  | "rfq"
+  | "quoted"
+  | "accepted"
+  | "wo"
+  | "engineering"
+  | "planning"
+  | "installation"
+  | "completed"
+  // Off-pipeline terminal state: the customer declined the quote.
+  | "rejected";
+
+export type ProjectCurrency = "DKK" | "EUR" | "USD";
+
+export type ProjectStageChange = {
+  stage: ProjectStage;
+  at: Timestamp;
+  // Initials of whoever moved it.
+  by: string;
+};
+
+export type Project = {
+  id: string;
+  title: string;
+  tailNumber: string;
+  customer: string | null;
+  aircraftType: string | null;
+  // Day the customer first got in touch with the RFQ.
+  openedDate: Timestamp;
+  quoteAmount: number | null;
+  quoteCurrency: ProjectCurrency;
+  quoteDate: Timestamp | null;
+  // WOQ number from the ERP, once the quote exists there.
+  quoteNumber: string | null;
+  workOrderNumber: string | null;
+  stage: ProjectStage;
+  // When the project entered its current stage — drives "days in stage".
+  stageEnteredAt: Timestamp;
+  // Most recent date each stage was reached. Re-entering a stage overwrites
+  // it; entries for stages after the current one are ignored on render.
+  stageReachedAt: Partial<Record<ProjectStage, Timestamp>>;
+  // Optional "finish this stage by" date per stage. The current stage's
+  // target is what the card counts down to.
+  stageTargets: Partial<Record<ProjectStage, Timestamp>>;
+  // Append-only log of stage moves (forward and backward).
+  stageHistory: ProjectStageChange[];
+  notes: string | null;
+  createdAt: Timestamp;
+  createdBy: string;
+  updatedAt: Timestamp;
+};

@@ -69,6 +69,12 @@ service cloud.firestore {
       allow write: if isMember();
     }
 
+    // Customer projects (06 Projects). Members only, read included — the
+    // cards carry quoted prices, which viewer accounts shouldn't see.
+    match /projects/{projectId} {
+      allow read, write: if isMember();
+    }
+
     // Singleton-style status docs (e.g. `flightloggerSync` — last-run summary
     // for the Flightlogger TTAF sync). Any signed-in user reads so the top-of-
     // app indicator works for viewers too; only members write.
