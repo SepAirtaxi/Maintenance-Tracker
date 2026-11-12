@@ -9,6 +9,7 @@ import StatementPage from "@/pages/StatementPage";
 import LabelsPage from "@/pages/LabelsPage";
 import NextDuePage from "@/pages/NextDuePage";
 import ProjectsPage from "@/pages/ProjectsPage";
+import TasksPage from "@/pages/TasksPage";
 import LoginPage from "@/pages/LoginPage";
 import ProfilePage from "@/pages/ProfilePage";
 
@@ -63,6 +64,14 @@ export default function App() {
             element={
               <ProtectedRoute membersOnly>
                 <ProjectsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/tasks"
+            element={
+              <ProtectedRoute membersOnly>
+                <TasksPage />
               </ProtectedRoute>
             }
           />

@@ -1078,7 +1078,7 @@ export default function OverviewPage() {
       key={s.aircraft.tailNumber}
       ref={setCardRef(s.aircraft.tailNumber)}
       data-tail={s.aircraft.tailNumber}
-      className="scroll-mt-36"
+      className="scroll-mt-[calc(var(--header-h,90px)+54px)]"
     >
     <AircraftCard
       aircraft={s.aircraft}
@@ -1254,7 +1254,7 @@ export default function OverviewPage() {
       </div>
 
       {summaries.length > 0 && (
-        <div className="sticky top-[90px] z-30 flex items-stretch border border-foreground/20 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/85">
+        <div className="sticky top-[var(--header-h,90px)] z-30 flex items-stretch border border-foreground/20 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/85">
           <span className="inline-flex shrink-0 items-center px-3 text-[10px] font-bold uppercase tracking-spec text-muted-foreground bg-foreground/[0.04] border-r border-foreground/10">
             Jump
           </span>

@@ -371,3 +371,18 @@ export type Project = {
   createdBy: string;
   updatedAt: Timestamp;
 };
+
+// 07 Tasks — shared "post-it" board. Each member owns their own notes; the
+// only ordering is the owner's priority (`rank`, lower = higher priority).
+// Finished notes are kept (done: true) so they stay reviewable.
+export type Task = {
+  id: string;
+  ownerUid: string;
+  title: string;
+  detail: string | null;
+  rank: number;
+  done: boolean;
+  doneAt: Timestamp | null;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+};

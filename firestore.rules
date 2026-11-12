@@ -75,6 +75,20 @@ service cloud.firestore {
       allow read, write: if isMember();
     }
 
+    // Shared task board (07 Tasks). Every member sees everyone's notes, but
+    // each member can only add, change or remove their own — the owner can
+    // never be switched. Viewer accounts see nothing.
+    match /tasks/{taskId} {
+      allow read: if isMember();
+      allow create: if isMember()
+        && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if isMember()
+        && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerUid == resource.data.ownerUid;
+      allow delete: if isMember()
+        && resource.data.ownerUid == request.auth.uid;
+    }
+
     // Singleton-style status docs (e.g. `flightloggerSync` — last-run summary
     // for the Flightlogger TTAF sync). Any signed-in user reads so the top-of-
     // app indicator works for viewers too; only members write.

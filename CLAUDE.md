@@ -45,7 +45,7 @@ TTAF for piston aircraft is auto-pulled from the Flightlogger GraphQL API; the o
 
 ### Indicators
 
-- **Global filing-strip indicator** in `Layout.tsx` — shows `TTAF SYNCED DD.MM.YYYY HH:mm` on every page. Red-dot failed state with hover-detail on `meta.lastError`. Falls back to "TTAF · not yet synced" on permission/network errors so the indicator never silently disappears.
+- **Global header indicator** in `Layout.tsx` (right side of the masthead row; the old filing strip was removed 2026-11-12) — shows `TTAF SYNCED DD.MM.YYYY HH:mm` on every page. Red-dot failed state with hover-detail on `meta.lastError`. Falls back to "TTAF · not yet synced" on permission/network errors so the indicator never silently disappears.
 - **OverviewPage SyncIndicator** — detailed inline view with the full summary string ("5 updated, 1 unchanged, 2 stale (OY-CMC, OY-XYZ), 2 excluded").
 - **Per-aircraft audit log** entries are written for each TTAF change with source `flightlogger`.
 
