@@ -1,15 +1,12 @@
 import { CheckCircle2, Hourglass, Pencil, Trash2 } from "lucide-react";
+import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
 import { formatHoursLeft, formatMinutesAsDuration } from "@/lib/time";
 import {
-  computeDaysLeft,
-  computeMinutesLeft,
   getEffectiveTimerExpiryMinutes,
+  getEventDueView,
   getEventPlanStatus,
-  getEventSeverity,
-  severityFromDays,
-  severityFromMinutes,
   type BookingPhase,
   type Severity,
 } from "@/lib/eventStatus";
@@ -45,12 +42,23 @@ const severityHalf: Record<Severity, string> = {
   unknown: "bg-transparent text-muted-foreground",
 };
 
+// In the hangar on time: a light navy wash echoing the solid IN HANGAR pill,
+// not a severity colour. An overrun at entry still takes the red tint.
+const IN_HANGAR_CELL = "bg-foreground/[0.08] text-foreground font-semibold";
+
+function inHangarCell(sev: Severity): string {
+  if (sev === "red") return severityHalf.red;
+  if (sev === "unknown") return severityHalf.unknown;
+  return IN_HANGAR_CELL;
+}
+
 type Props = {
   event: MaintenanceEvent;
   currentTtafMinutes: number | null;
-  // True when a booking links this event — drives the third "Booked" status.
   // Where this event stands against its linked hangar bookings, if any.
   bookingPhase: BookingPhase | undefined;
+  // First day of the running linked booking — the day the countdown stops.
+  hangarEntryMs?: number;
   readOnly?: boolean;
   onEdit: () => void;
   onDelete: () => void;
@@ -62,21 +70,65 @@ export default function EventRow({
   event,
   currentTtafMinutes,
   bookingPhase,
+  hangarEntryMs,
   readOnly = false,
   onEdit,
   onDelete,
   onResolve,
   onExtend,
 }: Props) {
-  const severity = getEventSeverity(event, currentTtafMinutes);
   const planStatus = getEventPlanStatus(event, bookingPhase);
-  const daysLeft = computeDaysLeft(event);
-  const minutesLeft = computeMinutesLeft(event, currentTtafMinutes);
-  const daysSev = severityFromDays(daysLeft);
-  const hoursSev = severityFromMinutes(minutesLeft);
+  const due = getEventDueView(
+    event,
+    currentTtafMinutes,
+    bookingPhase,
+    hangarEntryMs,
+  );
+  const { mode, daysLeft, minutesLeft } = due;
   const effectiveExpiry = getEffectiveTimerExpiryMinutes(event);
   const extHours =
     event.extensionMinutes != null ? event.extensionMinutes / 60 : null;
+
+  const entryLabel = due.hangarEntry
+    ? format(due.hangarEntry, "dd.MM.yyyy")
+    : null;
+  const daysClass =
+    mode === "in_hangar"
+      ? inHangarCell(due.daysSeverity)
+      : severityHalf[due.daysSeverity];
+  const hoursClass =
+    mode === "in_hangar"
+      ? inHangarCell(due.hoursSeverity)
+      : severityHalf[due.hoursSeverity];
+  const daysTitle =
+    mode === "in_hangar"
+      ? daysLeft != null && daysLeft < 0
+        ? `Went into the hangar ${entryLabel} — ${-daysLeft} day(s) after the due date`
+        : `In hangar — countdown stopped at entry ${entryLabel}`
+      : "Days until due";
+  const hoursBaseTitle =
+    mode === "in_hangar"
+      ? "In hangar — hours stopped (aircraft not flying)"
+      : "Hours until due (vs current TTAF)";
+
+  // Square next to the event name: navy while in the hangar on time, grey
+  // once rolled out (awaiting closeout), otherwise the usual severity.
+  const squareClass =
+    mode === "closeout"
+      ? sevSquare.unknown
+      : mode === "in_hangar" && due.severity !== "red"
+        ? due.severity === "unknown"
+          ? sevSquare.unknown
+          : "bg-foreground"
+        : sevSquare[due.severity];
+  const squareTitle =
+    mode === "closeout"
+      ? "Rolled out — awaiting closeout"
+      : mode === "in_hangar"
+        ? due.severity === "red"
+          ? "Overdue when it went into the hangar"
+          : "In hangar"
+        : due.severity;
 
   return (
     <div
@@ -103,8 +155,8 @@ export default function EventRow({
       </div>
       <span className="flex items-center gap-2 min-w-0 pr-2">
         <span
-          className={cn("h-2 w-2 shrink-0", sevSquare[severity])}
-          title={severity}
+          className={cn("h-2 w-2 shrink-0", squareClass)}
+          title={squareTitle}
         />
         <FullTextTitle text={event.warning} />
       </span>
@@ -141,37 +193,51 @@ export default function EventRow({
           </span>
         )}
       </div>
-      {/* Days-left cell */}
-      <div
-        className={cn(
-          "border-l border-foreground/15 px-1 py-0.5 text-center font-mono text-[11px] tabular-nums",
-          severityHalf[daysSev],
-        )}
-        title="Days until due"
-      >
-        {daysLeft == null ? "—" : daysLeft}
-      </div>
-      {/* Hours-left cell — when an extension is active, the displayed hours
-          already include it; stack a hairline tag to make that explicit so
-          CAMO doesn't second-guess whether the value reflects the extension. */}
-      <div
-        className={cn(
-          "border-l border-r border-foreground/15 px-1 py-0.5 text-center font-mono text-[11px] tabular-nums leading-tight flex flex-col items-center justify-center",
-          severityHalf[hoursSev],
-        )}
-        title={
-          extHours != null
-            ? `Hours until due (vs current TTAF) — includes +${extHours}h extension`
-            : "Hours until due (vs current TTAF)"
-        }
-      >
-        <span>{formatHoursLeft(minutesLeft)}</span>
-        {extHours != null && (
-          <span className="text-[8px] font-semibold tracking-spec opacity-80">
-            INCL. EXT
-          </span>
-        )}
-      </div>
+      {mode === "closeout" ? (
+        /* Rolled out, still open: the linked booking is the guarantee the
+           work was done, so there is no countdown — the event only needs
+           closing. One neutral marker spans the Days + Hours columns. */
+        <div
+          className="col-span-2 self-stretch flex items-center justify-center border-l border-r border-foreground/15 bg-foreground/[0.04] px-1 py-0.5 text-[9px] font-semibold uppercase tracking-spec text-foreground/70"
+          title="Rolled out — the visit is over; close the event once the WO is closed"
+        >
+          Close out
+        </div>
+      ) : (
+        <>
+          {/* Days-left cell */}
+          <div
+            className={cn(
+              "border-l border-foreground/15 px-1 py-0.5 text-center font-mono text-[11px] tabular-nums",
+              daysClass,
+            )}
+            title={daysTitle}
+          >
+            {daysLeft == null ? "—" : daysLeft}
+          </div>
+          {/* Hours-left cell — when an extension is active, the displayed hours
+              already include it; stack a hairline tag to make that explicit so
+              CAMO doesn't second-guess whether the value reflects the extension. */}
+          <div
+            className={cn(
+              "border-l border-r border-foreground/15 px-1 py-0.5 text-center font-mono text-[11px] tabular-nums leading-tight flex flex-col items-center justify-center",
+              hoursClass,
+            )}
+            title={
+              extHours != null
+                ? `${hoursBaseTitle} — includes +${extHours}h extension`
+                : hoursBaseTitle
+            }
+          >
+            <span>{formatHoursLeft(minutesLeft)}</span>
+            {extHours != null && (
+              <span className="text-[8px] font-semibold tracking-spec opacity-80">
+                INCL. EXT
+              </span>
+            )}
+          </div>
+        </>
+      )}
       {/* Action strip — square ghost buttons with hairline separators */}
       <div className="flex items-center justify-end gap-px pl-2">
         {!readOnly && (

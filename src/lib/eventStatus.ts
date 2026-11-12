@@ -87,8 +87,9 @@ export function getEventSeverity(
 // aircraft airworthy?" — the planner owns that call. So an item that is fully
 // staged (a WO plus a linked booking that is upcoming or running today) reads
 // green however close — or past — its limit is. Unstaged items keep their
-// raw due severity: yellow inside the warning window, red once overdue. The
-// per-row cell tints still show the raw proximity.
+// due severity: yellow inside the warning window, red once overdue. Upcoming
+// (booked, not yet in) rows still show the raw proximity in their cell tints;
+// in-hangar and rolled-out rows follow getEventDueView.
 export function isEventStaged(
   event: MaintenanceEvent,
   phase: BookingPhase | undefined,
@@ -101,10 +102,100 @@ export function getEventAttention(
   event: MaintenanceEvent,
   currentTtafMinutes: number | null,
   phase: BookingPhase | undefined,
+  hangarEntryMs?: number,
 ): Severity {
-  const severity = getEventSeverity(event, currentTtafMinutes);
+  const { severity } = getEventDueView(
+    event,
+    currentTtafMinutes,
+    phase,
+    hangarEntryMs,
+  );
   if (severity === "unknown") return severity;
   return isEventStaged(event, phase) ? "green" : severity;
+}
+
+// ─── Due view: how the Days / Hours cells should read ────────────────────
+// A linked hangar booking is the guarantee the work gets done, so an event
+// tied to a booking stops reading as "overdue" once the aircraft is in:
+//   • live      → no running or ended booking; counts against today as usual.
+//   • in_hangar → a linked booking is running. The countdown stops on the
+//                 booking's first day (days are measured from the entry date,
+//                 not today). Only a limit that had ALREADY passed before the
+//                 aircraft went in still reads red — that's a real overrun.
+//                 Hours stop by themselves (the aircraft isn't flying).
+//   • closeout  → the linked booking has ended and the event is still open.
+//                 The work is assumed done; the event only needs closing in
+//                 the tracker, so no countdown and no severity at all.
+// `severity` is the overall level for the card stripe / row sort: green when
+// in the hangar on time or awaiting closeout, red for an overrun at entry.
+export type DueMode = "live" | "in_hangar" | "closeout";
+
+export type EventDueView = {
+  mode: DueMode;
+  daysLeft: number | null;
+  minutesLeft: number | null;
+  daysSeverity: Severity;
+  hoursSeverity: Severity;
+  severity: Severity;
+  // First day of the running booking (in_hangar mode only).
+  hangarEntry: Date | null;
+};
+
+export function getEventDueView(
+  event: MaintenanceEvent,
+  currentTtafMinutes: number | null,
+  phase: BookingPhase | undefined,
+  hangarEntryMs?: number,
+): EventDueView {
+  const minutesLeft = computeMinutesLeft(event, currentTtafMinutes);
+
+  if (phase === "rolled_out") {
+    const hasLimit = event.expiryDate != null || minutesLeft != null;
+    return {
+      mode: "closeout",
+      daysLeft: null,
+      minutesLeft: null,
+      daysSeverity: "unknown",
+      hoursSeverity: "unknown",
+      severity: hasLimit ? "green" : "unknown",
+      hangarEntry: null,
+    };
+  }
+
+  if (phase === "in_hangar" && hangarEntryMs != null) {
+    const entry = new Date(hangarEntryMs);
+    const daysLeft = event.expiryDate
+      ? differenceInCalendarDays(event.expiryDate.toDate(), entry)
+      : null;
+    // Overrun at entry is the only thing that still reads red; anything else
+    // in the hangar is on track, regardless of how tight the margin was.
+    const daysSeverity: Severity =
+      daysLeft == null ? "unknown" : daysLeft < 0 ? "red" : "green";
+    const hoursSeverity: Severity =
+      minutesLeft == null ? "unknown" : minutesLeft < 0 ? "red" : "green";
+    return {
+      mode: "in_hangar",
+      daysLeft,
+      minutesLeft,
+      daysSeverity,
+      hoursSeverity,
+      severity: worstSeverity(daysSeverity, hoursSeverity),
+      hangarEntry: entry,
+    };
+  }
+
+  const daysLeft = computeDaysLeft(event);
+  const daysSeverity = severityFromDays(daysLeft);
+  const hoursSeverity = severityFromMinutes(minutesLeft);
+  return {
+    mode: "live",
+    daysLeft,
+    minutesLeft,
+    daysSeverity,
+    hoursSeverity,
+    severity: worstSeverity(daysSeverity, hoursSeverity),
+    hangarEntry: null,
+  };
 }
 
 // Status surfaced in the overview's Status column. First match wins:
@@ -139,6 +230,10 @@ export type BookingPhase = "in_hangar" | "upcoming" | "rolled_out";
 export type BookingPhases = {
   events: Map<string, BookingPhase>;
   defects: Map<string, BookingPhase>;
+  // Event id → first day (millis) of the earliest linked booking that is
+  // running today. Only set for events whose phase is "in_hangar"; it's the
+  // day the event's countdown stops (see getEventDueView).
+  eventHangarEntry: Map<string, number>;
 };
 
 const PHASE_RANK: Record<BookingPhase, number> = {
@@ -158,6 +253,7 @@ export function buildBookingPhases(
   ).getTime();
   const events = new Map<string, BookingPhase>();
   const defects = new Map<string, BookingPhase>();
+  const eventHangarEntry = new Map<string, number>();
   const bump = (m: Map<string, BookingPhase>, id: string, p: BookingPhase) => {
     const prev = m.get(id);
     if (!prev || PHASE_RANK[p] > PHASE_RANK[prev]) m.set(id, p);
@@ -171,10 +267,16 @@ export function buildBookingPhases(
         : fromMs <= startOfToday
           ? "in_hangar"
           : "upcoming";
-    for (const id of b.eventIds ?? []) bump(events, id, phase);
+    for (const id of b.eventIds ?? []) {
+      bump(events, id, phase);
+      if (phase === "in_hangar") {
+        const prev = eventHangarEntry.get(id);
+        if (prev == null || fromMs < prev) eventHangarEntry.set(id, fromMs);
+      }
+    }
     for (const id of b.defectIds ?? []) bump(defects, id, phase);
   }
-  return { events, defects };
+  return { events, defects, eventHangarEntry };
 }
 
 function planStatusFor(

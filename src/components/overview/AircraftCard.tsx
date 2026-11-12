@@ -441,6 +441,7 @@ export default function AircraftCard({
                 event={event}
                 currentTtafMinutes={aircraft.totalTimeMinutes}
                 bookingPhase={bookingPhases.events.get(event.id)}
+                hangarEntryMs={bookingPhases.eventHangarEntry.get(event.id)}
                 readOnly={readOnly}
                 onEdit={() => onEditEvent(event)}
                 onDelete={() => onDeleteEvent(event)}

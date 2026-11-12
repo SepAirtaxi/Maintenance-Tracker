@@ -73,11 +73,12 @@ import {
   getCloseoutCandidates,
   getDeferralStatus,
   getEventAttention,
-  getEventSeverity,
+  getEventDueView,
   getMissingEventMatches,
   getNeedsBookingMatches,
   getWoReminderCandidates,
   worstSeverity,
+  type BookingPhases,
   type CloseoutCandidate,
   type WoReminderCandidate,
   type MissingEventMatch,
@@ -198,7 +199,17 @@ const EVENT_SEVERITY_ORDER: Record<Severity, number> = {
 function sortEvents(
   events: MaintenanceEvent[],
   currentTtafMinutes: number | null,
+  phases: BookingPhases,
 ): MaintenanceEvent[] {
+  // Sort on what the row actually shows: an event in the hangar on time, or
+  // rolled out awaiting closeout, no longer ranks as overdue.
+  const severityOf = (e: MaintenanceEvent) =>
+    getEventDueView(
+      e,
+      currentTtafMinutes,
+      phases.events.get(e.id),
+      phases.eventHangarEntry.get(e.id),
+    ).severity;
   type GroupKey = string;
   type Group = {
     key: GroupKey;
@@ -213,7 +224,7 @@ function sortEvents(
     const wo = e.workOrderNumber?.trim();
     // Blank/null WO# → unique key per event so each becomes its own group.
     const key = wo ? `wo:${wo}` : `solo:${singletonCounter++}`;
-    const rank = EVENT_SEVERITY_ORDER[getEventSeverity(e, currentTtafMinutes)];
+    const rank = EVENT_SEVERITY_ORDER[severityOf(e)];
     const expiry = e.expiryDate?.toMillis() ?? Number.POSITIVE_INFINITY;
     const existing = groups.get(key);
     if (existing) {
@@ -238,8 +249,8 @@ function sortEvents(
   const result: MaintenanceEvent[] = [];
   for (const g of sortedGroups) {
     g.events.sort((a, b) => {
-      const sa = EVENT_SEVERITY_ORDER[getEventSeverity(a, currentTtafMinutes)];
-      const sb = EVENT_SEVERITY_ORDER[getEventSeverity(b, currentTtafMinutes)];
+      const sa = EVENT_SEVERITY_ORDER[severityOf(a)];
+      const sb = EVENT_SEVERITY_ORDER[severityOf(b)];
       if (sa !== sb) return sa - sb;
       const da = a.expiryDate?.toMillis() ?? Number.POSITIVE_INFINITY;
       const db = b.expiryDate?.toMillis() ?? Number.POSITIVE_INFINITY;
@@ -853,6 +864,7 @@ export default function OverviewPage() {
           e,
           a.totalTimeMinutes,
           bookingPhases.events.get(e.id),
+          bookingPhases.eventHangarEntry.get(e.id),
         );
         worst = worstSeverity(worst, s);
         const due = e.expiryDate?.toMillis() ?? null;
@@ -875,7 +887,7 @@ export default function OverviewPage() {
       }));
       return {
         aircraft: a,
-        events: sortEvents(events, a.totalTimeMinutes),
+        events: sortEvents(events, a.totalTimeMinutes, bookingPhases),
         defects: defectsByTail.get(a.tailNumber) ?? [],
         bookings,
         worst,
