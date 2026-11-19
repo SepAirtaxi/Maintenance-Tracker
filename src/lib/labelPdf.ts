@@ -6,9 +6,9 @@ export interface FolderLabel {
   task: string; // task description
 }
 
-// 90 x 60 mm folder label, tiled onto A4. Design echoes the app's Hangar
-// language — hairline frame, small-caps eyebrows, instrument-style tail/WO —
-// while staying legible at a glance on a hard folder.
+// 90 x 50 mm folder label, tiled onto A4. Design echoes the app's Hangar
+// language — hairline frame, small-caps eyebrows, instrument-style WO readout
+// with a small tail stamp — while staying legible at a glance on a hard folder.
 const LABEL_W = 90;
 const LABEL_H = 50;
 const COLS = 2;
@@ -34,11 +34,13 @@ const LINE = 1.16;
 const capH = (pt: number) => pt * PT_TO_MM * CAP;
 const lineH = (pt: number) => pt * PT_TO_MM * LINE;
 
-// Type scale.
+// Type scale. Folders are consolidated (no longer one per aircraft), so the
+// Work Order is the headline and the tail is a small reference stamp.
 const EYEBROW_PT = 7; // all titles, identical
-const VALUE_MAX_PT = 30; // upper cap for the aircraft + WO readouts
+const TAIL_PT = 9; // discreet tail stamp, top-right on the Work Order title row
+const VALUE_MAX_PT = 36; // upper cap for the WO readout
 const VALUE_MIN_PT = 11; // WO refs can run long under the ERP syntax
-const TASK_MAX_PT = 20; // task can be smaller, never larger than the values
+const TASK_MAX_PT = 20; // task can be smaller, never larger than the WO
 const TITLE_TO_VALUE = 2; // gap below every title (uniform)
 
 // One title + its value, pre-measured so the layout can place blocks by height.
@@ -71,8 +73,10 @@ function drawLabel(pdf: jsPDF, x: number, y: number, label: FolderLabel) {
   };
 
   // --- Content ---
-  const tailText = label.tail.toUpperCase() || "OY-";
-  const woText = label.wo ? "WO " + label.wo.trim().toUpperCase() : "WO ————";
+  const tailText = label.tail.trim().toUpperCase() || "OY-";
+  // No "WO" prefix — the WORK ORDER title directly above already says it, and
+  // dropping it lets the number itself run larger.
+  const woText = label.wo.trim() ? label.wo.trim().toUpperCase() : "————";
   const taskText = (label.task || "").toUpperCase();
 
   // Largest size in [min, max] at which the text fits on one line.
@@ -82,12 +86,8 @@ function drawLabel(pdf: jsPDF, x: number, y: number, label: FolderLabel) {
     return s;
   };
 
-  // Aircraft is short by nature — it keeps the headline size.
-  const tailSize = fitOneLine(tailText, VALUE_MAX_PT, 12);
-
-  // Work Order is free text, so it sizes itself down independently rather than
-  // dragging the tail number with it. Typical refs land at the same size as the
-  // tail; a long one shrinks, and a pathological one wraps onto a second line.
+  // Work Order is the headline. Typical refs fit at full size; a long one
+  // shrinks, and a pathological one wraps onto a second line.
   let woSize = fitOneLine(woText, VALUE_MAX_PT, VALUE_MIN_PT);
   let woLines = [woText];
   if (widthAt(woText, woSize) > innerW) {
@@ -103,9 +103,10 @@ function drawLabel(pdf: jsPDF, x: number, y: number, label: FolderLabel) {
     }
   }
 
-  // Task is adaptive: largest size (≤ its own cap and the value size) that fits
-  // on one line; if nothing fits on one line, the largest that fits on two.
-  const taskCap = Math.min(TASK_MAX_PT, tailSize, woSize);
+  // Task is adaptive: largest size (≤ its own cap and the WO size) that fits
+  // on one line; failing that two lines, then three — the space the big tail
+  // used to take now goes to the description.
+  const taskCap = Math.min(TASK_MAX_PT, woSize);
   let taskSize = 9;
   let taskLines: string[] = [taskText];
   const chooseTask = (maxLines: number) => {
@@ -120,15 +121,14 @@ function drawLabel(pdf: jsPDF, x: number, y: number, label: FolderLabel) {
     }
     return false;
   };
-  if (!chooseTask(1) && !chooseTask(2)) {
-    // pathological: force smallest size, keep first two lines
+  if (!chooseTask(1) && !chooseTask(2) && !chooseTask(3)) {
+    // pathological: force smallest size, keep first three lines
     pdf.setFontSize(9);
     taskSize = 9;
-    taskLines = pdf.splitTextToSize(taskText, innerW).slice(0, 2);
+    taskLines = pdf.splitTextToSize(taskText, innerW).slice(0, 3);
   }
 
   const blocks: Block[] = [
-    { title: "Aircraft", size: tailSize, lines: [tailText] },
     { title: "Work Order", size: woSize, lines: woLines },
     { title: "Task", size: taskSize, lines: taskLines },
   ];
@@ -145,12 +145,25 @@ function drawLabel(pdf: jsPDF, x: number, y: number, label: FolderLabel) {
   const gap = Math.max((LABEL_H - used) / (blocks.length + 1), 2);
 
   let cursor = y + gap;
-  for (const b of blocks) {
+  blocks.forEach((b, i) => {
     setInk(EYEBROW_PT, MUTED);
     pdf.text(b.title.toUpperCase(), left, cursor, {
       baseline: "top",
       charSpace: 0.6,
     });
+
+    // Tail stamp — right-aligned on the Work Order title row, sharing the
+    // title's baseline so the row reads as one line of metadata.
+    if (i === 0) {
+      setInk(TAIL_PT, INK);
+      // jsPDF's "top" anchor sits ~0.85em above the baseline (helvetica bold).
+      const titleBaseline = cursor + 0.85 * EYEBROW_PT * PT_TO_MM;
+      pdf.text(tailText, x + LABEL_W - pad, titleBaseline, {
+        baseline: "alphabetic",
+        align: "right",
+        charSpace: 0.3,
+      });
+    }
 
     let vy = cursor + eyeH + TITLE_TO_VALUE;
     setInk(b.size, INK);
@@ -159,7 +172,7 @@ function drawLabel(pdf: jsPDF, x: number, y: number, label: FolderLabel) {
       vy += lineH(b.size);
     }
     cursor += blockHeight(b) + gap;
-  }
+  });
 }
 
 // Builds an A4 PDF with the given labels tiled across the page(s) and triggers
