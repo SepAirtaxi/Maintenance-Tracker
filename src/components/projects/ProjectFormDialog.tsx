@@ -57,6 +57,7 @@ export default function ProjectFormDialog({ open, onOpenChange, project }: Props
   const [tail, setTail] = useState("");
   const [aircraftType, setAircraftType] = useState("");
   const [customer, setCustomer] = useState("");
+  const [responsible, setResponsible] = useState("");
   const [opened, setOpened] = useState("");
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState<ProjectCurrency>("DKK");
@@ -75,6 +76,7 @@ export default function ProjectFormDialog({ open, onOpenChange, project }: Props
     setTail(project?.tailNumber ?? "");
     setAircraftType(project?.aircraftType ?? "");
     setCustomer(project?.customer ?? "");
+    setResponsible(project?.responsible ?? "");
     setOpened(project ? tsToIso(project.openedDate) : toIso(new Date()));
     setAmount(project?.quoteAmount != null ? String(project.quoteAmount) : "");
     setCurrency(project?.quoteCurrency ?? "DKK");
@@ -95,6 +97,10 @@ export default function ProjectFormDialog({ open, onOpenChange, project }: Props
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (!responsible.trim()) {
+      setError("Responsible / contact person is required.");
+      return;
+    }
     const openedDate = isoToDate(opened);
     if (!openedDate) {
       setError("Opening date is required.");
@@ -114,6 +120,7 @@ export default function ProjectFormDialog({ open, onOpenChange, project }: Props
       title,
       tailNumber: tail,
       customer,
+      responsible,
       aircraftType,
       openedDate,
       quoteAmount: parsedAmount,
@@ -145,7 +152,7 @@ export default function ProjectFormDialog({ open, onOpenChange, project }: Props
             <DialogDescription>
               {isEdit
                 ? "Stage is changed from the drop-down on the card."
-                : "Only title, tail number and opening date are needed now — the rest can be filled in as the project moves along."}
+                : "Only title, tail number, responsible person and opening date are needed now — the rest can be filled in as the project moves along."}
             </DialogDescription>
           </DialogHeader>
 
@@ -194,6 +201,16 @@ export default function ProjectFormDialog({ open, onOpenChange, project }: Props
                 <DateInput id="pOpened" value={opened} onChange={setOpened} required />
               </Field>
             </div>
+            <Field label="Responsible / contact person" htmlFor="pResponsible">
+              <Input
+                id="pResponsible"
+                value={responsible}
+                onChange={(e) => setResponsible(e.target.value)}
+                required
+                autoFocus={isEdit && !project?.responsible}
+                placeholder="Name"
+              />
+            </Field>
             {!isEdit && (
               <Field label="Current stage" htmlFor="pStage">
                 <select

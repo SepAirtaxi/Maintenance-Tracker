@@ -8,6 +8,7 @@ import {
   Pencil,
   StickyNote,
   Trash2,
+  UserRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
@@ -102,6 +103,7 @@ export default function ProjectCard({
               )}
             </div>
             <div className="ml-auto flex shrink-0 items-center gap-1.5">
+              <Responsible name={project.responsible} onEdit={onEdit} />
               <StageMenu stage={project.stage} onSelect={onChangeStage} />
               <div className="inline-flex items-stretch border border-foreground/20 divide-x divide-foreground/15 bg-card">
                 <IconBtn title="Edit project" onClick={onEdit}>
@@ -412,6 +414,40 @@ function MenuItem({
         />
       )}
     </button>
+  );
+}
+
+// ─── Responsible person ──────────────────────────────────────────────────
+
+function Responsible({
+  name,
+  onEdit,
+}: {
+  name: string | null;
+  onEdit: () => void;
+}) {
+  // Older projects predate the field — flag them until someone fills it in.
+  if (!name) {
+    return (
+      <button
+        type="button"
+        onClick={onEdit}
+        title="No responsible / contact person yet — click to add one"
+        className="mr-1 inline-flex items-center gap-1.5 border border-sev-yellow-edge/60 bg-sev-yellow-bg px-2 py-1 text-[10px] font-bold uppercase tracking-spec text-sev-yellow-fg transition-colors hover:brightness-95"
+      >
+        <UserRound className="h-3 w-3" />
+        Responsible not set
+      </button>
+    );
+  }
+  return (
+    <span
+      className="mr-1 inline-flex max-w-[16rem] items-center gap-1.5 text-xs"
+      title={`Responsible / contact: ${name}`}
+    >
+      <UserRound className="h-3 w-3 shrink-0 text-muted-foreground" />
+      <span className="truncate font-semibold">{name}</span>
+    </span>
   );
 }
 

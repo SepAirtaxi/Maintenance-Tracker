@@ -32,6 +32,7 @@ function docToProject(id: string, data: Record<string, unknown>): Project {
     title: (data.title as string) ?? "",
     tailNumber: (data.tailNumber as string) ?? "",
     customer: (data.customer as string | null) ?? null,
+    responsible: (data.responsible as string | null) ?? null,
     aircraftType: (data.aircraftType as string | null) ?? null,
     openedDate: (data.openedDate as Timestamp) ?? now,
     quoteAmount: (data.quoteAmount as number | null) ?? null,
@@ -72,6 +73,7 @@ export type ProjectInput = {
   title: string;
   tailNumber: string;
   customer: string | null;
+  responsible: string;
   aircraftType: string | null;
   openedDate: Date;
   quoteAmount: number | null;
@@ -94,6 +96,8 @@ function normalise(input: ProjectInput) {
   if (!title) throw new Error("Project title is required.");
   const tailNumber = normaliseTailNumber(input.tailNumber);
   if (!tailNumber) throw new Error("Tail number is required.");
+  const responsible = input.responsible.trim();
+  if (!responsible) throw new Error("Responsible / contact person is required.");
   if (input.quoteAmount != null && !(input.quoteAmount >= 0)) {
     throw new Error("Quoted cost must be a positive number.");
   }
@@ -105,6 +109,7 @@ function normalise(input: ProjectInput) {
     title,
     tailNumber,
     customer: clean(input.customer),
+    responsible,
     aircraftType: clean(input.aircraftType),
     openedDate: Timestamp.fromDate(input.openedDate),
     quoteAmount: input.quoteAmount,

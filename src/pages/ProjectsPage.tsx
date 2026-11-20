@@ -86,7 +86,7 @@ export default function ProjectsPage() {
       .filter(
         (p) =>
           !q ||
-          [p.title, p.tailNumber, p.customer, p.aircraftType, p.quoteNumber, p.workOrderNumber]
+          [p.title, p.tailNumber, p.customer, p.responsible, p.aircraftType, p.quoteNumber, p.workOrderNumber]
             .filter(Boolean)
             .some((s) => s!.toLowerCase().includes(q)),
       )
@@ -168,7 +168,7 @@ export default function ProjectsPage() {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search title, tail, customer, WOQ, WO…"
+            placeholder="Search title, tail, customer, responsible, WOQ, WO…"
             className="pl-8"
           />
         </div>

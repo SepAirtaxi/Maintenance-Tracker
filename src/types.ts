@@ -346,6 +346,9 @@ export type Project = {
   title: string;
   tailNumber: string;
   customer: string | null;
+  // Responsible / contact person — free text. Mandatory for new projects;
+  // null only on projects created before the field existed.
+  responsible: string | null;
   aircraftType: string | null;
   // Day the customer first got in touch with the RFQ.
   openedDate: Timestamp;
