@@ -9,7 +9,7 @@ The app uses a custom design system called **"Hangar / Aviation-precision Modern
 - **Zero border-radius** everywhere except severity dots / circular avatars (`rounded-full` still works). The Tailwind radius scale (`sm`/`md`/`lg`/`xl` etc.) is overridden to `0` in `tailwind.config.js`.
 - **Hairline borders, not shadows.** Use `border border-foreground/15` (or /10/20/25 etc.) instead of `shadow-sm`. The only intentional elevation is `shadow-dialog` for modal content.
 - **Severity colors come from `sev-*` tokens.** Never use `bg-emerald-50`, `bg-rose-100`, `text-amber-900`, `border-sky-300` etc. — use `bg-sev-green-bg`, `text-sev-red-fg`, `border-sev-yellow-edge`, etc.
-- **Typography:** `font-display` (Bricolage Grotesque) for h1's and section labels, `font-sans` (Inter Tight, the default) for UI body, `font-mono` (JetBrains Mono) for tail numbers, dates, TTAF, hours-left, any number that should read like an instrument readout.
+- **Typography:** `font-display` (Saira) for h1's and section labels, `font-sans` (Inter Tight, the default) for UI body, `font-mono` (JetBrains Mono) for tail numbers, dates, TTAF, hours-left, any number that should read like an instrument readout.
 - **Small-caps eyebrows:** `.label-eyebrow` / `.label-eyebrow-strong` for zone labels; or inline `text-[10px] font-bold uppercase tracking-spec` (= 0.14em letterspacing).
 
 ### Tokens

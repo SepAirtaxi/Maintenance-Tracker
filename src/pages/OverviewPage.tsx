@@ -1149,7 +1149,7 @@ export default function OverviewPage() {
             </span>
             <span className="h-px flex-1 bg-foreground/15 w-12" />
           </div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight leading-none">
+          <h1 className="font-display text-2xl font-medium tracking-tight leading-none">
             Maintenance Overview
           </h1>
           <p className="text-xs text-muted-foreground">
@@ -1339,7 +1339,7 @@ export default function OverviewPage() {
             <div className="pt-5 space-y-4">
               <div className="flex items-center gap-3">
                 <ShieldOff className="h-4 w-4 text-sev-red-fg" />
-                <h2 className="font-display text-sm font-bold uppercase tracking-spec text-sev-red-fg">
+                <h2 className="font-display text-sm font-semibold uppercase tracking-spec text-sev-red-fg">
                   Grounded · {groundedList.length}
                 </h2>
                 <span className="h-px flex-1 bg-sev-red-edge/40" />
@@ -1352,7 +1352,7 @@ export default function OverviewPage() {
             <div className="pt-5 space-y-4">
               <div className="flex items-center gap-3">
                 <Ban className="h-4 w-4 text-muted-foreground" />
-                <h2 className="font-display text-sm font-bold uppercase tracking-spec text-muted-foreground">
+                <h2 className="font-display text-sm font-semibold uppercase tracking-spec text-muted-foreground">
                   Out of production · {outOfProductionList.length}
                 </h2>
                 <span className="h-px flex-1 bg-foreground/20" />

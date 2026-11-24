@@ -236,7 +236,7 @@ function Column({
   return (
     <section className="flex min-w-0 flex-col border border-foreground/15 bg-card">
       <header className="flex items-baseline gap-2 border-b border-foreground/15 px-3 py-2">
-        <span className="font-display text-sm font-semibold tracking-tight">
+        <span className="font-display text-sm font-medium tracking-tight">
           {label}
         </span>
         <span className="font-mono text-[10px] text-muted-foreground">
@@ -365,7 +365,7 @@ export default function NextDuePage() {
           </span>
           <span className="h-px flex-1 bg-foreground/15 w-12" />
         </div>
-        <h1 className="font-display text-2xl font-semibold tracking-tight leading-none">
+        <h1 className="font-display text-2xl font-medium tracking-tight leading-none">
           Next Due
         </h1>
         <p className="text-sm text-muted-foreground">

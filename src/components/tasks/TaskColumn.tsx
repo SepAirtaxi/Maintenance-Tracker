@@ -147,7 +147,7 @@ export default function TaskColumn({
           </span>
           <div className="min-w-0 flex-1 leading-none">
             <div
-              className="truncate font-display text-[15px] font-semibold tracking-tight"
+              className="truncate font-display text-[15px] font-medium tracking-tight"
               title={person.displayName ?? person.email}
             >
               {person.displayName ?? person.email}

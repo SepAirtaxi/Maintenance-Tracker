@@ -48,7 +48,7 @@ export default function SettingsPage() {
           </span>
           <span className="h-px flex-1 bg-foreground/15 w-12" />
         </div>
-        <h1 className="font-display text-2xl font-semibold tracking-tight leading-none">
+        <h1 className="font-display text-2xl font-medium tracking-tight leading-none">
           Settings
         </h1>
         <p className="text-sm text-muted-foreground">
@@ -138,7 +138,7 @@ function DataSection() {
   return (
     <div className="space-y-4">
       <div className="space-y-1">
-        <h2 className="font-display text-sm font-bold uppercase tracking-spec">
+        <h2 className="font-display text-sm font-semibold uppercase tracking-spec">
           Data maintenance
         </h2>
         <p className="text-sm text-muted-foreground">

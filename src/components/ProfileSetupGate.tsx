@@ -63,7 +63,7 @@ export default function ProfileSetupGate({
           </span>
           <span className="h-px w-12 flex-1 bg-foreground/15" />
         </div>
-        <h1 className="font-display text-2xl font-semibold leading-none tracking-tight">
+        <h1 className="font-display text-2xl font-medium leading-none tracking-tight">
           Who are you?
         </h1>
         <p className="text-sm text-muted-foreground">

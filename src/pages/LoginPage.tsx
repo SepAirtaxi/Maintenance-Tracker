@@ -112,7 +112,7 @@ export default function LoginPage() {
               </span>
             </div>
           </div>
-          <h1 className="font-display text-5xl xl:text-6xl font-semibold tracking-tight leading-[1.04] text-primary-foreground">
+          <h1 className="font-display text-5xl xl:text-6xl font-medium tracking-tight leading-[1.04] text-primary-foreground">
             Maintenance
             <br />
             Tracker.
@@ -146,7 +146,7 @@ export default function LoginPage() {
           {/* Mobile wordmark (cover is hidden on small screens) */}
           <div className="lg:hidden flex flex-col items-center gap-3 text-center">
             <img src={logoUrl} alt="" aria-hidden="true" className="h-12 w-auto" />
-            <h1 className="font-display text-2xl font-semibold tracking-tight">
+            <h1 className="font-display text-2xl font-medium tracking-tight">
               Maintenance Tracker
             </h1>
           </div>
@@ -166,7 +166,7 @@ export default function LoginPage() {
                 <span className="text-[10px] font-bold uppercase tracking-spec opacity-70">
                   Continue as
                 </span>
-                <span className="font-display text-lg font-bold leading-tight">
+                <span className="font-display text-lg font-semibold leading-tight">
                   {viewerLoading ? "Opening…" : "View only"}
                 </span>
               </div>

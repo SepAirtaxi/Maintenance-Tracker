@@ -230,7 +230,7 @@ export default function AircraftCard({
         <div className="grid grid-cols-[minmax(0,1fr)_136px_284px_76px]">
           {/* Identity row — one line: model, status, then last-updated */}
           <div className="col-start-1 row-start-1 flex items-center gap-1.5 min-w-0 px-4 py-2 border-b border-foreground/10">
-            <h3 className="mr-1.5 min-w-0 truncate font-display text-lg font-semibold leading-tight tracking-tight text-foreground">
+            <h3 className="mr-1.5 min-w-0 truncate font-display text-lg font-medium leading-tight tracking-tight text-foreground">
               {aircraft.model}
             </h3>
             {readOnly ? (

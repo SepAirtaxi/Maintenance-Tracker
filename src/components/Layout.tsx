@@ -210,7 +210,7 @@ export default function Layout() {
                 aria-hidden="true"
                 className="h-6 w-auto shrink-0 brightness-0 invert"
               />
-              <span className="font-display text-[15px] font-semibold leading-none tracking-tight text-primary-foreground">
+              <span className="font-display text-[15px] font-medium leading-none tracking-tight text-primary-foreground">
                 Maintenance Tracker
               </span>
             </div>

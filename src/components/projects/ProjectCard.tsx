@@ -91,7 +91,7 @@ export default function ProjectCard({
           <div className="flex items-center gap-2 border-b border-foreground/10 px-4 py-2 min-w-0">
             <div className="flex min-w-0 items-baseline gap-2">
               <h3
-                className="min-w-0 truncate font-display text-lg font-semibold leading-tight tracking-tight"
+                className="min-w-0 truncate font-display text-lg font-medium leading-tight tracking-tight"
                 title={project.title}
               >
                 {project.title}

@@ -69,7 +69,7 @@ export default function ProfilePage() {
           </span>
           <span className="h-px flex-1 bg-foreground/15 w-12" />
         </div>
-        <h1 className="font-display text-2xl font-semibold tracking-tight leading-none">
+        <h1 className="font-display text-2xl font-medium tracking-tight leading-none">
           Profile
         </h1>
         <p className="text-sm text-muted-foreground">

@@ -13,7 +13,7 @@ export default {
     extend: {
       fontFamily: {
         sans: ['"Inter Tight"', "Inter", "system-ui", "sans-serif"],
-        display: ['"Bricolage Grotesque"', '"Inter Tight"', "sans-serif"],
+        display: ['"Saira"', '"Inter Tight"', "sans-serif"],
         mono: ['"JetBrains Mono"', "ui-monospace", "SFMono-Regular", "monospace"],
       },
       colors: {
